@@ -1,0 +1,13 @@
+# Local secrets
+.env
+.env.*
+!.env.example
+
+# Build artifacts
+/bin/
+/codex-chat
+
+# Editor and OS files
+.DS_Store
+.idea/
+.vscode/
