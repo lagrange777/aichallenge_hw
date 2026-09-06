@@ -1,0 +1,225 @@
+package web
+
+import (
+	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"sync"
+	"testing"
+)
+
+type fakeResponder struct {
+	mu          sync.Mutex
+	previousIDs []string
+	calls       int
+	err         error
+}
+
+func (f *fakeResponder) Respond(_ context.Context, input, previousID string) (string, string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.previousIDs = append(f.previousIDs, previousID)
+	if f.err != nil {
+		return "", "", f.err
+	}
+	f.calls++
+	return "resp_" + string(rune('0'+f.calls)), "reply to " + input, nil
+}
+
+func TestServesWebApplication(t *testing.T) {
+	handler := NewHandler(&fakeResponder{}, "test-model")
+
+	for _, test := range []struct {
+		path        string
+		contentType string
+		contains    string
+	}{
+		{path: "/", contentType: "text/html", contains: "Codex Chat"},
+		{path: "/app.css", contentType: "text/css", contains: ".app-shell"},
+		{path: "/app.js", contentType: "text/javascript", contains: "sendMessage"},
+		{path: "/favicon.svg", contentType: "image/svg+xml", contains: "<svg"},
+	} {
+		t.Run(test.path, func(t *testing.T) {
+			request := httptest.NewRequest(http.MethodGet, test.path, nil)
+			response := httptest.NewRecorder()
+			handler.ServeHTTP(response, request)
+
+			if response.Code != http.StatusOK {
+				t.Fatalf("status = %d", response.Code)
+			}
+			if !strings.HasPrefix(response.Header().Get("Content-Type"), test.contentType) {
+				t.Fatalf("Content-Type = %q", response.Header().Get("Content-Type"))
+			}
+			if !strings.Contains(response.Body.String(), test.contains) {
+				t.Fatalf("body does not contain %q", test.contains)
+			}
+			if response.Header().Get("Content-Security-Policy") == "" {
+				t.Fatal("Content-Security-Policy is missing")
+			}
+		})
+	}
+}
+
+func TestChatCarriesConversationState(t *testing.T) {
+	responder := &fakeResponder{}
+	handler := NewHandler(responder, "test-model")
+
+	first := performChat(handler, nil, "first")
+	if first.Code != http.StatusOK {
+		t.Fatalf("first status = %d, body = %s", first.Code, first.Body.String())
+	}
+	cookie := sessionCookieFrom(t, first)
+
+	second := performChat(handler, cookie, "second")
+	if second.Code != http.StatusOK {
+		t.Fatalf("second status = %d, body = %s", second.Code, second.Body.String())
+	}
+
+	responder.mu.Lock()
+	defer responder.mu.Unlock()
+	if len(responder.previousIDs) != 2 || responder.previousIDs[0] != "" || responder.previousIDs[1] != "resp_1" {
+		t.Fatalf("previous IDs = %#v", responder.previousIDs)
+	}
+
+	var payload apiResponse
+	if err := json.Unmarshal(second.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if payload.Answer != "reply to second" {
+		t.Fatalf("answer = %q", payload.Answer)
+	}
+}
+
+func TestResetStartsFreshConversation(t *testing.T) {
+	responder := &fakeResponder{}
+	handler := NewHandler(responder, "test-model")
+
+	first := performChat(handler, nil, "first")
+	cookie := sessionCookieFrom(t, first)
+
+	resetRequest := httptest.NewRequest(http.MethodPost, "/api/reset", nil)
+	resetRequest.Header.Set("X-Codex-Chat", "1")
+	resetRequest.AddCookie(cookie)
+	resetResponse := httptest.NewRecorder()
+	handler.ServeHTTP(resetResponse, resetRequest)
+	if resetResponse.Code != http.StatusNoContent {
+		t.Fatalf("reset status = %d", resetResponse.Code)
+	}
+
+	second := performChat(handler, cookie, "second")
+	if second.Code != http.StatusOK {
+		t.Fatalf("second status = %d", second.Code)
+	}
+
+	responder.mu.Lock()
+	defer responder.mu.Unlock()
+	if len(responder.previousIDs) != 2 || responder.previousIDs[1] != "" {
+		t.Fatalf("previous IDs = %#v", responder.previousIDs)
+	}
+}
+
+func TestBrowserSessionsAreIsolated(t *testing.T) {
+	responder := &fakeResponder{}
+	handler := NewHandler(responder, "test-model")
+
+	first := performChat(handler, nil, "browser one")
+	second := performChat(handler, nil, "browser two")
+	if first.Code != http.StatusOK || second.Code != http.StatusOK {
+		t.Fatalf("statuses = %d, %d", first.Code, second.Code)
+	}
+
+	responder.mu.Lock()
+	defer responder.mu.Unlock()
+	if len(responder.previousIDs) != 2 || responder.previousIDs[0] != "" || responder.previousIDs[1] != "" {
+		t.Fatalf("previous IDs = %#v", responder.previousIDs)
+	}
+}
+
+func TestAPIValidation(t *testing.T) {
+	handler := NewHandler(&fakeResponder{}, "test-model")
+
+	tests := []struct {
+		name        string
+		method      string
+		body        string
+		contentType string
+		header      bool
+		origin      string
+		want        int
+	}{
+		{name: "method", method: http.MethodGet, header: true, want: http.StatusMethodNotAllowed},
+		{name: "request header", method: http.MethodPost, contentType: "application/json", body: `{\"message\":\"hi\"}`, want: http.StatusForbidden},
+		{name: "content type", method: http.MethodPost, header: true, contentType: "text/plain", body: "hi", want: http.StatusUnsupportedMediaType},
+		{name: "invalid json", method: http.MethodPost, header: true, contentType: "application/json", body: `{`, want: http.StatusBadRequest},
+		{name: "empty", method: http.MethodPost, header: true, contentType: "application/json", body: `{\"message\":\"  \"}`, want: http.StatusBadRequest},
+		{name: "cross origin", method: http.MethodPost, header: true, origin: "https://example.org", contentType: "application/json", body: `{\"message\":\"hi\"}`, want: http.StatusForbidden},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			request := httptest.NewRequest(test.method, "/api/chat", strings.NewReader(test.body))
+			if test.header {
+				request.Header.Set("X-Codex-Chat", "1")
+			}
+			if test.contentType != "" {
+				request.Header.Set("Content-Type", test.contentType)
+			}
+			if test.origin != "" {
+				request.Header.Set("Origin", test.origin)
+			}
+			response := httptest.NewRecorder()
+			handler.ServeHTTP(response, request)
+			if response.Code != test.want {
+				t.Fatalf("status = %d, want %d; body = %s", response.Code, test.want, response.Body.String())
+			}
+		})
+	}
+}
+
+func TestStatusAndHealth(t *testing.T) {
+	handler := NewHandler(&fakeResponder{}, "test-model")
+
+	statusRequest := httptest.NewRequest(http.MethodGet, "/api/status", nil)
+	statusResponse := httptest.NewRecorder()
+	handler.ServeHTTP(statusResponse, statusRequest)
+	if statusResponse.Code != http.StatusOK || !strings.Contains(statusResponse.Body.String(), "test-model") {
+		t.Fatalf("status response = %d %q", statusResponse.Code, statusResponse.Body.String())
+	}
+
+	healthRequest := httptest.NewRequest(http.MethodGet, "/healthz", nil)
+	healthResponse := httptest.NewRecorder()
+	handler.ServeHTTP(healthResponse, healthRequest)
+	if healthResponse.Code != http.StatusOK || healthResponse.Body.String() != "ok\n" {
+		t.Fatalf("health response = %d %q", healthResponse.Code, healthResponse.Body.String())
+	}
+}
+
+func performChat(handler http.Handler, cookie *http.Cookie, message string) *httptest.ResponseRecorder {
+	request := httptest.NewRequest(http.MethodPost, "/api/chat", strings.NewReader(`{"message":`+quoteJSON(message)+`}`))
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("X-Codex-Chat", "1")
+	if cookie != nil {
+		request.AddCookie(cookie)
+	}
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	return response
+}
+
+func quoteJSON(value string) string {
+	encoded, _ := json.Marshal(value)
+	return string(encoded)
+}
+
+func sessionCookieFrom(t *testing.T, response *httptest.ResponseRecorder) *http.Cookie {
+	t.Helper()
+	for _, cookie := range response.Result().Cookies() {
+		if cookie.Name == sessionCookie {
+			return cookie
+		}
+	}
+	t.Fatal("session cookie is missing")
+	return nil
+}

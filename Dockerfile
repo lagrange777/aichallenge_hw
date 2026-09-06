@@ -31,4 +31,6 @@ COPY --from=build /out/codex-chat /codex-chat
 
 USER 65532:65532
 
+EXPOSE 8080
+
 ENTRYPOINT ["/codex-chat"]

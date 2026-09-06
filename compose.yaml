@@ -2,14 +2,15 @@ services:
   codex-chat:
     build:
       context: .
-    image: codex-chat-cli:local
+    image: codex-chat-web:local
     environment:
       OPENAI_API_KEY: ${OPENAI_API_KEY:?Set OPENAI_API_KEY in the shell or .env file}
       OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.3-codex}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
       OPENAI_TIMEOUT: ${OPENAI_TIMEOUT:-2m}
-    stdin_open: true
-    tty: true
+      WEB_ADDR: 0.0.0.0:8080
+    ports:
+      - "127.0.0.1:8080:8080"
     read_only: true
     cap_drop:
       - ALL
