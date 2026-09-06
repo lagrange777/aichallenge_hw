@@ -15,7 +15,7 @@
   const optionInputs = [responseFormatInput, lengthLimitInput, completionConditionInput, temperatureInput];
   const sendButton = document.querySelector("#send-button");
   const newChatButton = document.querySelector("#new-chat");
-  const modelName = document.querySelector("#model-name");
+  const modelSelect = document.querySelector("#model-select");
   const connection = document.querySelector(".connection");
   const connectionLabel = document.querySelector("#connection-label");
   const toast = document.querySelector("#toast");
@@ -66,12 +66,28 @@
       if (!response.ok) {
         throw new Error(payload.error || "Сервер недоступен");
       }
-      modelName.textContent = payload.model || "OpenAI";
+      const availableModels = Array.isArray(payload.models) ? payload.models : [];
+      modelSelect.replaceChildren();
+      availableModels.forEach((model) => {
+        if (!model || typeof model.id !== "string") {
+          return;
+        }
+        const option = document.createElement("option");
+        option.value = model.id;
+        option.textContent = typeof model.label === "string" ? model.label : model.id;
+        option.title = model.id;
+        modelSelect.append(option);
+      });
+      if (payload.model && Array.from(modelSelect.options).some((option) => option.value === payload.model)) {
+        modelSelect.value = payload.model;
+      }
+      modelSelect.disabled = modelSelect.value === "";
       connection.classList.add("online");
       connection.classList.remove("offline");
       connectionLabel.textContent = "готов к работе";
     } catch (error) {
-      modelName.textContent = "нет соединения";
+      modelSelect.replaceChildren(new Option("нет соединения", ""));
+      modelSelect.disabled = true;
       connection.classList.add("offline");
       connection.classList.remove("online");
       connectionLabel.textContent = "соединение потеряно";
@@ -103,6 +119,7 @@
     sending = true;
     input.value = "";
     optionInputs.forEach((field) => { field.disabled = true; });
+    modelSelect.disabled = true;
     resizeComposer();
     updateSendButton();
     newChatButton.disabled = true;
@@ -120,14 +137,20 @@
           "Content-Type": "application/json",
           "X-Codex-Chat": "1"
         },
-        body: JSON.stringify({ message, ...responseOptions })
+        body: JSON.stringify({ message, model: modelSelect.value, ...responseOptions })
       });
       const payload = await response.json().catch(() => ({}));
       pending.remove();
       if (!response.ok) {
         throw new Error(payload.error || `Ошибка сервера (${response.status})`);
       }
-      addMessage({ role: "assistant", text: payload.answer, time: Date.now() });
+      addMessage({
+        role: "assistant",
+        text: payload.answer,
+        time: Date.now(),
+        model: payload.model || modelSelect.value,
+        metrics: payload.metrics
+      });
     } catch (error) {
       pending.remove();
       const messageText = error instanceof Error ? error.message : "Не удалось получить ответ";
@@ -136,6 +159,7 @@
     } finally {
       sending = false;
       optionInputs.forEach((field) => { field.disabled = false; });
+      modelSelect.disabled = modelSelect.value === "";
       newChatButton.disabled = false;
       sendButton.classList.remove("sending");
       updateSendButton();
@@ -222,8 +246,81 @@
     }
 
     main.append(meta, content);
+    if (message.role === "assistant" && message.metrics) {
+      main.append(createResponseMetrics(message.model, message.metrics));
+    }
     article.append(avatar, main);
     return article;
+  }
+
+  function createResponseMetrics(model, metrics) {
+    const node = document.createElement("div");
+    node.className = "response-metrics";
+    node.setAttribute("aria-label", "Метрики ответа");
+
+    if (model) {
+      node.append(metricItem("модель", model));
+    }
+    node.append(metricItem("время", formatDuration(metrics.durationMs)));
+
+    const totalTokens = Number(metrics.totalTokens) || 0;
+    const tokenTitle = [
+      `Вход: ${formatNumber(metrics.inputTokens)} токенов`,
+      `Выход: ${formatNumber(metrics.outputTokens)} токенов`
+    ];
+    if (Number(metrics.cachedInputTokens) > 0) {
+      tokenTitle.push(`Из кэша: ${formatNumber(metrics.cachedInputTokens)}`);
+    }
+    if (Number(metrics.cacheWriteTokens) > 0) {
+      tokenTitle.push(`Записано в кэш: ${formatNumber(metrics.cacheWriteTokens)}`);
+    }
+    if (Number(metrics.reasoningTokens) > 0) {
+      tokenTitle.push(`Рассуждение: ${formatNumber(metrics.reasoningTokens)}`);
+    }
+    node.append(metricItem("токены", formatNumber(totalTokens), tokenTitle.join(" · ")));
+
+    const cost = Number(metrics.costUsd);
+    const costText = metrics.costUsd === null || metrics.costUsd === undefined || !Number.isFinite(cost)
+      ? "неизвестно"
+      : formatCost(cost);
+    node.append(metricItem("стоимость", costText, "Ориентировочная стоимость токенов по публичным тарифам OpenAI; дополнительные сборы инструментов не учитываются."));
+    return node;
+  }
+
+  function metricItem(label, value, title = "") {
+    const item = document.createElement("span");
+    item.className = "response-metric";
+    if (title) {
+      item.title = title;
+    }
+    const name = document.createElement("span");
+    name.className = "response-metric-label";
+    name.textContent = `${label}:`;
+    const content = document.createElement("strong");
+    content.textContent = value;
+    item.append(name, content);
+    return item;
+  }
+
+  function formatDuration(value) {
+    const milliseconds = Math.max(0, Number(value) || 0);
+    if (milliseconds < 1000) {
+      return `${formatNumber(milliseconds)} мс`;
+    }
+    const seconds = milliseconds / 1000;
+    return `${seconds.toLocaleString("ru-RU", { minimumFractionDigits: 1, maximumFractionDigits: 2 })} с`;
+  }
+
+  function formatNumber(value) {
+    return new Intl.NumberFormat("ru-RU").format(Math.max(0, Number(value) || 0));
+  }
+
+  function formatCost(value) {
+    if (value > 0 && value < 0.000001) {
+      return "< $0.000001";
+    }
+    const digits = value >= 0.01 ? 4 : 6;
+    return `≈ $${value.toFixed(digits)}`;
   }
 
   function addPendingMessage() {

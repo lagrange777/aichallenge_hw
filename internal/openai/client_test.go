@@ -33,7 +33,7 @@ func TestRespondSendsConversationState(t *testing.T) {
 			responseID = "resp_2"
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"id":"` + responseID + `","status":"completed","output":[{"type":"message","content":[{"type":"output_text","text":"answer"}]}]}`))
+		_, _ = w.Write([]byte(`{"id":"` + responseID + `","model":"` + request.Model + `","status":"completed","output":[{"type":"message","content":[{"type":"output_text","text":"answer"}]}],"usage":{"input_tokens":1000,"input_tokens_details":{"cached_tokens":200,"cache_write_tokens":100},"output_tokens":300,"output_tokens_details":{"reasoning_tokens":50},"total_tokens":1300}}`))
 	}))
 	defer server.Close()
 
@@ -42,27 +42,34 @@ func TestRespondSendsConversationState(t *testing.T) {
 		t.Fatalf("NewClient() error = %v", err)
 	}
 
-	id, text, err := client.Respond(context.Background(), "first", "", chat.ResponseOptions{})
+	result, err := client.Respond(context.Background(), "first", "", chat.ResponseOptions{})
 	if err != nil {
 		t.Fatalf("first Respond() error = %v", err)
 	}
-	if id != "resp_1" || text != "answer" {
-		t.Fatalf("first response = (%q, %q)", id, text)
+	if result.ResponseID != "resp_1" || result.Output != "answer" || result.Model != "gpt-5.3-codex" {
+		t.Fatalf("first response = %+v", result)
+	}
+	if result.Usage.TotalTokens != 1300 || result.Usage.CachedInputTokens != 200 || result.Usage.ReasoningTokens != 50 {
+		t.Fatalf("first usage = %+v", result.Usage)
+	}
+	if result.CostUSD == nil || *result.CostUSD <= 0 {
+		t.Fatalf("first cost = %v", result.CostUSD)
 	}
 
 	options := chat.ResponseOptions{
+		Model:               "gpt-5.6-terra",
 		Format:              "JSON object",
 		LengthLimit:         "at most 120 words",
 		CompletionCondition: "stop after the summary",
 	}
 	temperature := 0.7
 	options.Temperature = &temperature
-	id, _, err = client.Respond(context.Background(), "second", id, options)
+	result, err = client.Respond(context.Background(), "second", result.ResponseID, options)
 	if err != nil {
 		t.Fatalf("second Respond() error = %v", err)
 	}
-	if id != "resp_2" {
-		t.Fatalf("second response ID = %q", id)
+	if result.ResponseID != "resp_2" || result.Model != "gpt-5.6-terra" {
+		t.Fatalf("second response = %+v", result)
 	}
 
 	first := <-requests
@@ -81,6 +88,9 @@ func TestRespondSendsConversationState(t *testing.T) {
 	if second.PreviousResponseID != "resp_1" {
 		t.Fatalf("previous_response_id = %q", second.PreviousResponseID)
 	}
+	if second.Model != "gpt-5.6-terra" {
+		t.Fatalf("second model = %q", second.Model)
+	}
 	if first.Temperature != nil || second.Temperature == nil || *second.Temperature != temperature {
 		t.Fatalf("temperatures = (%v, %v), want (nil, %v)", first.Temperature, second.Temperature, temperature)
 	}
@@ -98,7 +108,7 @@ func TestRespondReturnsAPIError(t *testing.T) {
 		t.Fatalf("NewClient() error = %v", err)
 	}
 
-	if _, _, err := client.Respond(context.Background(), "hello", "", chat.ResponseOptions{}); err == nil {
+	if _, err := client.Respond(context.Background(), "hello", "", chat.ResponseOptions{}); err == nil {
 		t.Fatal("Respond() error = nil, want an error")
 	}
 }

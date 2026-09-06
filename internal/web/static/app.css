@@ -39,7 +39,8 @@ body {
 }
 
 button,
-textarea {
+textarea,
+select {
   font: inherit;
 }
 
@@ -48,7 +49,8 @@ button {
 }
 
 button:focus-visible,
-textarea:focus-visible {
+textarea:focus-visible,
+select:focus-visible {
   outline: 3px solid rgba(23, 132, 95, 0.2);
   outline-offset: 2px;
 }
@@ -285,7 +287,6 @@ textarea:focus-visible {
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 999px;
   color: #4d5550;
@@ -293,7 +294,26 @@ textarea:focus-visible {
   font-family: var(--mono);
   font-size: 11px;
   white-space: nowrap;
+}
+
+.model-badge select {
+  min-width: 0;
+  max-width: 220px;
+  padding: 0 18px 0 0;
+  overflow: hidden;
+  border: 0;
+  outline: 0;
+  color: inherit;
+  background: transparent;
+  font-family: inherit;
+  font-size: inherit;
+  cursor: pointer;
   text-overflow: ellipsis;
+}
+
+.model-badge select:disabled {
+  cursor: wait;
+  opacity: 0.65;
 }
 
 .model-pulse {
@@ -520,6 +540,38 @@ textarea:focus-visible {
 
 .message.assistant .message-content {
   white-space: normal;
+}
+
+.response-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 14px;
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line-soft);
+  color: #8b928e;
+  font-family: var(--mono);
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.response-metric {
+  display: inline-flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.response-metric-label {
+  color: #a0a6a2;
+}
+
+.response-metric strong {
+  overflow: hidden;
+  color: #69716c;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .message-content .markdown-block {
@@ -1058,6 +1110,10 @@ kbd {
   .model-badge {
     max-width: 44vw;
     padding: 7px 10px;
+  }
+
+  .model-badge select {
+    max-width: 34vw;
   }
 
   .empty-state {

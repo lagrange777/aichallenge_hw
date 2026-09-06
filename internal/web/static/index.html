@@ -51,10 +51,12 @@
           <span class="eyebrow">Рабочая область</span>
           <strong>Новый диалог</strong>
         </div>
-        <div class="model-badge" title="Модель OpenAI">
+        <label class="model-badge" title="Модель OpenAI" for="model-select">
           <span class="model-pulse"></span>
-          <span id="model-name">загрузка…</span>
-        </div>
+          <select id="model-select" aria-label="Модель OpenAI" disabled>
+            <option value="">загрузка…</option>
+          </select>
+        </label>
       </header>
 
       <section class="chat" id="chat" aria-label="Диалог">
