@@ -55,6 +55,8 @@ func TestRespondSendsConversationState(t *testing.T) {
 		LengthLimit:         "at most 120 words",
 		CompletionCondition: "stop after the summary",
 	}
+	temperature := 0.7
+	options.Temperature = &temperature
 	id, _, err = client.Respond(context.Background(), "second", id, options)
 	if err != nil {
 		t.Fatalf("second Respond() error = %v", err)
@@ -78,6 +80,9 @@ func TestRespondSendsConversationState(t *testing.T) {
 	}
 	if second.PreviousResponseID != "resp_1" {
 		t.Fatalf("previous_response_id = %q", second.PreviousResponseID)
+	}
+	if first.Temperature != nil || second.Temperature == nil || *second.Temperature != temperature {
+		t.Fatalf("temperatures = (%v, %v), want (nil, %v)", first.Temperature, second.Temperature, temperature)
 	}
 }
 
