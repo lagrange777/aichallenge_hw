@@ -11,7 +11,8 @@
   const responseFormatInput = document.querySelector("#response-format");
   const lengthLimitInput = document.querySelector("#length-limit");
   const completionConditionInput = document.querySelector("#completion-condition");
-  const optionInputs = [responseFormatInput, lengthLimitInput, completionConditionInput];
+  const temperatureInput = document.querySelector("#temperature");
+  const optionInputs = [responseFormatInput, lengthLimitInput, completionConditionInput, temperatureInput];
   const sendButton = document.querySelector("#send-button");
   const newChatButton = document.querySelector("#new-chat");
   const modelName = document.querySelector("#model-name");
@@ -88,6 +89,16 @@
       lengthLimit: lengthLimitInput.value.trim(),
       completionCondition: completionConditionInput.value.trim()
     };
+    const temperature = temperatureInput.value.trim();
+    if (temperature !== "") {
+      const parsedTemperature = Number(temperature);
+      if (!Number.isFinite(parsedTemperature) || parsedTemperature < 0 || parsedTemperature > 2) {
+        showToast("Температура должна быть от 0 до 2");
+        temperatureInput.focus();
+        return;
+      }
+      responseOptions.temperature = parsedTemperature;
+    }
 
     sending = true;
     input.value = "";

@@ -35,7 +35,7 @@ func (f *fakeResponder) Respond(_ context.Context, input, previousID string, opt
 func TestChatPassesOptionalResponseFields(t *testing.T) {
 	responder := &fakeResponder{}
 	handler := NewHandler(responder, "test-model")
-	body := `{"message":"question","responseFormat":" Markdown table ","lengthLimit":" 300 words ","completionCondition":" after recommendations "}`
+	body := `{"message":"question","responseFormat":" Markdown table ","lengthLimit":" 300 words ","completionCondition":" after recommendations ","temperature":0.4}`
 	response := performChatBody(handler, nil, body)
 	if response.Code != http.StatusOK {
 		t.Fatalf("status = %d, body = %s", response.Code, response.Body.String())
@@ -44,15 +44,20 @@ func TestChatPassesOptionalResponseFields(t *testing.T) {
 	responder.mu.Lock()
 	defer responder.mu.Unlock()
 	want := chat.ResponseOptions{Format: "Markdown table", LengthLimit: "300 words", CompletionCondition: "after recommendations"}
-	if len(responder.options) != 1 || responder.options[0] != want {
+	if len(responder.options) != 1 || responder.options[0].Temperature == nil || *responder.options[0].Temperature != 0.4 {
 		t.Fatalf("options = %#v, want %#v", responder.options, want)
+	}
+	got := responder.options[0]
+	got.Temperature = nil
+	if got != want {
+		t.Fatalf("options = %#v, want %#v", got, want)
 	}
 }
 
 func TestEmptyMessageIgnoresOptionalResponseFields(t *testing.T) {
 	responder := &fakeResponder{}
 	handler := NewHandler(responder, "test-model")
-	body := `{"message":"  ","responseFormat":"JSON","lengthLimit":"10 words","completionCondition":"immediately"}`
+	body := `{"message":"  ","responseFormat":"JSON","lengthLimit":"10 words","completionCondition":"immediately","temperature":2}`
 	response := performChatBody(handler, nil, body)
 	if response.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want %d", response.Code, http.StatusBadRequest)
@@ -191,7 +196,9 @@ func TestAPIValidation(t *testing.T) {
 		{name: "request header", method: http.MethodPost, contentType: "application/json", body: `{\"message\":\"hi\"}`, want: http.StatusForbidden},
 		{name: "content type", method: http.MethodPost, header: true, contentType: "text/plain", body: "hi", want: http.StatusUnsupportedMediaType},
 		{name: "invalid json", method: http.MethodPost, header: true, contentType: "application/json", body: `{`, want: http.StatusBadRequest},
-		{name: "empty", method: http.MethodPost, header: true, contentType: "application/json", body: `{\"message\":\"  \"}`, want: http.StatusBadRequest},
+		{name: "empty", method: http.MethodPost, header: true, contentType: "application/json", body: `{"message":"  "}`, want: http.StatusBadRequest},
+		{name: "temperature below range", method: http.MethodPost, header: true, contentType: "application/json", body: `{"message":"hi","temperature":-0.1}`, want: http.StatusBadRequest},
+		{name: "temperature above range", method: http.MethodPost, header: true, contentType: "application/json", body: `{"message":"hi","temperature":2.1}`, want: http.StatusBadRequest},
 		{name: "cross origin", method: http.MethodPost, header: true, origin: "https://example.org", contentType: "application/json", body: `{\"message\":\"hi\"}`, want: http.StatusForbidden},
 	}
 

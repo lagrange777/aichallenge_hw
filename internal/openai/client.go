@@ -26,11 +26,12 @@ type Client struct {
 }
 
 type responseRequest struct {
-	Model              string `json:"model"`
-	Instructions       string `json:"instructions,omitempty"`
-	Input              string `json:"input"`
-	PreviousResponseID string `json:"previous_response_id,omitempty"`
-	Store              bool   `json:"store"`
+	Model              string   `json:"model"`
+	Instructions       string   `json:"instructions,omitempty"`
+	Input              string   `json:"input"`
+	PreviousResponseID string   `json:"previous_response_id,omitempty"`
+	Temperature        *float64 `json:"temperature,omitempty"`
+	Store              bool     `json:"store"`
 }
 
 type responseBody struct {
@@ -89,6 +90,7 @@ func (c *Client) Respond(ctx context.Context, input, previousResponseID string, 
 		Instructions:       responseInstructions(c.instructions, options),
 		Input:              input,
 		PreviousResponseID: previousResponseID,
+		Temperature:        options.Temperature,
 		Store:              true,
 	})
 	if err != nil {

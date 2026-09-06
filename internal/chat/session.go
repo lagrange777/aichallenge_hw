@@ -16,6 +16,7 @@ type ResponseOptions struct {
 	Format              string
 	LengthLimit         string
 	CompletionCondition string
+	Temperature         *float64
 }
 
 // Session holds conversation state for the lifetime of the current process.

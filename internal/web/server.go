@@ -42,10 +42,11 @@ type server struct {
 }
 
 type chatRequest struct {
-	Message             string `json:"message"`
-	ResponseFormat      string `json:"responseFormat,omitempty"`
-	LengthLimit         string `json:"lengthLimit,omitempty"`
-	CompletionCondition string `json:"completionCondition,omitempty"`
+	Message             string   `json:"message"`
+	ResponseFormat      string   `json:"responseFormat,omitempty"`
+	LengthLimit         string   `json:"lengthLimit,omitempty"`
+	CompletionCondition string   `json:"completionCondition,omitempty"`
+	Temperature         *float64 `json:"temperature,omitempty"`
 }
 
 type apiResponse struct {
@@ -156,6 +157,10 @@ func (s *server) handleChat(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, apiResponse{Error: "Дополнительное поле слишком длинное"})
 		return
 	}
+	if request.Temperature != nil && (*request.Temperature < 0 || *request.Temperature > 2) {
+		writeJSON(w, http.StatusBadRequest, apiResponse{Error: "Температура должна быть от 0 до 2"})
+		return
+	}
 
 	session, err := s.sessionFor(w, r)
 	if err != nil {
@@ -166,6 +171,7 @@ func (s *server) handleChat(w http.ResponseWriter, r *http.Request) {
 		Format:              request.ResponseFormat,
 		LengthLimit:         request.LengthLimit,
 		CompletionCondition: request.CompletionCondition,
+		Temperature:         request.Temperature,
 	})
 	if err != nil {
 		writeJSON(w, http.StatusBadGateway, apiResponse{Error: err.Error()})
