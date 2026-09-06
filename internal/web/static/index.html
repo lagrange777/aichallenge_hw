@@ -90,6 +90,27 @@
         <form class="composer" id="chat-form">
           <label class="sr-only" for="message-input">Сообщение</label>
           <textarea id="message-input" rows="1" maxlength="100000" placeholder="Спросите о коде или опишите задачу…" autocomplete="off"></textarea>
+          <details class="response-options" id="response-options">
+            <summary>
+              <span>Параметры ответа</span>
+              <small>необязательно</small>
+              <span class="options-chevron" aria-hidden="true">⌄</span>
+            </summary>
+            <div class="response-options-grid">
+              <label class="response-option" for="response-format">
+                <span>Формат ответа</span>
+                <input id="response-format" type="text" maxlength="4000" placeholder="Например: Markdown или JSON" autocomplete="off">
+              </label>
+              <label class="response-option" for="length-limit">
+                <span>Ограничение длины</span>
+                <input id="length-limit" type="text" maxlength="4000" placeholder="Например: до 500 слов" autocomplete="off">
+              </label>
+              <label class="response-option" for="completion-condition">
+                <span>Условие завершения</span>
+                <input id="completion-condition" type="text" maxlength="4000" placeholder="Например: после списка шагов" autocomplete="off">
+              </label>
+            </div>
+          </details>
           <div class="composer-bar">
             <span class="composer-hint"><kbd>Shift</kbd> + <kbd>Enter</kbd> — новая строка</span>
             <button class="send-button" id="send-button" type="submit" aria-label="Отправить сообщение" disabled>
@@ -103,6 +124,7 @@
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="/markdown.js" defer></script>
   <script src="/app.js" defer></script>
 </body>
 </html>

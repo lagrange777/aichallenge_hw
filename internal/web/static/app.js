@@ -7,6 +7,11 @@
   const emptyState = document.querySelector("#empty-state");
   const form = document.querySelector("#chat-form");
   const input = document.querySelector("#message-input");
+  const responseOptionsDetails = document.querySelector("#response-options");
+  const responseFormatInput = document.querySelector("#response-format");
+  const lengthLimitInput = document.querySelector("#length-limit");
+  const completionConditionInput = document.querySelector("#completion-condition");
+  const optionInputs = [responseFormatInput, lengthLimitInput, completionConditionInput];
   const sendButton = document.querySelector("#send-button");
   const newChatButton = document.querySelector("#new-chat");
   const modelName = document.querySelector("#model-name");
@@ -78,8 +83,15 @@
       return;
     }
 
+    const responseOptions = {
+      responseFormat: responseFormatInput.value.trim(),
+      lengthLimit: lengthLimitInput.value.trim(),
+      completionCondition: completionConditionInput.value.trim()
+    };
+
     sending = true;
     input.value = "";
+    optionInputs.forEach((field) => { field.disabled = true; });
     resizeComposer();
     updateSendButton();
     newChatButton.disabled = true;
@@ -97,7 +109,7 @@
           "Content-Type": "application/json",
           "X-Codex-Chat": "1"
         },
-        body: JSON.stringify({ message })
+        body: JSON.stringify({ message, ...responseOptions })
       });
       const payload = await response.json().catch(() => ({}));
       pending.remove();
@@ -112,6 +124,7 @@
       showToast("Запрос не выполнен. Проверьте сервер и API-ключ.");
     } finally {
       sending = false;
+      optionInputs.forEach((field) => { field.disabled = false; });
       newChatButton.disabled = false;
       sendButton.classList.remove("sending");
       updateSendButton();
@@ -137,6 +150,8 @@
       saveTranscript();
       renderTranscript();
       input.value = "";
+      optionInputs.forEach((field) => { field.value = ""; });
+      responseOptionsDetails.open = false;
       resizeComposer();
       updateSendButton();
       input.focus();
@@ -190,7 +205,7 @@
     const content = document.createElement("div");
     content.className = "message-content";
     if (message.role === "assistant") {
-      renderAssistantContent(content, message.text || "");
+      window.CodexMarkdown.render(content, message.text || "", showToast);
     } else {
       content.textContent = message.text || "";
     }
@@ -198,54 +213,6 @@
     main.append(meta, content);
     article.append(avatar, main);
     return article;
-  }
-
-  function renderAssistantContent(container, text) {
-    const parts = String(text).split("```");
-    parts.forEach((part, index) => {
-      if (!part) {
-        return;
-      }
-      if (index % 2 === 0) {
-        const prose = document.createElement("div");
-        prose.className = "prose-block";
-        prose.textContent = part.trim();
-        if (prose.textContent) {
-          container.append(prose);
-        }
-        return;
-      }
-
-      const firstBreak = part.indexOf("\n");
-      const language = firstBreak > 0 ? part.slice(0, firstBreak).trim() : "code";
-      const codeText = firstBreak > 0 ? part.slice(firstBreak + 1).replace(/\n$/, "") : part;
-      const block = document.createElement("div");
-      block.className = "code-block";
-      const head = document.createElement("div");
-      head.className = "code-head";
-      const label = document.createElement("span");
-      label.textContent = language || "code";
-      const copy = document.createElement("button");
-      copy.type = "button";
-      copy.className = "copy-code";
-      copy.textContent = "Копировать";
-      copy.addEventListener("click", async () => {
-        try {
-          await navigator.clipboard.writeText(codeText);
-          copy.textContent = "Скопировано";
-          window.setTimeout(() => { copy.textContent = "Копировать"; }, 1300);
-        } catch (error) {
-          showToast("Не удалось скопировать код");
-        }
-      });
-      head.append(label, copy);
-      const pre = document.createElement("pre");
-      const code = document.createElement("code");
-      code.textContent = codeText;
-      pre.append(code);
-      block.append(head, pre);
-      container.append(block);
-    });
   }
 
   function addPendingMessage() {

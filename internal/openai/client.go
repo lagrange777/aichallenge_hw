@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+
+	"codex-chat-cli/internal/chat"
 )
 
 const maxResponseBytes = 10 << 20
@@ -81,10 +83,10 @@ func NewClient(apiKey, model, baseURL, instructions string, httpClient *http.Cli
 }
 
 // Respond sends one user turn. It returns the new response ID and output text.
-func (c *Client) Respond(ctx context.Context, input, previousResponseID string) (string, string, error) {
+func (c *Client) Respond(ctx context.Context, input, previousResponseID string, options chat.ResponseOptions) (string, string, error) {
 	payload, err := json.Marshal(responseRequest{
 		Model:              c.model,
-		Instructions:       c.instructions,
+		Instructions:       responseInstructions(c.instructions, options),
 		Input:              input,
 		PreviousResponseID: previousResponseID,
 		Store:              true,
@@ -134,6 +136,29 @@ func (c *Client) Respond(ctx context.Context, input, previousResponseID string) 
 	}
 
 	return decoded.ID, text, nil
+}
+
+func responseInstructions(base string, options chat.ResponseOptions) string {
+	requirements := make([]string, 0, 3)
+	if value := strings.TrimSpace(options.Format); value != "" {
+		requirements = append(requirements, "Response format: "+value)
+	}
+	if value := strings.TrimSpace(options.LengthLimit); value != "" {
+		requirements = append(requirements, "Response length limit: "+value)
+	}
+	if value := strings.TrimSpace(options.CompletionCondition); value != "" {
+		requirements = append(requirements, "Completion condition: "+value)
+	}
+	if len(requirements) == 0 {
+		return base
+	}
+
+	const heading = "The user specified the following requirements for this response. Every listed requirement is mandatory and must not be ignored:"
+	block := heading + "\n- " + strings.Join(requirements, "\n- ")
+	if strings.TrimSpace(base) == "" {
+		return block
+	}
+	return strings.TrimSpace(base) + "\n\n" + block
 }
 
 func outputText(response responseBody) string {

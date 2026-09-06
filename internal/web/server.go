@@ -19,12 +19,13 @@ import (
 
 const (
 	maxRequestBytes = 1 << 20
+	maxOptionLength = 4000
 	sessionCookie   = "codex_chat_session"
 	sessionTTL      = 12 * time.Hour
 	maxSessions     = 256
 )
 
-//go:embed static/index.html static/app.css static/app.js static/favicon.svg
+//go:embed static/index.html static/app.css static/app.js static/markdown.js static/favicon.svg
 var staticFiles embed.FS
 
 type sessionEntry struct {
@@ -41,7 +42,10 @@ type server struct {
 }
 
 type chatRequest struct {
-	Message string `json:"message"`
+	Message             string `json:"message"`
+	ResponseFormat      string `json:"responseFormat,omitempty"`
+	LengthLimit         string `json:"lengthLimit,omitempty"`
+	CompletionCondition string `json:"completionCondition,omitempty"`
 }
 
 type apiResponse struct {
@@ -62,6 +66,7 @@ func NewHandler(responder chat.Responder, model string) http.Handler {
 	mux.HandleFunc("/", app.handleIndex)
 	mux.HandleFunc("/app.css", app.handleCSS)
 	mux.HandleFunc("/app.js", app.handleJS)
+	mux.HandleFunc("/markdown.js", app.handleMarkdownJS)
 	mux.HandleFunc("/favicon.svg", app.handleFavicon)
 	mux.HandleFunc("/api/chat", app.handleChat)
 	mux.HandleFunc("/api/reset", app.handleReset)
@@ -84,6 +89,10 @@ func (s *server) handleCSS(w http.ResponseWriter, r *http.Request) {
 
 func (s *server) handleJS(w http.ResponseWriter, r *http.Request) {
 	s.serveStatic(w, r, "app.js", "text/javascript; charset=utf-8")
+}
+
+func (s *server) handleMarkdownJS(w http.ResponseWriter, r *http.Request) {
+	s.serveStatic(w, r, "markdown.js", "text/javascript; charset=utf-8")
 }
 
 func (s *server) handleFavicon(w http.ResponseWriter, r *http.Request) {
@@ -140,13 +149,24 @@ func (s *server) handleChat(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, apiResponse{Error: "Введите сообщение"})
 		return
 	}
+	request.ResponseFormat = strings.TrimSpace(request.ResponseFormat)
+	request.LengthLimit = strings.TrimSpace(request.LengthLimit)
+	request.CompletionCondition = strings.TrimSpace(request.CompletionCondition)
+	if len(request.ResponseFormat) > maxOptionLength || len(request.LengthLimit) > maxOptionLength || len(request.CompletionCondition) > maxOptionLength {
+		writeJSON(w, http.StatusBadRequest, apiResponse{Error: "Дополнительное поле слишком длинное"})
+		return
+	}
 
 	session, err := s.sessionFor(w, r)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, apiResponse{Error: "Не удалось создать сессию"})
 		return
 	}
-	answer, err := session.Ask(r.Context(), request.Message)
+	answer, err := session.Ask(r.Context(), request.Message, chat.ResponseOptions{
+		Format:              request.ResponseFormat,
+		LengthLimit:         request.LengthLimit,
+		CompletionCondition: request.CompletionCondition,
+	})
 	if err != nil {
 		writeJSON(w, http.StatusBadGateway, apiResponse{Error: err.Error()})
 		return

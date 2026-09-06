@@ -8,7 +8,14 @@ import (
 
 // Responder is the API boundary used by a chat session.
 type Responder interface {
-	Respond(ctx context.Context, input, previousResponseID string) (responseID, output string, err error)
+	Respond(ctx context.Context, input, previousResponseID string, options ResponseOptions) (responseID, output string, err error)
+}
+
+// ResponseOptions contains optional requirements for a single model response.
+type ResponseOptions struct {
+	Format              string
+	LengthLimit         string
+	CompletionCondition string
 }
 
 // Session holds conversation state for the lifetime of the current process.
@@ -24,11 +31,14 @@ func NewSession(responder Responder) *Session {
 }
 
 // Ask sends a turn and advances session state only after a successful response.
-func (s *Session) Ask(ctx context.Context, input string) (string, error) {
+func (s *Session) Ask(ctx context.Context, input string, options ResponseOptions) (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	responseID, output, err := s.responder.Respond(ctx, strings.TrimSpace(input), s.previousResponseID)
+	options.Format = strings.TrimSpace(options.Format)
+	options.LengthLimit = strings.TrimSpace(options.LengthLimit)
+	options.CompletionCondition = strings.TrimSpace(options.CompletionCondition)
+	responseID, output, err := s.responder.Respond(ctx, strings.TrimSpace(input), s.previousResponseID, options)
 	if err != nil {
 		return "", err
 	}
@@ -36,7 +46,7 @@ func (s *Session) Ask(ctx context.Context, input string) (string, error) {
 	return output, nil
 }
 
-// Reset starts a new conversation within the same CLI process.
+// Reset starts a new conversation within the same browser session.
 func (s *Session) Reset() {
 	s.mu.Lock()
 	s.previousResponseID = ""

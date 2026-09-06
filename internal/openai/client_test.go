@@ -5,8 +5,11 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
+
+	"codex-chat-cli/internal/chat"
 )
 
 func TestRespondSendsConversationState(t *testing.T) {
@@ -39,7 +42,7 @@ func TestRespondSendsConversationState(t *testing.T) {
 		t.Fatalf("NewClient() error = %v", err)
 	}
 
-	id, text, err := client.Respond(context.Background(), "first", "")
+	id, text, err := client.Respond(context.Background(), "first", "", chat.ResponseOptions{})
 	if err != nil {
 		t.Fatalf("first Respond() error = %v", err)
 	}
@@ -47,7 +50,12 @@ func TestRespondSendsConversationState(t *testing.T) {
 		t.Fatalf("first response = (%q, %q)", id, text)
 	}
 
-	id, _, err = client.Respond(context.Background(), "second", id)
+	options := chat.ResponseOptions{
+		Format:              "JSON object",
+		LengthLimit:         "at most 120 words",
+		CompletionCondition: "stop after the summary",
+	}
+	id, _, err = client.Respond(context.Background(), "second", id, options)
 	if err != nil {
 		t.Fatalf("second Respond() error = %v", err)
 	}
@@ -60,8 +68,13 @@ func TestRespondSendsConversationState(t *testing.T) {
 	if first.Model != "gpt-5.3-codex" || first.Input != "first" || !first.Store {
 		t.Fatalf("first request = %+v", first)
 	}
-	if first.Instructions != "Be helpful." || second.Instructions != "Be helpful." {
-		t.Fatal("instructions must be sent on every turn")
+	if first.Instructions != "Be helpful." {
+		t.Fatalf("first instructions = %q", first.Instructions)
+	}
+	for _, requirement := range []string{"Response format: JSON object", "Response length limit: at most 120 words", "Completion condition: stop after the summary"} {
+		if !strings.Contains(second.Instructions, requirement) {
+			t.Fatalf("second instructions do not contain %q: %q", requirement, second.Instructions)
+		}
 	}
 	if second.PreviousResponseID != "resp_1" {
 		t.Fatalf("previous_response_id = %q", second.PreviousResponseID)
@@ -80,7 +93,7 @@ func TestRespondReturnsAPIError(t *testing.T) {
 		t.Fatalf("NewClient() error = %v", err)
 	}
 
-	if _, _, err := client.Respond(context.Background(), "hello", ""); err == nil {
+	if _, _, err := client.Respond(context.Background(), "hello", "", chat.ResponseOptions{}); err == nil {
 		t.Fatal("Respond() error = nil, want an error")
 	}
 }

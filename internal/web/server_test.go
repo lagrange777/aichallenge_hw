@@ -8,24 +8,61 @@ import (
 	"strings"
 	"sync"
 	"testing"
+
+	"codex-chat-cli/internal/chat"
 )
 
 type fakeResponder struct {
 	mu          sync.Mutex
 	previousIDs []string
+	options     []chat.ResponseOptions
 	calls       int
 	err         error
 }
 
-func (f *fakeResponder) Respond(_ context.Context, input, previousID string) (string, string, error) {
+func (f *fakeResponder) Respond(_ context.Context, input, previousID string, options chat.ResponseOptions) (string, string, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.previousIDs = append(f.previousIDs, previousID)
+	f.options = append(f.options, options)
 	if f.err != nil {
 		return "", "", f.err
 	}
 	f.calls++
 	return "resp_" + string(rune('0'+f.calls)), "reply to " + input, nil
+}
+
+func TestChatPassesOptionalResponseFields(t *testing.T) {
+	responder := &fakeResponder{}
+	handler := NewHandler(responder, "test-model")
+	body := `{"message":"question","responseFormat":" Markdown table ","lengthLimit":" 300 words ","completionCondition":" after recommendations "}`
+	response := performChatBody(handler, nil, body)
+	if response.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", response.Code, response.Body.String())
+	}
+
+	responder.mu.Lock()
+	defer responder.mu.Unlock()
+	want := chat.ResponseOptions{Format: "Markdown table", LengthLimit: "300 words", CompletionCondition: "after recommendations"}
+	if len(responder.options) != 1 || responder.options[0] != want {
+		t.Fatalf("options = %#v, want %#v", responder.options, want)
+	}
+}
+
+func TestEmptyMessageIgnoresOptionalResponseFields(t *testing.T) {
+	responder := &fakeResponder{}
+	handler := NewHandler(responder, "test-model")
+	body := `{"message":"  ","responseFormat":"JSON","lengthLimit":"10 words","completionCondition":"immediately"}`
+	response := performChatBody(handler, nil, body)
+	if response.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d", response.Code, http.StatusBadRequest)
+	}
+
+	responder.mu.Lock()
+	defer responder.mu.Unlock()
+	if responder.calls != 0 || len(responder.options) != 0 {
+		t.Fatalf("responder was called for an empty message: calls=%d options=%#v", responder.calls, responder.options)
+	}
 }
 
 func TestServesWebApplication(t *testing.T) {
@@ -36,9 +73,10 @@ func TestServesWebApplication(t *testing.T) {
 		contentType string
 		contains    string
 	}{
-		{path: "/", contentType: "text/html", contains: "Codex Chat"},
+		{path: "/", contentType: "text/html", contains: `id="response-options"`},
 		{path: "/app.css", contentType: "text/css", contains: ".app-shell"},
 		{path: "/app.js", contentType: "text/javascript", contains: "sendMessage"},
+		{path: "/markdown.js", contentType: "text/javascript", contains: "CodexMarkdown"},
 		{path: "/favicon.svg", contentType: "image/svg+xml", contains: "<svg"},
 	} {
 		t.Run(test.path, func(t *testing.T) {
@@ -197,7 +235,11 @@ func TestStatusAndHealth(t *testing.T) {
 }
 
 func performChat(handler http.Handler, cookie *http.Cookie, message string) *httptest.ResponseRecorder {
-	request := httptest.NewRequest(http.MethodPost, "/api/chat", strings.NewReader(`{"message":`+quoteJSON(message)+`}`))
+	return performChatBody(handler, cookie, `{"message":`+quoteJSON(message)+`}`)
+}
+
+func performChatBody(handler http.Handler, cookie *http.Cookie, body string) *httptest.ResponseRecorder {
+	request := httptest.NewRequest(http.MethodPost, "/api/chat", strings.NewReader(body))
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("X-Codex-Chat", "1")
 	if cookie != nil {
