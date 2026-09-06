@@ -20,16 +20,23 @@ type fakeResponder struct {
 	err         error
 }
 
-func (f *fakeResponder) Respond(_ context.Context, input, previousID string, options chat.ResponseOptions) (string, string, error) {
+func (f *fakeResponder) Respond(_ context.Context, input, previousID string, options chat.ResponseOptions) (chat.Result, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.previousIDs = append(f.previousIDs, previousID)
 	f.options = append(f.options, options)
 	if f.err != nil {
-		return "", "", f.err
+		return chat.Result{}, f.err
 	}
 	f.calls++
-	return "resp_" + string(rune('0'+f.calls)), "reply to " + input, nil
+	cost := 0.00123
+	return chat.Result{
+		ResponseID: "resp_" + string(rune('0'+f.calls)),
+		Output:     "reply to " + input,
+		Model:      options.Model,
+		Usage:      chat.Usage{InputTokens: 100, OutputTokens: 20, TotalTokens: 120},
+		CostUSD:    &cost,
+	}, nil
 }
 
 func TestChatPassesOptionalResponseFields(t *testing.T) {
@@ -43,7 +50,7 @@ func TestChatPassesOptionalResponseFields(t *testing.T) {
 
 	responder.mu.Lock()
 	defer responder.mu.Unlock()
-	want := chat.ResponseOptions{Format: "Markdown table", LengthLimit: "300 words", CompletionCondition: "after recommendations"}
+	want := chat.ResponseOptions{Model: "test-model", Format: "Markdown table", LengthLimit: "300 words", CompletionCondition: "after recommendations"}
 	if len(responder.options) != 1 || responder.options[0].Temperature == nil || *responder.options[0].Temperature != 0.4 {
 		t.Fatalf("options = %#v, want %#v", responder.options, want)
 	}
@@ -133,6 +140,9 @@ func TestChatCarriesConversationState(t *testing.T) {
 	if payload.Answer != "reply to second" {
 		t.Fatalf("answer = %q", payload.Answer)
 	}
+	if payload.Model != "test-model" || payload.Metrics == nil || payload.Metrics.TotalTokens != 120 || payload.Metrics.CostUSD == nil {
+		t.Fatalf("response metadata = model %q, metrics %#v", payload.Model, payload.Metrics)
+	}
 }
 
 func TestResetStartsFreshConversation(t *testing.T) {
@@ -199,6 +209,7 @@ func TestAPIValidation(t *testing.T) {
 		{name: "empty", method: http.MethodPost, header: true, contentType: "application/json", body: `{"message":"  "}`, want: http.StatusBadRequest},
 		{name: "temperature below range", method: http.MethodPost, header: true, contentType: "application/json", body: `{"message":"hi","temperature":-0.1}`, want: http.StatusBadRequest},
 		{name: "temperature above range", method: http.MethodPost, header: true, contentType: "application/json", body: `{"message":"hi","temperature":2.1}`, want: http.StatusBadRequest},
+		{name: "unknown model", method: http.MethodPost, header: true, contentType: "application/json", body: `{"message":"hi","model":"unknown"}`, want: http.StatusBadRequest},
 		{name: "cross origin", method: http.MethodPost, header: true, origin: "https://example.org", contentType: "application/json", body: `{\"message\":\"hi\"}`, want: http.StatusForbidden},
 	}
 
@@ -229,7 +240,7 @@ func TestStatusAndHealth(t *testing.T) {
 	statusRequest := httptest.NewRequest(http.MethodGet, "/api/status", nil)
 	statusResponse := httptest.NewRecorder()
 	handler.ServeHTTP(statusResponse, statusRequest)
-	if statusResponse.Code != http.StatusOK || !strings.Contains(statusResponse.Body.String(), "test-model") {
+	if statusResponse.Code != http.StatusOK || !strings.Contains(statusResponse.Body.String(), "test-model") || !strings.Contains(statusResponse.Body.String(), "gpt-5.6-terra") {
 		t.Fatalf("status response = %d %q", statusResponse.Code, statusResponse.Body.String())
 	}
 
@@ -238,6 +249,21 @@ func TestStatusAndHealth(t *testing.T) {
 	handler.ServeHTTP(healthResponse, healthRequest)
 	if healthResponse.Code != http.StatusOK || healthResponse.Body.String() != "ok\n" {
 		t.Fatalf("health response = %d %q", healthResponse.Code, healthResponse.Body.String())
+	}
+}
+
+func TestChatPassesSelectedModel(t *testing.T) {
+	responder := &fakeResponder{}
+	handler := NewHandler(responder, "gpt-5.3-codex")
+	response := performChatBody(handler, nil, `{"message":"question","model":"gpt-5.6-luna"}`)
+	if response.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", response.Code, response.Body.String())
+	}
+
+	responder.mu.Lock()
+	defer responder.mu.Unlock()
+	if len(responder.options) != 1 || responder.options[0].Model != "gpt-5.6-luna" {
+		t.Fatalf("options = %#v", responder.options)
 	}
 }
 

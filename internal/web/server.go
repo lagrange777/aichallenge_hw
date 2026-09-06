@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"codex-chat-cli/internal/chat"
+	"codex-chat-cli/internal/models"
 )
 
 const (
@@ -36,6 +37,8 @@ type sessionEntry struct {
 type server struct {
 	responder chat.Responder
 	model     string
+	models    []modelOption
+	allowed   map[string]bool
 
 	mu       sync.Mutex
 	sessions map[string]*sessionEntry
@@ -43,6 +46,7 @@ type server struct {
 
 type chatRequest struct {
 	Message             string   `json:"message"`
+	Model               string   `json:"model,omitempty"`
 	ResponseFormat      string   `json:"responseFormat,omitempty"`
 	LengthLimit         string   `json:"lengthLimit,omitempty"`
 	CompletionCondition string   `json:"completionCondition,omitempty"`
@@ -50,16 +54,44 @@ type chatRequest struct {
 }
 
 type apiResponse struct {
-	Answer string `json:"answer,omitempty"`
-	Error  string `json:"error,omitempty"`
-	Model  string `json:"model,omitempty"`
+	Answer  string           `json:"answer,omitempty"`
+	Error   string           `json:"error,omitempty"`
+	Model   string           `json:"model,omitempty"`
+	Models  []modelOption    `json:"models,omitempty"`
+	Metrics *responseMetrics `json:"metrics,omitempty"`
+}
+
+type modelOption struct {
+	ID    string `json:"id"`
+	Label string `json:"label"`
+}
+
+type responseMetrics struct {
+	DurationMS        int64    `json:"durationMs"`
+	InputTokens       int      `json:"inputTokens"`
+	CachedInputTokens int      `json:"cachedInputTokens"`
+	CacheWriteTokens  int      `json:"cacheWriteTokens"`
+	OutputTokens      int      `json:"outputTokens"`
+	ReasoningTokens   int      `json:"reasoningTokens"`
+	TotalTokens       int      `json:"totalTokens"`
+	CostUSD           *float64 `json:"costUsd"`
 }
 
 // NewHandler returns the complete local web application handler.
 func NewHandler(responder chat.Responder, model string) http.Handler {
+	model = strings.TrimSpace(model)
+	definitions := models.Available(model)
+	options := make([]modelOption, 0, len(definitions))
+	allowed := make(map[string]bool, len(definitions))
+	for _, definition := range definitions {
+		options = append(options, modelOption{ID: definition.ID, Label: definition.Label})
+		allowed[definition.ID] = true
+	}
 	app := &server{
 		responder: responder,
 		model:     model,
+		models:    options,
+		allowed:   allowed,
 		sessions:  make(map[string]*sessionEntry),
 	}
 
@@ -150,6 +182,14 @@ func (s *server) handleChat(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, apiResponse{Error: "Введите сообщение"})
 		return
 	}
+	request.Model = strings.TrimSpace(request.Model)
+	if request.Model == "" {
+		request.Model = s.model
+	}
+	if !s.allowed[request.Model] {
+		writeJSON(w, http.StatusBadRequest, apiResponse{Error: "Выберите модель из списка"})
+		return
+	}
 	request.ResponseFormat = strings.TrimSpace(request.ResponseFormat)
 	request.LengthLimit = strings.TrimSpace(request.LengthLimit)
 	request.CompletionCondition = strings.TrimSpace(request.CompletionCondition)
@@ -167,7 +207,9 @@ func (s *server) handleChat(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, apiResponse{Error: "Не удалось создать сессию"})
 		return
 	}
-	answer, err := session.Ask(r.Context(), request.Message, chat.ResponseOptions{
+	started := time.Now()
+	result, err := session.Ask(r.Context(), request.Message, chat.ResponseOptions{
+		Model:               request.Model,
 		Format:              request.ResponseFormat,
 		LengthLimit:         request.LengthLimit,
 		CompletionCondition: request.CompletionCondition,
@@ -177,7 +219,24 @@ func (s *server) handleChat(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadGateway, apiResponse{Error: err.Error()})
 		return
 	}
-	writeJSON(w, http.StatusOK, apiResponse{Answer: answer})
+	durationMS := time.Since(started).Milliseconds()
+	if durationMS < 1 {
+		durationMS = 1
+	}
+	writeJSON(w, http.StatusOK, apiResponse{
+		Answer: result.Output,
+		Model:  result.Model,
+		Metrics: &responseMetrics{
+			DurationMS:        durationMS,
+			InputTokens:       result.Usage.InputTokens,
+			CachedInputTokens: result.Usage.CachedInputTokens,
+			CacheWriteTokens:  result.Usage.CacheWriteTokens,
+			OutputTokens:      result.Usage.OutputTokens,
+			ReasoningTokens:   result.Usage.ReasoningTokens,
+			TotalTokens:       result.Usage.TotalTokens,
+			CostUSD:           result.CostUSD,
+		},
+	})
 }
 
 func (s *server) handleReset(w http.ResponseWriter, r *http.Request) {
@@ -200,7 +259,7 @@ func (s *server) handleStatus(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusMethodNotAllowed, apiResponse{Error: "Метод не поддерживается"})
 		return
 	}
-	writeJSON(w, http.StatusOK, apiResponse{Model: s.model})
+	writeJSON(w, http.StatusOK, apiResponse{Model: s.model, Models: s.models})
 }
 
 func (s *server) handleHealth(w http.ResponseWriter, r *http.Request) {

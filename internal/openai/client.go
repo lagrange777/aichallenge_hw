@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"codex-chat-cli/internal/chat"
+	"codex-chat-cli/internal/models"
 )
 
 const maxResponseBytes = 10 << 20
@@ -36,6 +37,7 @@ type responseRequest struct {
 
 type responseBody struct {
 	ID     string `json:"id"`
+	Model  string `json:"model"`
 	Status string `json:"status"`
 	Output []struct {
 		Type    string `json:"type"`
@@ -44,6 +46,18 @@ type responseBody struct {
 			Text string `json:"text"`
 		} `json:"content"`
 	} `json:"output"`
+	Usage struct {
+		InputTokens       int `json:"input_tokens"`
+		OutputTokens      int `json:"output_tokens"`
+		TotalTokens       int `json:"total_tokens"`
+		InputTokenDetails struct {
+			CachedTokens     int `json:"cached_tokens"`
+			CacheWriteTokens int `json:"cache_write_tokens"`
+		} `json:"input_tokens_details"`
+		OutputTokenDetails struct {
+			ReasoningTokens int `json:"reasoning_tokens"`
+		} `json:"output_tokens_details"`
+	} `json:"usage"`
 	Error *apiError `json:"error"`
 }
 
@@ -83,10 +97,14 @@ func NewClient(apiKey, model, baseURL, instructions string, httpClient *http.Cli
 	}, nil
 }
 
-// Respond sends one user turn. It returns the new response ID and output text.
-func (c *Client) Respond(ctx context.Context, input, previousResponseID string, options chat.ResponseOptions) (string, string, error) {
+// Respond sends one user turn and returns its text and usage metadata.
+func (c *Client) Respond(ctx context.Context, input, previousResponseID string, options chat.ResponseOptions) (chat.Result, error) {
+	model := strings.TrimSpace(options.Model)
+	if model == "" {
+		model = c.model
+	}
 	payload, err := json.Marshal(responseRequest{
-		Model:              c.model,
+		Model:              model,
 		Instructions:       responseInstructions(c.instructions, options),
 		Input:              input,
 		PreviousResponseID: previousResponseID,
@@ -94,12 +112,12 @@ func (c *Client) Respond(ctx context.Context, input, previousResponseID string, 
 		Store:              true,
 	})
 	if err != nil {
-		return "", "", fmt.Errorf("encode request: %w", err)
+		return chat.Result{}, fmt.Errorf("encode request: %w", err)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.responsesURL, bytes.NewReader(payload))
 	if err != nil {
-		return "", "", fmt.Errorf("create request: %w", err)
+		return chat.Result{}, fmt.Errorf("create request: %w", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+c.apiKey)
 	req.Header.Set("Content-Type", "application/json")
@@ -108,36 +126,55 @@ func (c *Client) Respond(ctx context.Context, input, previousResponseID string, 
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return "", "", fmt.Errorf("call OpenAI API: %w", err)
+		return chat.Result{}, fmt.Errorf("call OpenAI API: %w", err)
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes))
 	if err != nil {
-		return "", "", fmt.Errorf("read OpenAI response: %w", err)
+		return chat.Result{}, fmt.Errorf("read OpenAI response: %w", err)
 	}
 
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
-		return "", "", decodeAPIError(resp.StatusCode, body)
+		return chat.Result{}, decodeAPIError(resp.StatusCode, body)
 	}
 
 	var decoded responseBody
 	if err := json.Unmarshal(body, &decoded); err != nil {
-		return "", "", fmt.Errorf("decode OpenAI response: %w", err)
+		return chat.Result{}, fmt.Errorf("decode OpenAI response: %w", err)
 	}
 	if decoded.Error != nil {
-		return "", "", fmt.Errorf("OpenAI API error: %s", decoded.Error.Message)
+		return chat.Result{}, fmt.Errorf("OpenAI API error: %s", decoded.Error.Message)
 	}
 	if decoded.ID == "" {
-		return "", "", errors.New("OpenAI response does not contain an ID")
+		return chat.Result{}, errors.New("OpenAI response does not contain an ID")
 	}
 
 	text := outputText(decoded)
 	if text == "" {
-		return "", "", fmt.Errorf("OpenAI response %s does not contain output text (status: %s)", decoded.ID, decoded.Status)
+		return chat.Result{}, fmt.Errorf("OpenAI response %s does not contain output text (status: %s)", decoded.ID, decoded.Status)
 	}
 
-	return decoded.ID, text, nil
+	usage := chat.Usage{
+		InputTokens:       decoded.Usage.InputTokens,
+		CachedInputTokens: decoded.Usage.InputTokenDetails.CachedTokens,
+		CacheWriteTokens:  decoded.Usage.InputTokenDetails.CacheWriteTokens,
+		OutputTokens:      decoded.Usage.OutputTokens,
+		ReasoningTokens:   decoded.Usage.OutputTokenDetails.ReasoningTokens,
+		TotalTokens:       decoded.Usage.TotalTokens,
+	}
+	if usage.TotalTokens == 0 {
+		usage.TotalTokens = usage.InputTokens + usage.OutputTokens
+	}
+	actualModel := strings.TrimSpace(decoded.Model)
+	if actualModel == "" {
+		actualModel = model
+	}
+	result := chat.Result{ResponseID: decoded.ID, Output: text, Model: actualModel, Usage: usage}
+	if cost, ok := models.EstimateCost(model, usage.InputTokens, usage.CachedInputTokens, usage.CacheWriteTokens, usage.OutputTokens); ok {
+		result.CostUSD = &cost
+	}
+	return result, nil
 }
 
 func responseInstructions(base string, options chat.ResponseOptions) string {
