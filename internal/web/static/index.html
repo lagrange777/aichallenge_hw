@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#171a18">
+  <meta name="description" content="Локальный веб-интерфейс для Codex Chat">
+  <title>Codex Chat</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/app.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Навигация">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">&gt;_</span>
+        <span class="brand-name">Codex Chat</span>
+      </div>
+
+      <button class="new-chat" id="new-chat" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        <span>Новый чат</span>
+      </button>
+
+      <div class="sidebar-section">
+        <p class="sidebar-label">Сегодня</p>
+        <button class="thread active" type="button" aria-current="page">
+          <span class="thread-dot"></span>
+          <span class="thread-title">Текущий диалог</span>
+        </button>
+      </div>
+
+      <div class="sidebar-footer">
+        <div class="connection">
+          <span class="status-dot" aria-hidden="true"></span>
+          <div>
+            <strong>Локальный сервер</strong>
+            <span id="connection-label">подключение…</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="workspace">
+      <header class="topbar">
+        <div class="mobile-brand">
+          <span class="brand-mark" aria-hidden="true">&gt;_</span>
+          <span>Codex Chat</span>
+        </div>
+        <div class="workspace-title">
+          <span class="eyebrow">Рабочая область</span>
+          <strong>Новый диалог</strong>
+        </div>
+        <div class="model-badge" title="Модель OpenAI">
+          <span class="model-pulse"></span>
+          <span id="model-name">загрузка…</span>
+        </div>
+      </header>
+
+      <section class="chat" id="chat" aria-label="Диалог">
+        <div class="empty-state" id="empty-state">
+          <div class="hero-mark" aria-hidden="true">&gt;_</div>
+          <p class="hero-kicker">CODING ASSISTANT</p>
+          <h1>Что будем создавать?</h1>
+          <p class="hero-copy">Опишите задачу, фрагмент кода или ошибку. Контекст диалога сохранится в этой вкладке.</p>
+
+          <div class="suggestions" aria-label="Примеры запросов">
+            <button class="suggestion" type="button" data-prompt="Помоги разобраться в структуре этого проекта">
+              <span class="suggestion-icon">⌘</span>
+              <span><strong>Изучить проект</strong><small>Разобраться в архитектуре</small></span>
+              <span class="suggestion-arrow">↗</span>
+            </button>
+            <button class="suggestion" type="button" data-prompt="Найди возможные ошибки и предложи исправления">
+              <span class="suggestion-icon">◇</span>
+              <span><strong>Проверить код</strong><small>Найти проблемы и риски</small></span>
+              <span class="suggestion-arrow">↗</span>
+            </button>
+            <button class="suggestion" type="button" data-prompt="Объясни этот код простыми словами">
+              <span class="suggestion-icon">Aa</span>
+              <span><strong>Объяснить код</strong><small>Получить понятный разбор</small></span>
+              <span class="suggestion-arrow">↗</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="messages" id="messages" aria-live="polite" aria-label="Сообщения"></div>
+      </section>
+
+      <footer class="composer-wrap">
+        <form class="composer" id="chat-form">
+          <label class="sr-only" for="message-input">Сообщение</label>
+          <textarea id="message-input" rows="1" maxlength="100000" placeholder="Спросите о коде или опишите задачу…" autocomplete="off"></textarea>
+          <div class="composer-bar">
+            <span class="composer-hint"><kbd>Shift</kbd> + <kbd>Enter</kbd> — новая строка</span>
+            <button class="send-button" id="send-button" type="submit" aria-label="Отправить сообщение" disabled>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 7-7 7 7M12 5v14"/></svg>
+            </button>
+          </div>
+        </form>
+        <p class="disclaimer">Ответы модели могут содержать ошибки. Проверяйте важный код.</p>
+      </footer>
+    </main>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="/app.js" defer></script>
+</body>
+</html>
