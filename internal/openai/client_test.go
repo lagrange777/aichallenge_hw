@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"codex-chat-cli/internal/chat"
+	"codex-chat-cli/internal/agent"
 )
 
-func TestRespondSendsConversationState(t *testing.T) {
+func TestCompleteSendsAgentRequest(t *testing.T) {
 	requests := make(chan responseRequest, 2)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/v1/responses" {
@@ -37,14 +37,14 @@ func TestRespondSendsConversationState(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client, err := NewClient("test-key", "gpt-5.3-codex", server.URL+"/v1", "Be helpful.", &http.Client{Timeout: time.Second})
+	client, err := NewClient("test-key", server.URL+"/v1", "Be helpful.", &http.Client{Timeout: time.Second})
 	if err != nil {
 		t.Fatalf("NewClient() error = %v", err)
 	}
 
-	result, err := client.Respond(context.Background(), "first", "", chat.ResponseOptions{})
+	result, err := client.Complete(context.Background(), agent.CompletionRequest{Input: "first", Model: "gpt-5.3-codex"})
 	if err != nil {
-		t.Fatalf("first Respond() error = %v", err)
+		t.Fatalf("first Complete() error = %v", err)
 	}
 	if result.ResponseID != "resp_1" || result.Output != "answer" || result.Model != "gpt-5.3-codex" {
 		t.Fatalf("first response = %+v", result)
@@ -52,21 +52,20 @@ func TestRespondSendsConversationState(t *testing.T) {
 	if result.Usage.TotalTokens != 1300 || result.Usage.CachedInputTokens != 200 || result.Usage.ReasoningTokens != 50 {
 		t.Fatalf("first usage = %+v", result.Usage)
 	}
-	if result.CostUSD == nil || *result.CostUSD <= 0 {
-		t.Fatalf("first cost = %v", result.CostUSD)
-	}
 
-	options := chat.ResponseOptions{
+	request := agent.CompletionRequest{
+		Input:               "second",
 		Model:               "gpt-5.6-terra",
+		PreviousResponseID:  result.ResponseID,
 		Format:              "JSON object",
 		LengthLimit:         "at most 120 words",
 		CompletionCondition: "stop after the summary",
 	}
 	temperature := 0.7
-	options.Temperature = &temperature
-	result, err = client.Respond(context.Background(), "second", result.ResponseID, options)
+	request.Temperature = &temperature
+	result, err = client.Complete(context.Background(), request)
 	if err != nil {
-		t.Fatalf("second Respond() error = %v", err)
+		t.Fatalf("second Complete() error = %v", err)
 	}
 	if result.ResponseID != "resp_2" || result.Model != "gpt-5.6-terra" {
 		t.Fatalf("second response = %+v", result)
@@ -103,12 +102,12 @@ func TestRespondReturnsAPIError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client, err := NewClient("test-key", "model", server.URL, "", server.Client())
+	client, err := NewClient("test-key", server.URL, "", server.Client())
 	if err != nil {
 		t.Fatalf("NewClient() error = %v", err)
 	}
 
-	if _, err := client.Respond(context.Background(), "hello", "", chat.ResponseOptions{}); err == nil {
-		t.Fatal("Respond() error = nil, want an error")
+	if _, err := client.Complete(context.Background(), agent.CompletionRequest{Input: "hello", Model: "model"}); err == nil {
+		t.Fatal("Complete() error = nil, want an error")
 	}
 }

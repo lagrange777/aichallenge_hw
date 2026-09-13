@@ -11,8 +11,7 @@ import (
 	"net/url"
 	"strings"
 
-	"codex-chat-cli/internal/chat"
-	"codex-chat-cli/internal/models"
+	"codex-chat-cli/internal/agent"
 )
 
 const maxResponseBytes = 10 << 20
@@ -20,11 +19,12 @@ const maxResponseBytes = 10 << 20
 // Client calls the OpenAI Responses API.
 type Client struct {
 	apiKey       string
-	model        string
 	responsesURL string
 	instructions string
 	httpClient   *http.Client
 }
+
+var _ agent.LLM = (*Client)(nil)
 
 type responseRequest struct {
 	Model              string   `json:"model"`
@@ -72,12 +72,9 @@ type apiError struct {
 }
 
 // NewClient validates dependencies and creates an API client.
-func NewClient(apiKey, model, baseURL, instructions string, httpClient *http.Client) (*Client, error) {
+func NewClient(apiKey, baseURL, instructions string, httpClient *http.Client) (*Client, error) {
 	if strings.TrimSpace(apiKey) == "" {
 		return nil, errors.New("API key is required")
-	}
-	if strings.TrimSpace(model) == "" {
-		return nil, errors.New("model is required")
 	}
 	if httpClient == nil {
 		return nil, errors.New("HTTP client is required")
@@ -90,34 +87,29 @@ func NewClient(apiKey, model, baseURL, instructions string, httpClient *http.Cli
 
 	return &Client{
 		apiKey:       apiKey,
-		model:        model,
 		responsesURL: parsedURL.String(),
 		instructions: instructions,
 		httpClient:   httpClient,
 	}, nil
 }
 
-// Respond sends one user turn and returns its text and usage metadata.
-func (c *Client) Respond(ctx context.Context, input, previousResponseID string, options chat.ResponseOptions) (chat.Result, error) {
-	model := strings.TrimSpace(options.Model)
-	if model == "" {
-		model = c.model
-	}
+// Complete sends one normalized agent request to the OpenAI Responses API.
+func (c *Client) Complete(ctx context.Context, request agent.CompletionRequest) (agent.CompletionResponse, error) {
 	payload, err := json.Marshal(responseRequest{
-		Model:              model,
-		Instructions:       responseInstructions(c.instructions, options),
-		Input:              input,
-		PreviousResponseID: previousResponseID,
-		Temperature:        options.Temperature,
+		Model:              request.Model,
+		Instructions:       responseInstructions(c.instructions, request),
+		Input:              request.Input,
+		PreviousResponseID: request.PreviousResponseID,
+		Temperature:        request.Temperature,
 		Store:              true,
 	})
 	if err != nil {
-		return chat.Result{}, fmt.Errorf("encode request: %w", err)
+		return agent.CompletionResponse{}, fmt.Errorf("encode request: %w", err)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.responsesURL, bytes.NewReader(payload))
 	if err != nil {
-		return chat.Result{}, fmt.Errorf("create request: %w", err)
+		return agent.CompletionResponse{}, fmt.Errorf("create request: %w", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+c.apiKey)
 	req.Header.Set("Content-Type", "application/json")
@@ -126,36 +118,36 @@ func (c *Client) Respond(ctx context.Context, input, previousResponseID string, 
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return chat.Result{}, fmt.Errorf("call OpenAI API: %w", err)
+		return agent.CompletionResponse{}, fmt.Errorf("call OpenAI API: %w", err)
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes))
 	if err != nil {
-		return chat.Result{}, fmt.Errorf("read OpenAI response: %w", err)
+		return agent.CompletionResponse{}, fmt.Errorf("read OpenAI response: %w", err)
 	}
 
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
-		return chat.Result{}, decodeAPIError(resp.StatusCode, body)
+		return agent.CompletionResponse{}, decodeAPIError(resp.StatusCode, body)
 	}
 
 	var decoded responseBody
 	if err := json.Unmarshal(body, &decoded); err != nil {
-		return chat.Result{}, fmt.Errorf("decode OpenAI response: %w", err)
+		return agent.CompletionResponse{}, fmt.Errorf("decode OpenAI response: %w", err)
 	}
 	if decoded.Error != nil {
-		return chat.Result{}, fmt.Errorf("OpenAI API error: %s", decoded.Error.Message)
+		return agent.CompletionResponse{}, fmt.Errorf("OpenAI API error: %s", decoded.Error.Message)
 	}
 	if decoded.ID == "" {
-		return chat.Result{}, errors.New("OpenAI response does not contain an ID")
+		return agent.CompletionResponse{}, errors.New("OpenAI response does not contain an ID")
 	}
 
 	text := outputText(decoded)
 	if text == "" {
-		return chat.Result{}, fmt.Errorf("OpenAI response %s does not contain output text (status: %s)", decoded.ID, decoded.Status)
+		return agent.CompletionResponse{}, fmt.Errorf("OpenAI response %s does not contain output text (status: %s)", decoded.ID, decoded.Status)
 	}
 
-	usage := chat.Usage{
+	usage := agent.Usage{
 		InputTokens:       decoded.Usage.InputTokens,
 		CachedInputTokens: decoded.Usage.InputTokenDetails.CachedTokens,
 		CacheWriteTokens:  decoded.Usage.InputTokenDetails.CacheWriteTokens,
@@ -163,29 +155,22 @@ func (c *Client) Respond(ctx context.Context, input, previousResponseID string, 
 		ReasoningTokens:   decoded.Usage.OutputTokenDetails.ReasoningTokens,
 		TotalTokens:       decoded.Usage.TotalTokens,
 	}
-	if usage.TotalTokens == 0 {
-		usage.TotalTokens = usage.InputTokens + usage.OutputTokens
-	}
 	actualModel := strings.TrimSpace(decoded.Model)
 	if actualModel == "" {
-		actualModel = model
+		actualModel = request.Model
 	}
-	result := chat.Result{ResponseID: decoded.ID, Output: text, Model: actualModel, Usage: usage}
-	if cost, ok := models.EstimateCost(model, usage.InputTokens, usage.CachedInputTokens, usage.CacheWriteTokens, usage.OutputTokens); ok {
-		result.CostUSD = &cost
-	}
-	return result, nil
+	return agent.CompletionResponse{ResponseID: decoded.ID, Output: text, Model: actualModel, Usage: usage}, nil
 }
 
-func responseInstructions(base string, options chat.ResponseOptions) string {
+func responseInstructions(base string, request agent.CompletionRequest) string {
 	requirements := make([]string, 0, 3)
-	if value := strings.TrimSpace(options.Format); value != "" {
+	if value := strings.TrimSpace(request.Format); value != "" {
 		requirements = append(requirements, "Response format: "+value)
 	}
-	if value := strings.TrimSpace(options.LengthLimit); value != "" {
+	if value := strings.TrimSpace(request.LengthLimit); value != "" {
 		requirements = append(requirements, "Response length limit: "+value)
 	}
-	if value := strings.TrimSpace(options.CompletionCondition); value != "" {
+	if value := strings.TrimSpace(request.CompletionCondition); value != "" {
 		requirements = append(requirements, "Completion condition: "+value)
 	}
 	if len(requirements) == 0 {

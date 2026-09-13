@@ -9,76 +9,72 @@ import (
 	"sync"
 	"testing"
 
-	"codex-chat-cli/internal/chat"
+	"codex-chat-cli/internal/agent"
 )
 
-type fakeResponder struct {
-	mu          sync.Mutex
-	previousIDs []string
-	options     []chat.ResponseOptions
-	calls       int
-	err         error
+type fakeLLM struct {
+	mu       sync.Mutex
+	requests []agent.CompletionRequest
+	calls    int
+	err      error
 }
 
-func (f *fakeResponder) Respond(_ context.Context, input, previousID string, options chat.ResponseOptions) (chat.Result, error) {
+func (f *fakeLLM) Complete(_ context.Context, request agent.CompletionRequest) (agent.CompletionResponse, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.previousIDs = append(f.previousIDs, previousID)
-	f.options = append(f.options, options)
+	f.requests = append(f.requests, request)
 	if f.err != nil {
-		return chat.Result{}, f.err
+		return agent.CompletionResponse{}, f.err
 	}
 	f.calls++
-	cost := 0.00123
-	return chat.Result{
+	return agent.CompletionResponse{
 		ResponseID: "resp_" + string(rune('0'+f.calls)),
-		Output:     "reply to " + input,
-		Model:      options.Model,
-		Usage:      chat.Usage{InputTokens: 100, OutputTokens: 20, TotalTokens: 120},
-		CostUSD:    &cost,
+		Output:     "reply to " + request.Input,
+		Model:      request.Model,
+		Usage:      agent.Usage{InputTokens: 100, OutputTokens: 20, TotalTokens: 120},
 	}, nil
 }
 
 func TestChatPassesOptionalResponseFields(t *testing.T) {
-	responder := &fakeResponder{}
-	handler := NewHandler(responder, "test-model")
+	llm := &fakeLLM{}
+	handler := NewHandler(llm, "test-model")
 	body := `{"message":"question","responseFormat":" Markdown table ","lengthLimit":" 300 words ","completionCondition":" after recommendations ","temperature":0.4}`
 	response := performChatBody(handler, nil, body)
 	if response.Code != http.StatusOK {
 		t.Fatalf("status = %d, body = %s", response.Code, response.Body.String())
 	}
 
-	responder.mu.Lock()
-	defer responder.mu.Unlock()
-	want := chat.ResponseOptions{Model: "test-model", Format: "Markdown table", LengthLimit: "300 words", CompletionCondition: "after recommendations"}
-	if len(responder.options) != 1 || responder.options[0].Temperature == nil || *responder.options[0].Temperature != 0.4 {
-		t.Fatalf("options = %#v, want %#v", responder.options, want)
+	llm.mu.Lock()
+	defer llm.mu.Unlock()
+	want := agent.CompletionRequest{Input: "question", Model: "test-model", Format: "Markdown table", LengthLimit: "300 words", CompletionCondition: "after recommendations"}
+	if len(llm.requests) != 1 || llm.requests[0].Temperature == nil || *llm.requests[0].Temperature != 0.4 {
+		t.Fatalf("requests = %#v, want %#v", llm.requests, want)
 	}
-	got := responder.options[0]
+	got := llm.requests[0]
 	got.Temperature = nil
 	if got != want {
-		t.Fatalf("options = %#v, want %#v", got, want)
+		t.Fatalf("request = %#v, want %#v", got, want)
 	}
 }
 
 func TestEmptyMessageIgnoresOptionalResponseFields(t *testing.T) {
-	responder := &fakeResponder{}
-	handler := NewHandler(responder, "test-model")
+	llm := &fakeLLM{}
+	handler := NewHandler(llm, "test-model")
 	body := `{"message":"  ","responseFormat":"JSON","lengthLimit":"10 words","completionCondition":"immediately","temperature":2}`
 	response := performChatBody(handler, nil, body)
 	if response.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want %d", response.Code, http.StatusBadRequest)
 	}
 
-	responder.mu.Lock()
-	defer responder.mu.Unlock()
-	if responder.calls != 0 || len(responder.options) != 0 {
-		t.Fatalf("responder was called for an empty message: calls=%d options=%#v", responder.calls, responder.options)
+	llm.mu.Lock()
+	defer llm.mu.Unlock()
+	if llm.calls != 0 || len(llm.requests) != 0 {
+		t.Fatalf("LLM was called for an empty message: calls=%d requests=%#v", llm.calls, llm.requests)
 	}
 }
 
 func TestServesWebApplication(t *testing.T) {
-	handler := NewHandler(&fakeResponder{}, "test-model")
+	handler := NewHandler(&fakeLLM{}, "test-model")
 
 	for _, test := range []struct {
 		path        string
@@ -112,9 +108,22 @@ func TestServesWebApplication(t *testing.T) {
 	}
 }
 
+func TestLandingPageDoesNotContainSuggestionButtons(t *testing.T) {
+	handler := NewHandler(&fakeLLM{}, "test-model")
+	request := httptest.NewRequest(http.MethodGet, "/", nil)
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+
+	for _, label := range []string{"Изучить проект", "Проверить код", "Объяснить код"} {
+		if strings.Contains(response.Body.String(), label) {
+			t.Fatalf("landing page still contains %q", label)
+		}
+	}
+}
+
 func TestChatCarriesConversationState(t *testing.T) {
-	responder := &fakeResponder{}
-	handler := NewHandler(responder, "test-model")
+	llm := &fakeLLM{}
+	handler := NewHandler(llm, "gpt-5.3-codex")
 
 	first := performChat(handler, nil, "first")
 	if first.Code != http.StatusOK {
@@ -127,10 +136,10 @@ func TestChatCarriesConversationState(t *testing.T) {
 		t.Fatalf("second status = %d, body = %s", second.Code, second.Body.String())
 	}
 
-	responder.mu.Lock()
-	defer responder.mu.Unlock()
-	if len(responder.previousIDs) != 2 || responder.previousIDs[0] != "" || responder.previousIDs[1] != "resp_1" {
-		t.Fatalf("previous IDs = %#v", responder.previousIDs)
+	llm.mu.Lock()
+	defer llm.mu.Unlock()
+	if len(llm.requests) != 2 || llm.requests[0].PreviousResponseID != "" || llm.requests[1].PreviousResponseID != "resp_1" {
+		t.Fatalf("requests = %#v", llm.requests)
 	}
 
 	var payload apiResponse
@@ -140,14 +149,14 @@ func TestChatCarriesConversationState(t *testing.T) {
 	if payload.Answer != "reply to second" {
 		t.Fatalf("answer = %q", payload.Answer)
 	}
-	if payload.Model != "test-model" || payload.Metrics == nil || payload.Metrics.TotalTokens != 120 || payload.Metrics.CostUSD == nil {
+	if payload.Model != "gpt-5.3-codex" || payload.Metrics == nil || payload.Metrics.TotalTokens != 120 || payload.Metrics.CostUSD == nil {
 		t.Fatalf("response metadata = model %q, metrics %#v", payload.Model, payload.Metrics)
 	}
 }
 
 func TestResetStartsFreshConversation(t *testing.T) {
-	responder := &fakeResponder{}
-	handler := NewHandler(responder, "test-model")
+	llm := &fakeLLM{}
+	handler := NewHandler(llm, "test-model")
 
 	first := performChat(handler, nil, "first")
 	cookie := sessionCookieFrom(t, first)
@@ -166,16 +175,16 @@ func TestResetStartsFreshConversation(t *testing.T) {
 		t.Fatalf("second status = %d", second.Code)
 	}
 
-	responder.mu.Lock()
-	defer responder.mu.Unlock()
-	if len(responder.previousIDs) != 2 || responder.previousIDs[1] != "" {
-		t.Fatalf("previous IDs = %#v", responder.previousIDs)
+	llm.mu.Lock()
+	defer llm.mu.Unlock()
+	if len(llm.requests) != 2 || llm.requests[1].PreviousResponseID != "" {
+		t.Fatalf("requests = %#v", llm.requests)
 	}
 }
 
 func TestBrowserSessionsAreIsolated(t *testing.T) {
-	responder := &fakeResponder{}
-	handler := NewHandler(responder, "test-model")
+	llm := &fakeLLM{}
+	handler := NewHandler(llm, "test-model")
 
 	first := performChat(handler, nil, "browser one")
 	second := performChat(handler, nil, "browser two")
@@ -183,15 +192,15 @@ func TestBrowserSessionsAreIsolated(t *testing.T) {
 		t.Fatalf("statuses = %d, %d", first.Code, second.Code)
 	}
 
-	responder.mu.Lock()
-	defer responder.mu.Unlock()
-	if len(responder.previousIDs) != 2 || responder.previousIDs[0] != "" || responder.previousIDs[1] != "" {
-		t.Fatalf("previous IDs = %#v", responder.previousIDs)
+	llm.mu.Lock()
+	defer llm.mu.Unlock()
+	if len(llm.requests) != 2 || llm.requests[0].PreviousResponseID != "" || llm.requests[1].PreviousResponseID != "" {
+		t.Fatalf("requests = %#v", llm.requests)
 	}
 }
 
 func TestAPIValidation(t *testing.T) {
-	handler := NewHandler(&fakeResponder{}, "test-model")
+	handler := NewHandler(&fakeLLM{}, "test-model")
 
 	tests := []struct {
 		name        string
@@ -235,7 +244,7 @@ func TestAPIValidation(t *testing.T) {
 }
 
 func TestStatusAndHealth(t *testing.T) {
-	handler := NewHandler(&fakeResponder{}, "test-model")
+	handler := NewHandler(&fakeLLM{}, "test-model")
 
 	statusRequest := httptest.NewRequest(http.MethodGet, "/api/status", nil)
 	statusResponse := httptest.NewRecorder()
@@ -253,17 +262,17 @@ func TestStatusAndHealth(t *testing.T) {
 }
 
 func TestChatPassesSelectedModel(t *testing.T) {
-	responder := &fakeResponder{}
-	handler := NewHandler(responder, "gpt-5.3-codex")
+	llm := &fakeLLM{}
+	handler := NewHandler(llm, "gpt-5.3-codex")
 	response := performChatBody(handler, nil, `{"message":"question","model":"gpt-5.6-luna"}`)
 	if response.Code != http.StatusOK {
 		t.Fatalf("status = %d, body = %s", response.Code, response.Body.String())
 	}
 
-	responder.mu.Lock()
-	defer responder.mu.Unlock()
-	if len(responder.options) != 1 || responder.options[0].Model != "gpt-5.6-luna" {
-		t.Fatalf("options = %#v", responder.options)
+	llm.mu.Lock()
+	defer llm.mu.Unlock()
+	if len(llm.requests) != 1 || llm.requests[0].Model != "gpt-5.6-luna" {
+		t.Fatalf("requests = %#v", llm.requests)
 	}
 }
 
