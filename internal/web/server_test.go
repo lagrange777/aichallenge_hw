@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -20,6 +21,15 @@ type fakeLLM struct {
 	calls    int
 	err      error
 	respond  func(agent.CompletionRequest) string
+}
+
+type countingLLM struct {
+	*fakeLLM
+	counts agent.TokenCounts
+}
+
+func (f *countingLLM) CountTokens(_ context.Context, _ agent.CompletionRequest) (agent.TokenCounts, error) {
+	return f.counts, nil
 }
 
 func (f *fakeLLM) Complete(_ context.Context, request agent.CompletionRequest) (agent.CompletionResponse, error) {
@@ -59,7 +69,7 @@ func TestChatPassesOptionalResponseFields(t *testing.T) {
 	}
 	got := llm.requests[0]
 	got.Temperature = nil
-	if got != want {
+	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("request = %#v, want %#v", got, want)
 	}
 }
@@ -88,7 +98,7 @@ func TestServesWebApplication(t *testing.T) {
 		contentType string
 		contains    string
 	}{
-		{path: "/", contentType: "text/html", contains: `id="response-options"`},
+		{path: "/", contentType: "text/html", contains: `id="conversation-stats"`},
 		{path: "/app.css", contentType: "text/css", contains: ".app-shell"},
 		{path: "/app.js", contentType: "text/javascript", contains: "sendMessage"},
 		{path: "/markdown.js", contentType: "text/javascript", contains: "CodexMarkdown"},
@@ -343,6 +353,34 @@ func TestChatPassesSelectedModel(t *testing.T) {
 	defer llm.mu.Unlock()
 	if len(llm.requests) != 1 || llm.requests[0].Model != "gpt-5.6-luna" {
 		t.Fatalf("requests = %#v", llm.requests)
+	}
+}
+
+func TestOverflowWarningDoesNotBlockChatRequest(t *testing.T) {
+	base := &fakeLLM{}
+	llm := &countingLLM{
+		fakeLLM: base,
+		counts: agent.TokenCounts{
+			CurrentRequestTokens: 50,
+			ProjectedInputTokens: 300_000,
+		},
+	}
+	handler := NewHandler(llm, "gpt-5.3-codex", nil)
+	response := performChat(handler, nil, "oversized context")
+	if response.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", response.Code, response.Body.String())
+	}
+	var payload apiResponse
+	if err := json.Unmarshal(response.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if payload.Warning == "" || payload.Metrics == nil || payload.Metrics.ContextWarning == "" {
+		t.Fatalf("overflow warning is missing: %#v", payload)
+	}
+	base.mu.Lock()
+	defer base.mu.Unlock()
+	if base.calls != 1 {
+		t.Fatalf("LLM calls = %d, want 1", base.calls)
 	}
 }
 

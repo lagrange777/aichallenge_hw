@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -95,6 +96,61 @@ func TestCompleteSendsAgentRequest(t *testing.T) {
 	}
 }
 
+func TestCompleteSendsReplayedHistoryAsMessages(t *testing.T) {
+	requests := make(chan []inputMessage, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var payload struct {
+			Input              json.RawMessage `json:"input"`
+			PreviousResponseID string          `json:"previous_response_id"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			t.Errorf("decode request: %v", err)
+		}
+		if payload.PreviousResponseID != "" {
+			t.Errorf("previous_response_id = %q, want empty", payload.PreviousResponseID)
+		}
+		var messages []inputMessage
+		if err := json.Unmarshal(payload.Input, &messages); err != nil {
+			t.Errorf("decode input messages: %v", err)
+		}
+		requests <- messages
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"id":"resp_new","model":"model-b","status":"completed","output":[{"type":"message","content":[{"type":"output_text","text":"continued"}]}],"usage":{"input_tokens":30,"output_tokens":5,"total_tokens":35}}`))
+	}))
+	defer server.Close()
+
+	client, err := NewClient("test-key", server.URL, "", server.Client())
+	if err != nil {
+		t.Fatalf("NewClient() error = %v", err)
+	}
+	_, err = client.Complete(context.Background(), agent.CompletionRequest{
+		Input: "What is my name?",
+		History: []agent.ContextMessage{
+			{Role: "user", Content: "My name is Mila."},
+			{Role: "assistant", Content: "Nice to meet you, Mila."},
+		},
+		Model: "model-b",
+	})
+	if err != nil {
+		t.Fatalf("Complete() error = %v", err)
+	}
+
+	want := []inputMessage{
+		{Role: "user", Content: "My name is Mila."},
+		{Role: "assistant", Content: "Nice to meet you, Mila."},
+		{Role: "user", Content: "What is my name?"},
+	}
+	got := <-requests
+	if len(got) != len(want) {
+		t.Fatalf("input messages = %#v, want %#v", got, want)
+	}
+	for index := range want {
+		if got[index] != want[index] {
+			t.Fatalf("input messages[%d] = %#v, want %#v", index, got[index], want[index])
+		}
+	}
+}
+
 func TestRespondReturnsAPIError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
@@ -109,5 +165,98 @@ func TestRespondReturnsAPIError(t *testing.T) {
 
 	if _, err := client.Complete(context.Background(), agent.CompletionRequest{Input: "hello", Model: "model"}); err == nil {
 		t.Fatal("Complete() error = nil, want an error")
+	}
+}
+
+func TestCountTokensUsesCurrentAndPreviousResponseContexts(t *testing.T) {
+	requests := make(chan inputTokenRequest, 2)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v1/responses/input_tokens" {
+			t.Errorf("path = %q", r.URL.Path)
+		}
+		if got := r.Header.Get("Authorization"); got != "Bearer test-key" {
+			t.Errorf("Authorization = %q", got)
+		}
+		var request inputTokenRequest
+		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+			t.Errorf("decode request: %v", err)
+		}
+		requests <- request
+		count := 25
+		if request.PreviousResponseID != "" {
+			count = 125
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"object":"response.input_tokens","input_tokens":` + strconv.Itoa(count) + `}`))
+	}))
+	defer server.Close()
+
+	client, err := NewClient("test-key", server.URL+"/v1", "Be helpful.", server.Client())
+	if err != nil {
+		t.Fatalf("NewClient() error = %v", err)
+	}
+	counts, err := client.CountTokens(context.Background(), agent.CompletionRequest{
+		Input:              "question",
+		Model:              "gpt-5.3-codex",
+		PreviousResponseID: "resp_1",
+		Format:             "Markdown",
+	})
+	if err != nil {
+		t.Fatalf("CountTokens() error = %v", err)
+	}
+	if counts.CurrentRequestTokens != 25 || counts.ProjectedInputTokens != 125 {
+		t.Fatalf("counts = %#v", counts)
+	}
+	first := <-requests
+	second := <-requests
+	if first.PreviousResponseID == second.PreviousResponseID {
+		t.Fatalf("requests = %#v, %#v", first, second)
+	}
+	for _, request := range []inputTokenRequest{first, second} {
+		if request.Input != "question" || request.Model != "gpt-5.3-codex" || !strings.Contains(request.Instructions, "Response format: Markdown") {
+			t.Fatalf("token count request = %#v", request)
+		}
+	}
+}
+
+func TestCountTokensSeparatesCurrentRequestFromReplayedHistory(t *testing.T) {
+	requests := make(chan inputTokenRequest, 2)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var request inputTokenRequest
+		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+			t.Errorf("decode request: %v", err)
+		}
+		requests <- request
+		count := 20
+		if _, ok := request.Input.([]any); ok {
+			count = 90
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"input_tokens":` + strconv.Itoa(count) + `}`))
+	}))
+	defer server.Close()
+
+	client, err := NewClient("test-key", server.URL, "", server.Client())
+	if err != nil {
+		t.Fatalf("NewClient() error = %v", err)
+	}
+	counts, err := client.CountTokens(context.Background(), agent.CompletionRequest{
+		Input:   "current",
+		History: []agent.ContextMessage{{Role: "user", Content: "earlier"}, {Role: "assistant", Content: "answer"}},
+		Model:   "model-b",
+	})
+	if err != nil {
+		t.Fatalf("CountTokens() error = %v", err)
+	}
+	if counts.CurrentRequestTokens != 20 || counts.ProjectedInputTokens != 90 {
+		t.Fatalf("counts = %#v", counts)
+	}
+
+	first := <-requests
+	second := <-requests
+	_, firstIsHistory := first.Input.([]any)
+	_, secondIsHistory := second.Input.([]any)
+	if firstIsHistory == secondIsHistory {
+		t.Fatalf("expected one current-only and one replayed-history request: %#v, %#v", first, second)
 	}
 }

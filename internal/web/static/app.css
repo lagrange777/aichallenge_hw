@@ -191,6 +191,112 @@ select:focus-visible {
   white-space: nowrap;
 }
 
+.conversation-stats {
+  margin-top: 26px;
+}
+
+.conversation-stats[hidden] {
+  display: none;
+}
+
+.conversation-context,
+.conversation-stat-list {
+  margin: 0;
+  padding: 13px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.conversation-stat-head,
+.conversation-stat-list div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.conversation-stat-head {
+  color: #aeb5b0;
+  font-size: 11px;
+}
+
+.conversation-stat-head strong {
+  color: #e2e6e3;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.conversation-context-track {
+  height: 5px;
+  margin-top: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.conversation-context-track span {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: #65d29e;
+  transition: width 240ms ease, background 180ms ease;
+}
+
+.conversation-context-track.overflow span {
+  background: #e7bd58;
+}
+
+.conversation-context-value {
+  display: block;
+  margin-top: 7px;
+  overflow: hidden;
+  color: #858d88;
+  font-family: var(--mono);
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.conversation-stat-list {
+  display: grid;
+  gap: 9px;
+  margin-top: 8px;
+}
+
+.conversation-stat-list dt {
+  color: #858d88;
+  font-size: 10px;
+}
+
+.conversation-stat-list dd {
+  margin: 0;
+  overflow: hidden;
+  color: #d9ddda;
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.conversation-context-warning {
+  margin: 8px 0 0;
+  padding: 9px 10px;
+  border: 1px solid rgba(231, 189, 88, 0.38);
+  border-radius: 9px;
+  color: #f0d690;
+  background: rgba(231, 189, 88, 0.1);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.conversation-context-warning[hidden] {
+  display: none;
+}
+
 .sidebar-footer {
   margin-top: auto;
   padding: 14px 8px 0;
@@ -501,7 +607,7 @@ select:focus-visible {
   border-top: 1px solid var(--line-soft);
   color: #8b928e;
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: 10px;
   line-height: 1.45;
 }
 

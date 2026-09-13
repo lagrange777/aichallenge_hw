@@ -18,21 +18,39 @@ const maxResponseBytes = 10 << 20
 
 // Client calls the OpenAI Responses API.
 type Client struct {
-	apiKey       string
-	responsesURL string
-	instructions string
-	httpClient   *http.Client
+	apiKey         string
+	responsesURL   string
+	inputTokensURL string
+	instructions   string
+	httpClient     *http.Client
 }
 
 var _ agent.LLM = (*Client)(nil)
+var _ agent.TokenCounter = (*Client)(nil)
 
 type responseRequest struct {
 	Model              string   `json:"model"`
 	Instructions       string   `json:"instructions,omitempty"`
-	Input              string   `json:"input"`
+	Input              any      `json:"input"`
 	PreviousResponseID string   `json:"previous_response_id,omitempty"`
 	Temperature        *float64 `json:"temperature,omitempty"`
 	Store              bool     `json:"store"`
+}
+
+type inputTokenRequest struct {
+	Model              string `json:"model"`
+	Instructions       string `json:"instructions,omitempty"`
+	Input              any    `json:"input"`
+	PreviousResponseID string `json:"previous_response_id,omitempty"`
+}
+
+type inputMessage struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+}
+
+type inputTokenResponse struct {
+	InputTokens int `json:"input_tokens"`
 }
 
 type responseBody struct {
@@ -86,11 +104,96 @@ func NewClient(apiKey, baseURL, instructions string, httpClient *http.Client) (*
 	}
 
 	return &Client{
-		apiKey:       apiKey,
-		responsesURL: parsedURL.String(),
-		instructions: instructions,
-		httpClient:   httpClient,
+		apiKey:         apiKey,
+		responsesURL:   parsedURL.String(),
+		inputTokensURL: parsedURL.String() + "/input_tokens",
+		instructions:   instructions,
+		httpClient:     httpClient,
 	}, nil
+}
+
+// CountTokens returns the tokens for the current request alone and for the
+// exact request including the previous response chain.
+func (c *Client) CountTokens(ctx context.Context, request agent.CompletionRequest) (agent.TokenCounts, error) {
+	currentRequest := request
+	currentRequest.PreviousResponseID = ""
+	currentRequest.History = nil
+	if request.PreviousResponseID == "" && len(request.History) == 0 {
+		count, err := c.countInputTokens(ctx, currentRequest)
+		return agent.TokenCounts{CurrentRequestTokens: count, ProjectedInputTokens: count}, err
+	}
+
+	type countResult struct {
+		current bool
+		count   int
+		err     error
+	}
+	results := make(chan countResult, 2)
+	go func() {
+		count, err := c.countInputTokens(ctx, currentRequest)
+		results <- countResult{current: true, count: count, err: err}
+	}()
+	go func() {
+		count, err := c.countInputTokens(ctx, request)
+		results <- countResult{count: count, err: err}
+	}()
+
+	var counts agent.TokenCounts
+	for range 2 {
+		result := <-results
+		if result.err != nil {
+			return agent.TokenCounts{}, result.err
+		}
+		if result.current {
+			counts.CurrentRequestTokens = result.count
+		} else {
+			counts.ProjectedInputTokens = result.count
+		}
+	}
+	return counts, nil
+}
+
+func (c *Client) countInputTokens(ctx context.Context, request agent.CompletionRequest) (int, error) {
+	payload, err := json.Marshal(inputTokenRequest{
+		Model:              request.Model,
+		Instructions:       responseInstructions(c.instructions, request),
+		Input:              responseInput(request),
+		PreviousResponseID: request.PreviousResponseID,
+	})
+	if err != nil {
+		return 0, fmt.Errorf("encode token count request: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.inputTokensURL, bytes.NewReader(payload))
+	if err != nil {
+		return 0, fmt.Errorf("create token count request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+c.apiKey)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", "codex-chat-cli/0.1")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return 0, fmt.Errorf("count input tokens: %w", err)
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes))
+	if err != nil {
+		return 0, fmt.Errorf("read token count response: %w", err)
+	}
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		return 0, decodeAPIError(resp.StatusCode, body)
+	}
+
+	var decoded inputTokenResponse
+	if err := json.Unmarshal(body, &decoded); err != nil {
+		return 0, fmt.Errorf("decode token count response: %w", err)
+	}
+	if decoded.InputTokens < 0 {
+		return 0, errors.New("token count response contains a negative count")
+	}
+	return decoded.InputTokens, nil
 }
 
 // Complete sends one normalized agent request to the OpenAI Responses API.
@@ -98,7 +201,7 @@ func (c *Client) Complete(ctx context.Context, request agent.CompletionRequest) 
 	payload, err := json.Marshal(responseRequest{
 		Model:              request.Model,
 		Instructions:       responseInstructions(c.instructions, request),
-		Input:              request.Input,
+		Input:              responseInput(request),
 		PreviousResponseID: request.PreviousResponseID,
 		Temperature:        request.Temperature,
 		Store:              true,
@@ -160,6 +263,25 @@ func (c *Client) Complete(ctx context.Context, request agent.CompletionRequest) 
 		actualModel = request.Model
 	}
 	return agent.CompletionResponse{ResponseID: decoded.ID, Output: text, Model: actualModel, Usage: usage}, nil
+}
+
+func responseInput(request agent.CompletionRequest) any {
+	if len(request.History) == 0 {
+		return request.Input
+	}
+
+	input := make([]inputMessage, 0, len(request.History)+1)
+	for _, message := range request.History {
+		if message.Role != "user" && message.Role != "assistant" {
+			continue
+		}
+		if strings.TrimSpace(message.Content) == "" {
+			continue
+		}
+		input = append(input, inputMessage{Role: message.Role, Content: message.Content})
+	}
+	input = append(input, inputMessage{Role: "user", Content: request.Input})
+	return input
 }
 
 func responseInstructions(base string, request agent.CompletionRequest) string {

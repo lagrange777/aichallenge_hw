@@ -30,6 +30,35 @@
         </button>
       </div>
 
+      <section class="conversation-stats" id="conversation-stats" aria-labelledby="conversation-stats-title" hidden>
+        <p class="sidebar-label" id="conversation-stats-title">Статистика диалога</p>
+        <div class="conversation-context">
+          <div class="conversation-stat-head">
+            <span>Контекст</span>
+            <strong id="conversation-context-percent">0%</strong>
+          </div>
+          <div class="conversation-context-track" id="conversation-context-track" role="progressbar" aria-label="Заполнение контекста" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <span id="conversation-context-fill"></span>
+          </div>
+          <span class="conversation-context-value" id="conversation-context-value">0 / 0 ток.</span>
+        </div>
+        <dl class="conversation-stat-list">
+          <div>
+            <dt>История</dt>
+            <dd id="conversation-history-tokens">0 ток.</dd>
+          </div>
+          <div>
+            <dt>Всего токенов</dt>
+            <dd id="conversation-total-tokens">0 ток.</dd>
+          </div>
+          <div>
+            <dt>Стоимость</dt>
+            <dd id="conversation-total-cost">неизвестно</dd>
+          </div>
+        </dl>
+        <p class="conversation-context-warning" id="conversation-context-warning" role="status" hidden></p>
+      </section>
+
       <div class="sidebar-footer">
         <div class="connection">
           <span class="status-dot" aria-hidden="true"></span>
