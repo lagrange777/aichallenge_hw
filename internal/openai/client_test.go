@@ -98,14 +98,17 @@ func TestCompleteSendsAgentRequest(t *testing.T) {
 
 func TestCompleteSendsReplayedHistoryAsMessages(t *testing.T) {
 	requests := make(chan []inputMessage, 1)
+	instructions := make(chan string, 1)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var payload struct {
 			Input              json.RawMessage `json:"input"`
 			PreviousResponseID string          `json:"previous_response_id"`
+			Instructions       string          `json:"instructions"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 			t.Errorf("decode request: %v", err)
 		}
+		instructions <- payload.Instructions
 		if payload.PreviousResponseID != "" {
 			t.Errorf("previous_response_id = %q, want empty", payload.PreviousResponseID)
 		}
@@ -126,16 +129,19 @@ func TestCompleteSendsReplayedHistoryAsMessages(t *testing.T) {
 	_, err = client.Complete(context.Background(), agent.CompletionRequest{
 		Input: "What is my name?",
 		History: []agent.ContextMessage{
+			{Role: "developer", Content: "Earlier summary."},
 			{Role: "user", Content: "My name is Mila."},
 			{Role: "assistant", Content: "Nice to meet you, Mila."},
 		},
-		Model: "model-b",
+		Model:        "model-b",
+		Instructions: "Use the compressed context.",
 	})
 	if err != nil {
 		t.Fatalf("Complete() error = %v", err)
 	}
 
 	want := []inputMessage{
+		{Role: "developer", Content: "Earlier summary."},
 		{Role: "user", Content: "My name is Mila."},
 		{Role: "assistant", Content: "Nice to meet you, Mila."},
 		{Role: "user", Content: "What is my name?"},
@@ -148,6 +154,9 @@ func TestCompleteSendsReplayedHistoryAsMessages(t *testing.T) {
 		if got[index] != want[index] {
 			t.Fatalf("input messages[%d] = %#v, want %#v", index, got[index], want[index])
 		}
+	}
+	if got := <-instructions; got != "Use the compressed context." {
+		t.Fatalf("instructions = %q", got)
 	}
 }
 

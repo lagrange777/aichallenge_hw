@@ -12,6 +12,8 @@
   const lengthLimitInput = document.querySelector("#length-limit");
   const completionConditionInput = document.querySelector("#completion-condition");
   const temperatureInput = document.querySelector("#temperature");
+  const compressionEnabledInput = document.querySelector("#compression-enabled");
+  const contextKeepLastInput = document.querySelector("#context-keep-last");
   const optionInputs = [responseFormatInput, lengthLimitInput, completionConditionInput, temperatureInput];
   const sendButton = document.querySelector("#send-button");
   const newChatButton = document.querySelector("#new-chat");
@@ -26,6 +28,10 @@
   const conversationHistoryTokens = document.querySelector("#conversation-history-tokens");
   const conversationTotalTokens = document.querySelector("#conversation-total-tokens");
   const conversationTotalCost = document.querySelector("#conversation-total-cost");
+  const conversationCompressionStatus = document.querySelector("#conversation-compression-status");
+  const conversationCompressionMessages = document.querySelector("#conversation-compression-messages");
+  const conversationCompressionTokens = document.querySelector("#conversation-compression-tokens");
+  const conversationSavedTokens = document.querySelector("#conversation-saved-tokens");
   const conversationContextWarning = document.querySelector("#conversation-context-warning");
   const toast = document.querySelector("#toast");
 
@@ -60,6 +66,7 @@
   });
 
   newChatButton.addEventListener("click", resetChat);
+  compressionEnabledInput.addEventListener("change", updateSessionSettings);
 
   async function loadStatus() {
     try {
@@ -104,7 +111,15 @@
         throw new Error(payload.error || "История недоступна");
       }
       const messages = Array.isArray(payload.messages) ? payload.messages : [];
+      if (payload.compression && typeof payload.compression === "object") {
+        compressionEnabledInput.checked = Boolean(payload.compression.enabled);
+        const keepLast = Number(payload.compression.keepLast);
+        if (Number.isInteger(keepLast) && keepLast >= 1 && keepLast <= 1000) {
+          contextKeepLastInput.value = String(keepLast);
+        }
+      }
       transcript = messages.filter(isHistoryMessage);
+      setSessionSettingsLocked(transcript.length > 0);
       renderTranscript();
     } catch (error) {
       showToast("Не удалось восстановить историю диалога");
@@ -125,6 +140,14 @@
       lengthLimit: lengthLimitInput.value.trim(),
       completionCondition: completionConditionInput.value.trim()
     };
+    const contextKeepLast = Number(contextKeepLastInput.value);
+    if (!Number.isInteger(contextKeepLast) || contextKeepLast < 1 || contextKeepLast > 1000) {
+      showToast("Укажите от 1 до 1000 последних сообщений");
+      contextKeepLastInput.focus();
+      return;
+    }
+    responseOptions.compressionEnabled = compressionEnabledInput.checked;
+    responseOptions.contextKeepLast = contextKeepLast;
     const temperature = temperatureInput.value.trim();
     if (temperature !== "") {
       const parsedTemperature = Number(temperature);
@@ -143,6 +166,7 @@
     resizeComposer();
     updateSendButton();
     newChatButton.disabled = true;
+    setSessionSettingsLocked(true);
     sendButton.classList.add("sending");
 
     addMessage({ role: "user", text: message, time: Date.now() });
@@ -213,6 +237,7 @@
       input.value = "";
       optionInputs.forEach((field) => { field.value = ""; });
       responseOptionsDetails.open = false;
+      setSessionSettingsLocked(false);
       resizeComposer();
       updateSendButton();
       input.focus();
@@ -313,6 +338,10 @@
     node.append(metricItem("ответ", `${formatNumber(metrics.outputTokens)} ток.`));
     node.append(metricItem("ход", `${formatNumber(totalTokens)} ток.`, tokenTitle.join(" · ")));
 
+    if (metrics.compressionApplied) {
+      node.append(metricItem("сжатие", `−${formatNumber(metrics.savedInputTokens)} ток.`, "Сравнение полного локального транскрипта и запроса с summary."));
+    }
+
     const cost = Number(metrics.costUsd);
     const costText = metrics.costUsd === null || metrics.costUsd === undefined || !Number.isFinite(cost)
       ? "неизвестно"
@@ -329,6 +358,7 @@
       return;
     }
 
+    metrics = normalizeConversationMetrics(metrics);
     conversationStats.hidden = false;
     const tokenCountAvailable = Boolean(metrics && metrics.tokenCountAvailable);
     const maxInputTokens = tokenCountAvailable ? Math.max(0, Number(metrics.maxInputTokens) || 0) : 0;
@@ -358,9 +388,76 @@
       ? formatCost(cumulativeCost)
       : "неизвестно";
 
+    const compressionEnabled = Boolean(metrics && metrics.compressionEnabled);
+    const compressionRuns = Math.max(0, Number(metrics && metrics.compressionRuns) || 0);
+    conversationCompressionStatus.textContent = compressionEnabled
+      ? (compressionRuns > 0 ? `${formatNumber(compressionRuns)} сжат.` : "включено")
+      : "выключено";
+    conversationCompressionMessages.textContent = metrics
+      ? `${formatNumber(metrics.summaryMessages)} / ${formatNumber(metrics.retainedMessages)} сообщ.`
+      : "0 / 0 сообщ.";
+    const beforeTokens = Math.max(0, Number(metrics && metrics.uncompressedInputTokens) || 0);
+    const afterTokens = Math.max(0, Number(metrics && metrics.compressedInputTokens) || 0);
+    conversationCompressionTokens.textContent = beforeTokens > 0
+      ? `${formatNumber(beforeTokens)} / ${formatNumber(afterTokens)} ток.`
+      : "—";
+    const savedTokens = Math.max(0, Number(metrics && metrics.savedInputTokens) || 0);
+    const savingsPercent = Math.max(0, Number(metrics && metrics.tokenSavingsPercent) || 0);
+    conversationSavedTokens.textContent = beforeTokens > 0
+      ? `${formatNumber(savedTokens)} ток. (${savingsPercent.toLocaleString("ru-RU", { maximumFractionDigits: 1 })}%)`
+      : "—";
+
     const contextWarning = warning || (metrics && typeof metrics.contextWarning === "string" ? metrics.contextWarning : "");
     conversationContextWarning.textContent = contextWarning;
     conversationContextWarning.hidden = !contextWarning;
+  }
+
+  function normalizeConversationMetrics(metrics) {
+    if (!metrics || typeof metrics !== "object") {
+      return metrics;
+    }
+
+    const normalized = { ...metrics };
+    let transcriptTotalTokens = 0;
+    let transcriptCost = 0;
+    let transcriptCostKnown = true;
+    let assistantMessages = 0;
+    let committedMessages = 0;
+
+    transcript.forEach((message, index) => {
+      if (message.role !== "assistant" || !message.metrics) {
+        return;
+      }
+      assistantMessages += 1;
+      committedMessages = index + 1;
+      const turnTotal = Math.max(
+        0,
+        Number(message.metrics.totalTokens)
+          || (Number(message.metrics.inputTokens) || 0) + (Number(message.metrics.outputTokens) || 0)
+      );
+      transcriptTotalTokens += turnTotal;
+
+      const turnCost = Number(message.metrics.costUsd);
+      if (message.metrics.costUsd === null || message.metrics.costUsd === undefined || !Number.isFinite(turnCost)) {
+        transcriptCostKnown = false;
+      } else {
+        transcriptCost += turnCost;
+      }
+    });
+
+    if (Math.max(0, Number(normalized.cumulativeTotalTokens) || 0) === 0 && transcriptTotalTokens > 0) {
+      normalized.cumulativeTotalTokens = transcriptTotalTokens;
+    }
+    const cumulativeCost = Number(normalized.cumulativeCostUsd);
+    if ((normalized.cumulativeCostUsd === null || normalized.cumulativeCostUsd === undefined || !Number.isFinite(cumulativeCost))
+        && transcriptCostKnown && assistantMessages > 0) {
+      normalized.cumulativeCostUsd = transcriptCost;
+    }
+
+    normalized.compressionEnabled = compressionEnabledInput.checked;
+    const summaryMessages = Math.max(0, Number(normalized.summaryMessages) || 0);
+    normalized.retainedMessages = Math.max(0, committedMessages - summaryMessages);
+    return normalized;
   }
 
   function metricItem(label, value, title = "") {
@@ -437,6 +534,15 @@
 
   function updateSendButton() {
     sendButton.disabled = sending || !historyReady || !input.value.trim();
+  }
+
+  function setSessionSettingsLocked(locked) {
+    compressionEnabledInput.disabled = locked;
+    contextKeepLastInput.disabled = locked || !compressionEnabledInput.checked;
+  }
+
+  function updateSessionSettings() {
+    contextKeepLastInput.disabled = !compressionEnabledInput.checked;
   }
 
   function scrollToLatest() {

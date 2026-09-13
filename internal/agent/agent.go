@@ -31,6 +31,8 @@ type Request struct {
 	LengthLimit         string
 	CompletionCondition string
 	Temperature         *float64
+	CompressionEnabled  *bool
+	ContextKeepLast     *int
 }
 
 // CompletionRequest is a normalized request sent from the agent to an LLM.
@@ -39,6 +41,7 @@ type CompletionRequest struct {
 	History             []ContextMessage
 	Model               string
 	PreviousResponseID  string
+	Instructions        string
 	Format              string
 	LengthLimit         string
 	CompletionCondition string
@@ -104,10 +107,12 @@ type Message struct {
 
 // ConversationState is the complete state needed to restore an Agent.
 type ConversationState struct {
-	PreviousResponseID string    `json:"previousResponseId,omitempty"`
-	ActiveModel        string    `json:"activeModel,omitempty"`
-	Messages           []Message `json:"messages"`
-	UpdatedAt          time.Time `json:"updatedAt"`
+	PreviousResponseID string               `json:"previousResponseId,omitempty"`
+	ActiveModel        string               `json:"activeModel,omitempty"`
+	Messages           []Message            `json:"messages"`
+	Summary            *ConversationSummary `json:"summary,omitempty"`
+	Compression        *CompressionConfig   `json:"compression,omitempty"`
+	UpdatedAt          time.Time            `json:"updatedAt"`
 }
 
 // ErrHistoryNotFound indicates that a conversation has not been saved yet.
@@ -130,30 +135,41 @@ type Agent struct {
 	previousResponseID string
 	activeModel        string
 	messages           []Message
+	summary            ConversationSummary
+	compression        CompressionConfig
 	history            History
 	conversationID     string
 }
 
 // New creates an independent agent conversation.
-func New(llm LLM, defaultModel string) *Agent {
-	a := &Agent{llm: llm, defaultModel: strings.TrimSpace(defaultModel)}
+func New(llm LLM, defaultModel string, options ...Option) *Agent {
+	a := &Agent{
+		llm:          llm,
+		defaultModel: strings.TrimSpace(defaultModel),
+		compression:  normalizeCompressionConfig(CompressionConfig{}),
+	}
 	if counter, ok := llm.(TokenCounter); ok {
 		a.tokenCounter = counter
+	}
+	for _, option := range options {
+		if option != nil {
+			option(a)
+		}
 	}
 	return a
 }
 
 // NewPersistent creates an agent and restores its conversation when it exists.
-func NewPersistent(llm LLM, defaultModel, conversationID string, history History) (*Agent, error) {
+func NewPersistent(llm LLM, defaultModel, conversationID string, history History, options ...Option) (*Agent, error) {
 	conversationID = strings.TrimSpace(conversationID)
 	if history == nil {
-		return New(llm, defaultModel), nil
+		return New(llm, defaultModel, options...), nil
 	}
 	if conversationID == "" {
 		return nil, errors.New("conversation ID is required for persistent history")
 	}
 
-	a := New(llm, defaultModel)
+	a := New(llm, defaultModel, options...)
 	a.history = history
 	a.conversationID = conversationID
 	state, err := history.Load(conversationID)
@@ -166,6 +182,15 @@ func NewPersistent(llm LLM, defaultModel, conversationID string, history History
 	a.previousResponseID = strings.TrimSpace(state.PreviousResponseID)
 	a.activeModel = strings.TrimSpace(state.ActiveModel)
 	a.messages = cloneMessages(state.Messages)
+	if state.Summary != nil {
+		a.summary = normalizeSummary(*state.Summary, len(a.messages))
+	}
+	if state.Compression != nil {
+		a.compression = normalizeCompressionConfig(*state.Compression)
+	}
+	if !a.compression.Enabled && a.summary.MessageCount > 0 {
+		a.previousResponseID = ""
+	}
 	return a, nil
 }
 
@@ -190,12 +215,16 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 	request.Format = strings.TrimSpace(request.Format)
 	request.LengthLimit = strings.TrimSpace(request.LengthLimit)
 	request.CompletionCondition = strings.TrimSpace(request.CompletionCondition)
+	if err := a.applySessionCompression(request.CompressionEnabled, request.ContextKeepLast); err != nil {
+		return Response{}, err
+	}
 
+	prepared := a.prepareCompression(ctx, request.Model)
 	previousResponseID := a.previousResponseID
 	var replayHistory []ContextMessage
-	if len(a.messages) > 0 && (previousResponseID == "" || request.Model != a.activeModel) {
+	if len(a.messages) > 0 && (prepared.Applied || previousResponseID == "" || request.Model != a.activeModel) {
 		previousResponseID = ""
-		replayHistory = contextMessages(a.messages)
+		replayHistory = a.requestHistory(prepared.Summary)
 	}
 	completionRequest := CompletionRequest{
 		Input:               request.Message,
@@ -209,7 +238,16 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 	}
 	response := Response{
 		Model:        request.Model,
-		TokenMetrics: a.measureTokens(ctx, completionRequest),
+		TokenMetrics: a.measureTokens(ctx, completionRequest, &prepared.Summary),
+	}
+	response.TokenMetrics.CompressionApplied = prepared.Applied
+	response.TokenMetrics.CompressionWarning = prepared.Warning
+	if prepared.Warning != "" {
+		if response.TokenMetrics.ContextWarning == "" {
+			response.TokenMetrics.ContextWarning = prepared.Warning
+		} else {
+			response.TokenMetrics.ContextWarning += " " + prepared.Warning
+		}
 	}
 	completion, err := a.llm.Complete(ctx, completionRequest)
 	if err != nil {
@@ -232,6 +270,10 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 		response.CostUSD = &cost
 	}
 	response.TokenMetrics = a.completeTokenMetrics(response.TokenMetrics, response.Usage, response.CostUSD)
+	// The token snapshot is prepared before the model call. The visible
+	// conversation counters, however, describe the state after this successful
+	// turn, which adds both the user request and the assistant response.
+	response.TokenMetrics.RetainedMessages = max(0, len(a.messages)+2-response.TokenMetrics.SummaryMessages)
 
 	durationMS := response.Duration.Milliseconds()
 	if durationMS < 1 {
@@ -262,6 +304,8 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 			PreviousResponseID: completion.ResponseID,
 			ActiveModel:        request.Model,
 			Messages:           nextMessages,
+			Summary:            summaryPointer(prepared.Summary),
+			Compression:        compressionPointer(a.compression),
 			UpdatedAt:          time.Now().UTC(),
 		}
 		if err := a.history.Save(a.conversationID, state); err != nil {
@@ -271,6 +315,7 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 	a.previousResponseID = completion.ResponseID
 	a.activeModel = request.Model
 	a.messages = nextMessages
+	a.summary = prepared.Summary
 	return response, nil
 }
 
@@ -299,6 +344,7 @@ func (a *Agent) Reset() error {
 	a.previousResponseID = ""
 	a.activeModel = ""
 	a.messages = nil
+	a.summary = ConversationSummary{}
 	return nil
 }
 
