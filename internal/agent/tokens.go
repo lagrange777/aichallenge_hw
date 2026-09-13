@@ -15,6 +15,14 @@ type TokenCounts struct {
 
 // TokenMetrics explains token usage for one turn and the whole conversation.
 type TokenMetrics struct {
+	ContextStrategy         string   `json:"contextStrategy,omitempty"`
+	WindowMessages          int      `json:"windowMessages"`
+	FactsCount              int      `json:"factsCount"`
+	ActiveBranchID          string   `json:"activeBranchId,omitempty"`
+	MemoryUpdates           int      `json:"memoryUpdates"`
+	MemoryInputTokens       int      `json:"memoryInputTokens"`
+	MemoryOutputTokens      int      `json:"memoryOutputTokens"`
+	MemoryTotalTokens       int      `json:"memoryTotalTokens"`
 	TokenCountAvailable     bool     `json:"tokenCountAvailable"`
 	CurrentRequestTokens    int      `json:"currentRequestTokens"`
 	HistoryTokens           int      `json:"historyTokens"`
@@ -51,6 +59,12 @@ func (a *Agent) measureTokens(ctx context.Context, request CompletionRequest, su
 		metrics.MaxOutputTokens = definition.MaxOutputTokens
 	}
 	metrics.CumulativeInputTokens, metrics.CumulativeOutputTokens, metrics.CumulativeTotalTokens, metrics.CumulativeCostUSD = cumulativeMetrics(a.messages)
+	if a.memory.Updates > 0 {
+		metrics.CumulativeInputTokens += max(0, a.memory.InputTokens)
+		metrics.CumulativeOutputTokens += max(0, a.memory.OutputTokens)
+		metrics.CumulativeTotalTokens += max(0, a.memory.TotalTokens)
+		metrics.CumulativeCostUSD = addKnownCosts(metrics.CumulativeCostUSD, a.memory.CostUSD)
+	}
 	if summary != nil && summary.MessageCount > 0 {
 		metrics.SummaryMessages = summary.MessageCount
 		metrics.CompressionRuns = summary.Runs
