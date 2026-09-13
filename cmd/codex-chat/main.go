@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"codex-chat-cli/internal/agent"
 	"codex-chat-cli/internal/config"
 	"codex-chat-cli/internal/history"
 	"codex-chat-cli/internal/openai"
@@ -49,8 +50,12 @@ func run(logger *log.Logger) error {
 	}
 
 	server := &http.Server{
-		Addr:              cfg.WebAddr,
-		Handler:           chatweb.NewHandler(apiClient, cfg.Model, historyStore),
+		Addr: cfg.WebAddr,
+		Handler: chatweb.NewHandler(apiClient, cfg.Model, historyStore, agent.WithCompression(agent.CompressionConfig{
+			Enabled:   cfg.CompressionEnabled,
+			KeepLast:  cfg.ContextKeepLast,
+			BatchSize: cfg.SummaryBatchSize,
+		})),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      cfg.Timeout + 10*time.Second,

@@ -4,26 +4,32 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
 
 const (
-	defaultModel       = "gpt-5.3-codex"
-	defaultBaseURL     = "https://api.openai.com/v1"
-	defaultTimeout     = 2 * time.Minute
-	defaultWebAddr     = "127.0.0.1:8080"
-	defaultHistoryPath = "data/history.json"
+	defaultModel        = "gpt-5.3-codex"
+	defaultBaseURL      = "https://api.openai.com/v1"
+	defaultTimeout      = 2 * time.Minute
+	defaultWebAddr      = "127.0.0.1:8080"
+	defaultHistoryPath  = "data/history.json"
+	defaultKeepLast     = 10
+	defaultSummaryBatch = 10
 )
 
 // Config contains runtime configuration loaded from environment variables.
 type Config struct {
-	APIKey      string
-	Model       string
-	BaseURL     string
-	Timeout     time.Duration
-	WebAddr     string
-	HistoryPath string
+	APIKey             string
+	Model              string
+	BaseURL            string
+	Timeout            time.Duration
+	WebAddr            string
+	HistoryPath        string
+	CompressionEnabled bool
+	ContextKeepLast    int
+	SummaryBatchSize   int
 }
 
 // Load reads and validates configuration without logging secret values.
@@ -37,6 +43,22 @@ func Load() (Config, error) {
 	baseURL := strings.TrimRight(valueOrDefault("OPENAI_BASE_URL", defaultBaseURL), "/")
 	webAddr := valueOrDefault("WEB_ADDR", defaultWebAddr)
 	historyPath := valueOrDefault("HISTORY_PATH", defaultHistoryPath)
+	compressionEnabled := true
+	if raw := strings.TrimSpace(os.Getenv("CONTEXT_COMPRESSION_ENABLED")); raw != "" {
+		parsed, err := strconv.ParseBool(raw)
+		if err != nil {
+			return Config{}, fmt.Errorf("CONTEXT_COMPRESSION_ENABLED должен быть true или false")
+		}
+		compressionEnabled = parsed
+	}
+	contextKeepLast, err := positiveInt("CONTEXT_KEEP_LAST", defaultKeepLast)
+	if err != nil {
+		return Config{}, err
+	}
+	summaryBatchSize, err := positiveInt("CONTEXT_SUMMARY_BATCH", defaultSummaryBatch)
+	if err != nil {
+		return Config{}, err
+	}
 	if _, port, err := net.SplitHostPort(webAddr); err != nil || port == "" {
 		return Config{}, fmt.Errorf("WEB_ADDR должен иметь формат host:port, например 127.0.0.1:8080")
 	}
@@ -51,13 +73,28 @@ func Load() (Config, error) {
 	}
 
 	return Config{
-		APIKey:      apiKey,
-		Model:       model,
-		BaseURL:     baseURL,
-		Timeout:     timeout,
-		WebAddr:     webAddr,
-		HistoryPath: historyPath,
+		APIKey:             apiKey,
+		Model:              model,
+		BaseURL:            baseURL,
+		Timeout:            timeout,
+		WebAddr:            webAddr,
+		HistoryPath:        historyPath,
+		CompressionEnabled: compressionEnabled,
+		ContextKeepLast:    contextKeepLast,
+		SummaryBatchSize:   summaryBatchSize,
 	}, nil
+}
+
+func positiveInt(name string, fallback int) (int, error) {
+	raw := strings.TrimSpace(os.Getenv(name))
+	if raw == "" {
+		return fallback, nil
+	}
+	value, err := strconv.Atoi(raw)
+	if err != nil || value < 1 {
+		return 0, fmt.Errorf("%s должен быть положительным целым числом", name)
+	}
+	return value, nil
 }
 
 func valueOrDefault(name, fallback string) string {

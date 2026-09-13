@@ -272,7 +272,7 @@ func responseInput(request agent.CompletionRequest) any {
 
 	input := make([]inputMessage, 0, len(request.History)+1)
 	for _, message := range request.History {
-		if message.Role != "user" && message.Role != "assistant" {
+		if message.Role != "user" && message.Role != "assistant" && message.Role != "developer" {
 			continue
 		}
 		if strings.TrimSpace(message.Content) == "" {
@@ -285,6 +285,9 @@ func responseInput(request agent.CompletionRequest) any {
 }
 
 func responseInstructions(base string, request agent.CompletionRequest) string {
+	if value := strings.TrimSpace(request.Instructions); value != "" {
+		base = value
+	}
 	requirements := make([]string, 0, 3)
 	if value := strings.TrimSpace(request.Format); value != "" {
 		requirements = append(requirements, "Response format: "+value)

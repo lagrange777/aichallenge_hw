@@ -510,6 +510,128 @@ select:focus-visible {
   line-height: 1.65;
 }
 
+.session-settings {
+  width: min(560px, 100%);
+  margin-top: 28px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 12px 30px rgba(26, 31, 28, 0.05);
+  text-align: left;
+}
+
+.session-settings-head,
+.session-number {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.session-settings-head > div,
+.session-number > span {
+  display: grid;
+  gap: 4px;
+}
+
+.session-settings-head strong,
+.session-number strong {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.session-settings-head div > span,
+.session-number small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.compression-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.compression-toggle input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.compression-toggle > span {
+  position: relative;
+  width: 34px;
+  height: 20px;
+  border-radius: 999px;
+  background: #b9beba;
+  transition: background 160ms ease;
+}
+
+.compression-toggle > span::after {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+  content: "";
+  transition: transform 160ms ease;
+}
+
+.compression-toggle input:checked + span {
+  background: var(--accent);
+}
+
+.compression-toggle input:checked + span::after {
+  transform: translateX(14px);
+}
+
+.compression-toggle input:focus-visible + span {
+  outline: 3px solid rgba(23, 132, 95, 0.2);
+  outline-offset: 2px;
+}
+
+.compression-toggle b {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.session-number {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.session-number input {
+  width: 76px;
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  color: var(--ink);
+  background: var(--surface);
+  font: 600 13px var(--mono);
+  text-align: center;
+}
+
+.session-number input:focus-visible {
+  outline: 3px solid rgba(23, 132, 95, 0.2);
+  outline-offset: 2px;
+}
+
+.session-number input:disabled,
+.compression-toggle:has(input:disabled) {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .messages {
   display: none;
   width: min(860px, calc(100% - 48px));
@@ -1190,6 +1312,16 @@ kbd {
 
   .hero-copy {
     font-size: 14px;
+  }
+
+  .session-settings {
+    margin-top: 20px;
+    padding: 14px;
+  }
+
+  .session-settings-head,
+  .session-number {
+    gap: 12px;
   }
 
   .messages {

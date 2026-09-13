@@ -10,6 +10,9 @@ services:
       OPENAI_TIMEOUT: ${OPENAI_TIMEOUT:-2m}
       WEB_ADDR: 0.0.0.0:8080
       HISTORY_PATH: /data/history.json
+      CONTEXT_COMPRESSION_ENABLED: ${CONTEXT_COMPRESSION_ENABLED:-true}
+      CONTEXT_KEEP_LAST: ${CONTEXT_KEEP_LAST:-10}
+      CONTEXT_SUMMARY_BATCH: ${CONTEXT_SUMMARY_BATCH:-10}
     ports:
       - "127.0.0.1:8080:8080"
     read_only: true

@@ -98,7 +98,7 @@ func TestServesWebApplication(t *testing.T) {
 		contentType string
 		contains    string
 	}{
-		{path: "/", contentType: "text/html", contains: `id="conversation-stats"`},
+		{path: "/", contentType: "text/html", contains: `id="session-settings"`},
 		{path: "/app.css", contentType: "text/css", contains: ".app-shell"},
 		{path: "/app.js", contentType: "text/javascript", contains: "sendMessage"},
 		{path: "/markdown.js", contentType: "text/javascript", contains: "CodexMarkdown"},
@@ -168,6 +168,37 @@ func TestChatCarriesConversationState(t *testing.T) {
 	}
 	if payload.Model != "gpt-5.3-codex" || payload.Metrics == nil || payload.Metrics.TotalTokens != 120 || payload.Metrics.CostUSD == nil {
 		t.Fatalf("response metadata = model %q, metrics %#v", payload.Model, payload.Metrics)
+	}
+}
+
+func TestCompressionSettingsAreChosenBeforeSessionAndThenLocked(t *testing.T) {
+	llm := &fakeLLM{}
+	handler := NewHandler(llm, "test-model", nil, agent.WithCompression(agent.CompressionConfig{
+		Enabled:   true,
+		KeepLast:  10,
+		BatchSize: 10,
+	}))
+	first := performChatBody(handler, nil, `{"message":"first","compressionEnabled":false,"contextKeepLast":6}`)
+	if first.Code != http.StatusOK {
+		t.Fatalf("first status = %d, body = %s", first.Code, first.Body.String())
+	}
+	cookie := sessionCookieFrom(t, first)
+
+	changed := performChatBody(handler, cookie, `{"message":"second","compressionEnabled":true,"contextKeepLast":6}`)
+	if changed.Code != http.StatusConflict {
+		t.Fatalf("changed settings status = %d, want %d; body = %s", changed.Code, http.StatusConflict, changed.Body.String())
+	}
+
+	historyRequest := httptest.NewRequest(http.MethodGet, "/api/history", nil)
+	historyRequest.AddCookie(cookie)
+	historyResponse := httptest.NewRecorder()
+	handler.ServeHTTP(historyResponse, historyRequest)
+	var payload apiResponse
+	if err := json.Unmarshal(historyResponse.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode history response: %v", err)
+	}
+	if payload.Compression == nil || payload.Compression.Enabled || payload.Compression.KeepLast != 6 {
+		t.Fatalf("compression settings = %#v", payload.Compression)
 	}
 }
 
@@ -298,6 +329,8 @@ func TestAPIValidation(t *testing.T) {
 		{name: "empty", method: http.MethodPost, header: true, contentType: "application/json", body: `{"message":"  "}`, want: http.StatusBadRequest},
 		{name: "temperature below range", method: http.MethodPost, header: true, contentType: "application/json", body: `{"message":"hi","temperature":-0.1}`, want: http.StatusBadRequest},
 		{name: "temperature above range", method: http.MethodPost, header: true, contentType: "application/json", body: `{"message":"hi","temperature":2.1}`, want: http.StatusBadRequest},
+		{name: "context keep below range", method: http.MethodPost, header: true, contentType: "application/json", body: `{"message":"hi","contextKeepLast":0}`, want: http.StatusBadRequest},
+		{name: "context keep above range", method: http.MethodPost, header: true, contentType: "application/json", body: `{"message":"hi","contextKeepLast":1001}`, want: http.StatusBadRequest},
 		{name: "unknown model", method: http.MethodPost, header: true, contentType: "application/json", body: `{"message":"hi","model":"unknown"}`, want: http.StatusBadRequest},
 		{name: "cross origin", method: http.MethodPost, header: true, origin: "https://example.org", contentType: "application/json", body: `{\"message\":\"hi\"}`, want: http.StatusForbidden},
 	}

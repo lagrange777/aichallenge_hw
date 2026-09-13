@@ -21,6 +21,7 @@ import (
 const (
 	maxRequestBytes = 1 << 20
 	maxOptionLength = 4000
+	maxContextKeep  = 1000
 	sessionCookie   = "codex_chat_session"
 	sessionTTL      = 12 * time.Hour
 	cookieTTL       = 365 * 24 * time.Hour
@@ -36,11 +37,12 @@ type sessionEntry struct {
 }
 
 type server struct {
-	llm     agent.LLM
-	history agent.History
-	model   string
-	models  []modelOption
-	allowed map[string]bool
+	llm          agent.LLM
+	history      agent.History
+	model        string
+	models       []modelOption
+	allowed      map[string]bool
+	agentOptions []agent.Option
 
 	mu       sync.Mutex
 	sessions map[string]*sessionEntry
@@ -53,21 +55,29 @@ type chatRequest struct {
 	LengthLimit         string   `json:"lengthLimit,omitempty"`
 	CompletionCondition string   `json:"completionCondition,omitempty"`
 	Temperature         *float64 `json:"temperature,omitempty"`
+	CompressionEnabled  *bool    `json:"compressionEnabled,omitempty"`
+	ContextKeepLast     *int     `json:"contextKeepLast,omitempty"`
 }
 
 type apiResponse struct {
-	Answer   string           `json:"answer,omitempty"`
-	Error    string           `json:"error,omitempty"`
-	Warning  string           `json:"warning,omitempty"`
-	Model    string           `json:"model,omitempty"`
-	Models   []modelOption    `json:"models,omitempty"`
-	Metrics  *responseMetrics `json:"metrics,omitempty"`
-	Messages []agent.Message  `json:"messages,omitempty"`
+	Answer      string               `json:"answer,omitempty"`
+	Error       string               `json:"error,omitempty"`
+	Warning     string               `json:"warning,omitempty"`
+	Model       string               `json:"model,omitempty"`
+	Models      []modelOption        `json:"models,omitempty"`
+	Metrics     *responseMetrics     `json:"metrics,omitempty"`
+	Messages    []agent.Message      `json:"messages,omitempty"`
+	Compression *compressionSettings `json:"compression,omitempty"`
 }
 
 type modelOption struct {
 	ID    string `json:"id"`
 	Label string `json:"label"`
+}
+
+type compressionSettings struct {
+	Enabled  bool `json:"enabled"`
+	KeepLast int  `json:"keepLast"`
 }
 
 type responseMetrics struct {
@@ -83,7 +93,7 @@ type responseMetrics struct {
 }
 
 // NewHandler returns the complete local web application handler.
-func NewHandler(llm agent.LLM, model string, history agent.History) http.Handler {
+func NewHandler(llm agent.LLM, model string, history agent.History, agentOptions ...agent.Option) http.Handler {
 	model = strings.TrimSpace(model)
 	definitions := models.Available(model)
 	options := make([]modelOption, 0, len(definitions))
@@ -93,12 +103,13 @@ func NewHandler(llm agent.LLM, model string, history agent.History) http.Handler
 		allowed[definition.ID] = true
 	}
 	app := &server{
-		llm:      llm,
-		history:  history,
-		model:    model,
-		models:   options,
-		allowed:  allowed,
-		sessions: make(map[string]*sessionEntry),
+		llm:          llm,
+		history:      history,
+		model:        model,
+		models:       options,
+		allowed:      allowed,
+		agentOptions: agentOptions,
+		sessions:     make(map[string]*sessionEntry),
 	}
 
 	mux := http.NewServeMux()
@@ -208,6 +219,10 @@ func (s *server) handleChat(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, apiResponse{Error: "Температура должна быть от 0 до 2"})
 		return
 	}
+	if request.ContextKeepLast != nil && (*request.ContextKeepLast < 1 || *request.ContextKeepLast > maxContextKeep) {
+		writeJSON(w, http.StatusBadRequest, apiResponse{Error: "Количество последних сообщений должно быть от 1 до 1000"})
+		return
+	}
 
 	chatAgent, err := s.agentFor(w, r)
 	if err != nil {
@@ -221,10 +236,18 @@ func (s *server) handleChat(w http.ResponseWriter, r *http.Request) {
 		LengthLimit:         request.LengthLimit,
 		CompletionCondition: request.CompletionCondition,
 		Temperature:         request.Temperature,
+		CompressionEnabled:  request.CompressionEnabled,
+		ContextKeepLast:     request.ContextKeepLast,
 	})
 	if err != nil {
-		writeJSON(w, http.StatusBadGateway, apiResponse{
-			Error:   err.Error(),
+		status := http.StatusBadGateway
+		message := err.Error()
+		if errors.Is(err, agent.ErrCompressionLocked) {
+			status = http.StatusConflict
+			message = "Настройки сжатия можно изменить только до первого сообщения"
+		}
+		writeJSON(w, status, apiResponse{
+			Error:   message,
 			Warning: result.TokenMetrics.ContextWarning,
 			Model:   result.Model,
 			Metrics: metricsFromResponse(result),
@@ -285,7 +308,11 @@ func (s *server) handleHistory(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, apiResponse{Error: "Не удалось загрузить историю"})
 		return
 	}
-	writeJSON(w, http.StatusOK, apiResponse{Messages: chatAgent.Messages()})
+	compression := chatAgent.Compression()
+	writeJSON(w, http.StatusOK, apiResponse{
+		Messages:    chatAgent.Messages(),
+		Compression: &compressionSettings{Enabled: compression.Enabled, KeepLast: compression.KeepLast},
+	})
 }
 
 func (s *server) handleStatus(w http.ResponseWriter, r *http.Request) {
@@ -350,7 +377,7 @@ func (s *server) agentFor(w http.ResponseWriter, r *http.Request) (*agent.Agent,
 		delete(s.sessions, cookie.Value)
 		s.mu.Unlock()
 
-		chatAgent, err := agent.NewPersistent(s.llm, s.model, cookie.Value, s.history)
+		chatAgent, err := agent.NewPersistent(s.llm, s.model, cookie.Value, s.history, s.agentOptions...)
 		if err != nil {
 			return nil, err
 		}
@@ -372,7 +399,7 @@ func (s *server) agentFor(w http.ResponseWriter, r *http.Request) (*agent.Agent,
 	if err != nil {
 		return nil, err
 	}
-	chatAgent, err := agent.NewPersistent(s.llm, s.model, id, s.history)
+	chatAgent, err := agent.NewPersistent(s.llm, s.model, id, s.history, s.agentOptions...)
 	if err != nil {
 		return nil, err
 	}
