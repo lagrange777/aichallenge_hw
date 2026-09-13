@@ -22,6 +22,17 @@ func TestAvailableKeepsCustomDefault(t *testing.T) {
 	}
 }
 
+func TestKnownModelsExposeContextLimits(t *testing.T) {
+	for _, definition := range Available("") {
+		if definition.ContextWindow <= 0 || definition.MaxInputTokens <= 0 || definition.MaxOutputTokens <= 0 {
+			t.Fatalf("model %q has incomplete context limits: %#v", definition.ID, definition)
+		}
+		if definition.MaxInputTokens+definition.MaxOutputTokens != definition.ContextWindow {
+			t.Fatalf("model %q limits do not fill context window: %#v", definition.ID, definition)
+		}
+	}
+}
+
 func TestEstimateCostSeparatesCachedAndCacheWriteTokens(t *testing.T) {
 	cost, ok := EstimateCost("gpt-5.6-terra", 1000, 200, 100, 300)
 	if !ok {

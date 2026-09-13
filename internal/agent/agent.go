@@ -18,6 +18,11 @@ type LLM interface {
 	Complete(ctx context.Context, request CompletionRequest) (CompletionResponse, error)
 }
 
+// TokenCounter returns exact input-token counts before an LLM request.
+type TokenCounter interface {
+	CountTokens(ctx context.Context, request CompletionRequest) (TokenCounts, error)
+}
+
 // Request is a user request accepted by the agent.
 type Request struct {
 	Message             string
@@ -31,12 +36,20 @@ type Request struct {
 // CompletionRequest is a normalized request sent from the agent to an LLM.
 type CompletionRequest struct {
 	Input               string
+	History             []ContextMessage
 	Model               string
 	PreviousResponseID  string
 	Format              string
 	LengthLimit         string
 	CompletionCondition string
 	Temperature         *float64
+}
+
+// ContextMessage is one prior conversational message replayed when an API
+// response chain cannot be continued, for example after switching models.
+type ContextMessage struct {
+	Role    string
+	Content string
 }
 
 // CompletionResponse is the transport-neutral result returned by an LLM.
@@ -59,11 +72,12 @@ type Usage struct {
 
 // Response is the final result prepared by the agent for the interface layer.
 type Response struct {
-	Text     string
-	Model    string
-	Usage    Usage
-	Duration time.Duration
-	CostUSD  *float64
+	Text         string
+	Model        string
+	Usage        Usage
+	Duration     time.Duration
+	CostUSD      *float64
+	TokenMetrics TokenMetrics
 }
 
 // MessageMetrics contains metadata saved together with an assistant message.
@@ -76,6 +90,7 @@ type MessageMetrics struct {
 	ReasoningTokens   int      `json:"reasoningTokens"`
 	TotalTokens       int      `json:"totalTokens"`
 	CostUSD           *float64 `json:"costUsd"`
+	TokenMetrics
 }
 
 // Message is one durable item in a conversation transcript.
@@ -108,6 +123,7 @@ type History interface {
 // Agent owns one conversation and encapsulates its LLM request/response flow.
 type Agent struct {
 	llm          LLM
+	tokenCounter TokenCounter
 	defaultModel string
 
 	mu                 sync.Mutex
@@ -120,7 +136,11 @@ type Agent struct {
 
 // New creates an independent agent conversation.
 func New(llm LLM, defaultModel string) *Agent {
-	return &Agent{llm: llm, defaultModel: strings.TrimSpace(defaultModel)}
+	a := &Agent{llm: llm, defaultModel: strings.TrimSpace(defaultModel)}
+	if counter, ok := llm.(TokenCounter); ok {
+		a.tokenCounter = counter
+	}
+	return a
 }
 
 // NewPersistent creates an agent and restores its conversation when it exists.
@@ -172,20 +192,29 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 	request.CompletionCondition = strings.TrimSpace(request.CompletionCondition)
 
 	previousResponseID := a.previousResponseID
-	if a.activeModel != "" && request.Model != a.activeModel {
+	var replayHistory []ContextMessage
+	if len(a.messages) > 0 && (previousResponseID == "" || request.Model != a.activeModel) {
 		previousResponseID = ""
+		replayHistory = contextMessages(a.messages)
 	}
-	completion, err := a.llm.Complete(ctx, CompletionRequest{
+	completionRequest := CompletionRequest{
 		Input:               request.Message,
+		History:             replayHistory,
 		Model:               request.Model,
 		PreviousResponseID:  previousResponseID,
 		Format:              request.Format,
 		LengthLimit:         request.LengthLimit,
 		CompletionCondition: request.CompletionCondition,
 		Temperature:         request.Temperature,
-	})
+	}
+	response := Response{
+		Model:        request.Model,
+		TokenMetrics: a.measureTokens(ctx, completionRequest),
+	}
+	completion, err := a.llm.Complete(ctx, completionRequest)
 	if err != nil {
-		return Response{}, err
+		response.Duration = time.Since(started)
+		return response, err
 	}
 
 	if completion.Model == "" {
@@ -195,15 +224,14 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 		completion.Usage.TotalTokens = completion.Usage.InputTokens + completion.Usage.OutputTokens
 	}
 
-	response := Response{
-		Text:     completion.Output,
-		Model:    completion.Model,
-		Usage:    completion.Usage,
-		Duration: time.Since(started),
-	}
+	response.Text = completion.Output
+	response.Model = completion.Model
+	response.Usage = completion.Usage
+	response.Duration = time.Since(started)
 	if cost, ok := models.EstimateCost(request.Model, completion.Usage.InputTokens, completion.Usage.CachedInputTokens, completion.Usage.CacheWriteTokens, completion.Usage.OutputTokens); ok {
 		response.CostUSD = &cost
 	}
+	response.TokenMetrics = a.completeTokenMetrics(response.TokenMetrics, response.Usage, response.CostUSD)
 
 	durationMS := response.Duration.Milliseconds()
 	if durationMS < 1 {
@@ -225,6 +253,7 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 				ReasoningTokens:   response.Usage.ReasoningTokens,
 				TotalTokens:       response.Usage.TotalTokens,
 				CostUSD:           response.CostUSD,
+				TokenMetrics:      response.TokenMetrics,
 			},
 		},
 	)
@@ -243,6 +272,19 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 	a.activeModel = request.Model
 	a.messages = nextMessages
 	return response, nil
+}
+
+func contextMessages(messages []Message) []ContextMessage {
+	context := make([]ContextMessage, 0, len(messages))
+	for _, message := range messages {
+		role := strings.TrimSpace(message.Role)
+		content := message.Text
+		if strings.TrimSpace(content) == "" || (role != "user" && role != "assistant") {
+			continue
+		}
+		context = append(context, ContextMessage{Role: role, Content: content})
+	}
+	return context
 }
 
 // Reset clears the conversation context without replacing the agent.
@@ -279,6 +321,10 @@ func cloneMessages(messages []Message) []Message {
 			if message.Metrics.CostUSD != nil {
 				cost := *message.Metrics.CostUSD
 				metrics.CostUSD = &cost
+			}
+			if message.Metrics.CumulativeCostUSD != nil {
+				cost := *message.Metrics.CumulativeCostUSD
+				metrics.CumulativeCostUSD = &cost
 			}
 			cloned[index].Metrics = &metrics
 		}

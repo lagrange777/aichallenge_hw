@@ -58,6 +58,7 @@ type chatRequest struct {
 type apiResponse struct {
 	Answer   string           `json:"answer,omitempty"`
 	Error    string           `json:"error,omitempty"`
+	Warning  string           `json:"warning,omitempty"`
 	Model    string           `json:"model,omitempty"`
 	Models   []modelOption    `json:"models,omitempty"`
 	Metrics  *responseMetrics `json:"metrics,omitempty"`
@@ -78,6 +79,7 @@ type responseMetrics struct {
 	ReasoningTokens   int      `json:"reasoningTokens"`
 	TotalTokens       int      `json:"totalTokens"`
 	CostUSD           *float64 `json:"costUsd"`
+	agent.TokenMetrics
 }
 
 // NewHandler returns the complete local web application handler.
@@ -221,27 +223,38 @@ func (s *server) handleChat(w http.ResponseWriter, r *http.Request) {
 		Temperature:         request.Temperature,
 	})
 	if err != nil {
-		writeJSON(w, http.StatusBadGateway, apiResponse{Error: err.Error()})
+		writeJSON(w, http.StatusBadGateway, apiResponse{
+			Error:   err.Error(),
+			Warning: result.TokenMetrics.ContextWarning,
+			Model:   result.Model,
+			Metrics: metricsFromResponse(result),
+		})
 		return
 	}
+	writeJSON(w, http.StatusOK, apiResponse{
+		Answer:  result.Text,
+		Warning: result.TokenMetrics.ContextWarning,
+		Model:   result.Model,
+		Metrics: metricsFromResponse(result),
+	})
+}
+
+func metricsFromResponse(result agent.Response) *responseMetrics {
 	durationMS := result.Duration.Milliseconds()
 	if durationMS < 1 {
 		durationMS = 1
 	}
-	writeJSON(w, http.StatusOK, apiResponse{
-		Answer: result.Text,
-		Model:  result.Model,
-		Metrics: &responseMetrics{
-			DurationMS:        durationMS,
-			InputTokens:       result.Usage.InputTokens,
-			CachedInputTokens: result.Usage.CachedInputTokens,
-			CacheWriteTokens:  result.Usage.CacheWriteTokens,
-			OutputTokens:      result.Usage.OutputTokens,
-			ReasoningTokens:   result.Usage.ReasoningTokens,
-			TotalTokens:       result.Usage.TotalTokens,
-			CostUSD:           result.CostUSD,
-		},
-	})
+	return &responseMetrics{
+		DurationMS:        durationMS,
+		InputTokens:       result.Usage.InputTokens,
+		CachedInputTokens: result.Usage.CachedInputTokens,
+		CacheWriteTokens:  result.Usage.CacheWriteTokens,
+		OutputTokens:      result.Usage.OutputTokens,
+		ReasoningTokens:   result.Usage.ReasoningTokens,
+		TotalTokens:       result.Usage.TotalTokens,
+		CostUSD:           result.CostUSD,
+		TokenMetrics:      result.TokenMetrics,
+	}
 }
 
 func (s *server) handleReset(w http.ResponseWriter, r *http.Request) {

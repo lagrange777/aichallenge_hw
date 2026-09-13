@@ -10,6 +10,9 @@ const longContextThreshold = 272000
 type Definition struct {
 	ID                    string
 	Label                 string
+	ContextWindow         int
+	MaxInputTokens        int
+	MaxOutputTokens       int
 	InputPerMillion       float64
 	CachedInputPerMillion float64
 	OutputPerMillion      float64
@@ -18,11 +21,11 @@ type Definition struct {
 }
 
 var catalog = []Definition{
-	{ID: "gpt-5.6-sol", Label: "GPT-5.6 Sol", InputPerMillion: 4, CachedInputPerMillion: 0.4, OutputPerMillion: 20, CacheWriteMultiplier: 1.25, LongContextPricing: true},
-	{ID: "gpt-5.6-terra", Label: "GPT-5.6 Terra", InputPerMillion: 2, CachedInputPerMillion: 0.2, OutputPerMillion: 12, CacheWriteMultiplier: 1.25, LongContextPricing: true},
-	{ID: "gpt-5.3-codex", Label: "GPT-5.3 Codex", InputPerMillion: 1.75, CachedInputPerMillion: 0.175, OutputPerMillion: 14},
-	{ID: "gpt-5.4-mini", Label: "GPT-5.4 mini", InputPerMillion: 0.75, CachedInputPerMillion: 0.075, OutputPerMillion: 4.5},
-	{ID: "gpt-5.6-luna", Label: "GPT-5.6 Luna", InputPerMillion: 0.2, CachedInputPerMillion: 0.02, OutputPerMillion: 1.2, CacheWriteMultiplier: 1.25, LongContextPricing: true},
+	{ID: "gpt-5.6-sol", Label: "GPT-5.6 Sol", ContextWindow: 1_050_000, MaxInputTokens: 922_000, MaxOutputTokens: 128_000, InputPerMillion: 4, CachedInputPerMillion: 0.4, OutputPerMillion: 20, CacheWriteMultiplier: 1.25, LongContextPricing: true},
+	{ID: "gpt-5.6-terra", Label: "GPT-5.6 Terra", ContextWindow: 1_050_000, MaxInputTokens: 922_000, MaxOutputTokens: 128_000, InputPerMillion: 2, CachedInputPerMillion: 0.2, OutputPerMillion: 12, CacheWriteMultiplier: 1.25, LongContextPricing: true},
+	{ID: "gpt-5.3-codex", Label: "GPT-5.3 Codex", ContextWindow: 400_000, MaxInputTokens: 272_000, MaxOutputTokens: 128_000, InputPerMillion: 1.75, CachedInputPerMillion: 0.175, OutputPerMillion: 14},
+	{ID: "gpt-5.4-mini", Label: "GPT-5.4 mini", ContextWindow: 400_000, MaxInputTokens: 272_000, MaxOutputTokens: 128_000, InputPerMillion: 0.75, CachedInputPerMillion: 0.075, OutputPerMillion: 4.5},
+	{ID: "gpt-5.6-luna", Label: "GPT-5.6 Luna", ContextWindow: 1_050_000, MaxInputTokens: 922_000, MaxOutputTokens: 128_000, InputPerMillion: 0.2, CachedInputPerMillion: 0.02, OutputPerMillion: 1.2, CacheWriteMultiplier: 1.25, LongContextPricing: true},
 }
 
 // Available returns known models from strongest to lightest. A custom

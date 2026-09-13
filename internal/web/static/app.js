@@ -18,6 +18,15 @@
   const modelSelect = document.querySelector("#model-select");
   const connection = document.querySelector(".connection");
   const connectionLabel = document.querySelector("#connection-label");
+  const conversationStats = document.querySelector("#conversation-stats");
+  const conversationContextTrack = document.querySelector("#conversation-context-track");
+  const conversationContextFill = document.querySelector("#conversation-context-fill");
+  const conversationContextPercent = document.querySelector("#conversation-context-percent");
+  const conversationContextValue = document.querySelector("#conversation-context-value");
+  const conversationHistoryTokens = document.querySelector("#conversation-history-tokens");
+  const conversationTotalTokens = document.querySelector("#conversation-total-tokens");
+  const conversationTotalCost = document.querySelector("#conversation-total-cost");
+  const conversationContextWarning = document.querySelector("#conversation-context-warning");
   const toast = document.querySelector("#toast");
 
   let transcript = [];
@@ -138,6 +147,8 @@
 
     addMessage({ role: "user", text: message, time: Date.now() });
     const pending = addPendingMessage();
+    let requestWarning = "";
+    let requestMetrics = null;
     scrollToLatest();
 
     try {
@@ -151,6 +162,8 @@
         body: JSON.stringify({ message, model: modelSelect.value, ...responseOptions })
       });
       const payload = await response.json().catch(() => ({}));
+      requestWarning = typeof payload.warning === "string" ? payload.warning : "";
+      requestMetrics = payload.metrics && typeof payload.metrics === "object" ? payload.metrics : null;
       pending.remove();
       if (!response.ok) {
         throw new Error(payload.error || `Ошибка сервера (${response.status})`);
@@ -165,6 +178,9 @@
     } catch (error) {
       pending.remove();
       const messageText = error instanceof Error ? error.message : "Не удалось получить ответ";
+      if (requestMetrics || requestWarning) {
+        updateConversationMetrics(requestMetrics, requestWarning);
+      }
       addErrorMessage(messageText);
       showToast("Запрос не выполнен. Проверьте сервер и API-ключ.");
     } finally {
@@ -213,6 +229,9 @@
     workspace.classList.add("has-messages");
     chat.classList.add("has-messages");
     messagesNode.append(createMessage(message));
+    if (message.role === "assistant" && message.metrics) {
+      updateConversationMetrics(message.metrics);
+    }
   }
 
   function renderTranscript() {
@@ -221,6 +240,8 @@
     chat.classList.toggle("has-messages", transcript.length > 0);
     emptyState.hidden = transcript.length > 0;
     transcript.forEach((message) => messagesNode.append(createMessage(message)));
+    const latestAssistant = [...transcript].reverse().find((message) => message.role === "assistant" && message.metrics);
+    updateConversationMetrics(latestAssistant ? latestAssistant.metrics : null);
     requestAnimationFrame(scrollToLatest);
   }
 
@@ -271,6 +292,10 @@
     }
     node.append(metricItem("время", formatDuration(metrics.durationMs)));
 
+    if (metrics.tokenCountAvailable) {
+      node.append(metricItem("запрос", `${formatNumber(metrics.currentRequestTokens)} ток.`));
+    }
+
     const totalTokens = Number(metrics.totalTokens) || 0;
     const tokenTitle = [
       `Вход: ${formatNumber(metrics.inputTokens)} токенов`,
@@ -285,7 +310,8 @@
     if (Number(metrics.reasoningTokens) > 0) {
       tokenTitle.push(`Рассуждение: ${formatNumber(metrics.reasoningTokens)}`);
     }
-    node.append(metricItem("токены", formatNumber(totalTokens), tokenTitle.join(" · ")));
+    node.append(metricItem("ответ", `${formatNumber(metrics.outputTokens)} ток.`));
+    node.append(metricItem("ход", `${formatNumber(totalTokens)} ток.`, tokenTitle.join(" · ")));
 
     const cost = Number(metrics.costUsd);
     const costText = metrics.costUsd === null || metrics.costUsd === undefined || !Number.isFinite(cost)
@@ -293,6 +319,48 @@
       : formatCost(cost);
     node.append(metricItem("стоимость", costText, "Ориентировочная стоимость токенов по публичным тарифам OpenAI; дополнительные сборы инструментов не учитываются."));
     return node;
+  }
+
+  function updateConversationMetrics(metrics, warning = "") {
+    if (!metrics && !warning) {
+      conversationStats.hidden = true;
+      conversationContextWarning.hidden = true;
+      conversationContextWarning.textContent = "";
+      return;
+    }
+
+    conversationStats.hidden = false;
+    const tokenCountAvailable = Boolean(metrics && metrics.tokenCountAvailable);
+    const maxInputTokens = tokenCountAvailable ? Math.max(0, Number(metrics.maxInputTokens) || 0) : 0;
+    const projectedInputTokens = tokenCountAvailable ? Math.max(0, Number(metrics.projectedInputTokens) || 0) : 0;
+    const percent = maxInputTokens > 0 ? Math.max(0, Number(metrics.contextUsagePercent) || 0) : 0;
+    const boundedPercent = Math.min(100, percent);
+
+    conversationContextPercent.textContent = maxInputTokens > 0
+      ? `${percent.toLocaleString("ru-RU", { maximumFractionDigits: 1 })}%`
+      : "—";
+    conversationContextValue.textContent = maxInputTokens > 0
+      ? `${formatNumber(projectedInputTokens)} / ${formatNumber(maxInputTokens)} ток.`
+      : "данные недоступны";
+    conversationContextFill.style.width = `${boundedPercent}%`;
+    conversationContextTrack.setAttribute("aria-valuenow", String(Math.round(boundedPercent)));
+    conversationContextTrack.classList.toggle("overflow", percent > 100);
+
+    conversationHistoryTokens.textContent = tokenCountAvailable
+      ? `${formatNumber(metrics.historyTokens)} ток.`
+      : "неизвестно";
+    conversationTotalTokens.textContent = metrics
+      ? `${formatNumber(metrics.cumulativeTotalTokens)} ток.`
+      : "неизвестно";
+
+    const cumulativeCost = Number(metrics && metrics.cumulativeCostUsd);
+    conversationTotalCost.textContent = metrics && metrics.cumulativeCostUsd !== null && metrics.cumulativeCostUsd !== undefined && Number.isFinite(cumulativeCost)
+      ? formatCost(cumulativeCost)
+      : "неизвестно";
+
+    const contextWarning = warning || (metrics && typeof metrics.contextWarning === "string" ? metrics.contextWarning : "");
+    conversationContextWarning.textContent = contextWarning;
+    conversationContextWarning.hidden = !contextWarning;
   }
 
   function metricItem(label, value, title = "") {
