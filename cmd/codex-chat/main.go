@@ -35,7 +35,6 @@ func run(logger *log.Logger) error {
 
 	apiClient, err := openai.NewClient(
 		cfg.APIKey,
-		cfg.Model,
 		cfg.BaseURL,
 		instructions,
 		&http.Client{Timeout: cfg.Timeout},

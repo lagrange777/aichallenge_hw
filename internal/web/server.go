@@ -14,7 +14,7 @@ import (
 	"sync"
 	"time"
 
-	"codex-chat-cli/internal/chat"
+	"codex-chat-cli/internal/agent"
 	"codex-chat-cli/internal/models"
 )
 
@@ -30,15 +30,15 @@ const (
 var staticFiles embed.FS
 
 type sessionEntry struct {
-	session  *chat.Session
+	agent    *agent.Agent
 	lastUsed time.Time
 }
 
 type server struct {
-	responder chat.Responder
-	model     string
-	models    []modelOption
-	allowed   map[string]bool
+	llm     agent.LLM
+	model   string
+	models  []modelOption
+	allowed map[string]bool
 
 	mu       sync.Mutex
 	sessions map[string]*sessionEntry
@@ -78,7 +78,7 @@ type responseMetrics struct {
 }
 
 // NewHandler returns the complete local web application handler.
-func NewHandler(responder chat.Responder, model string) http.Handler {
+func NewHandler(llm agent.LLM, model string) http.Handler {
 	model = strings.TrimSpace(model)
 	definitions := models.Available(model)
 	options := make([]modelOption, 0, len(definitions))
@@ -88,11 +88,11 @@ func NewHandler(responder chat.Responder, model string) http.Handler {
 		allowed[definition.ID] = true
 	}
 	app := &server{
-		responder: responder,
-		model:     model,
-		models:    options,
-		allowed:   allowed,
-		sessions:  make(map[string]*sessionEntry),
+		llm:      llm,
+		model:    model,
+		models:   options,
+		allowed:  allowed,
+		sessions: make(map[string]*sessionEntry),
 	}
 
 	mux := http.NewServeMux()
@@ -202,13 +202,13 @@ func (s *server) handleChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	session, err := s.sessionFor(w, r)
+	chatAgent, err := s.agentFor(w, r)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, apiResponse{Error: "Не удалось создать сессию"})
 		return
 	}
-	started := time.Now()
-	result, err := session.Ask(r.Context(), request.Message, chat.ResponseOptions{
+	result, err := chatAgent.Ask(r.Context(), agent.Request{
+		Message:             request.Message,
 		Model:               request.Model,
 		Format:              request.ResponseFormat,
 		LengthLimit:         request.LengthLimit,
@@ -219,12 +219,12 @@ func (s *server) handleChat(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadGateway, apiResponse{Error: err.Error()})
 		return
 	}
-	durationMS := time.Since(started).Milliseconds()
+	durationMS := result.Duration.Milliseconds()
 	if durationMS < 1 {
 		durationMS = 1
 	}
 	writeJSON(w, http.StatusOK, apiResponse{
-		Answer: result.Output,
+		Answer: result.Text,
 		Model:  result.Model,
 		Metrics: &responseMetrics{
 			DurationMS:        durationMS,
@@ -243,12 +243,12 @@ func (s *server) handleReset(w http.ResponseWriter, r *http.Request) {
 	if !allowAPIRequest(w, r, http.MethodPost) {
 		return
 	}
-	session, err := s.sessionFor(w, r)
+	chatAgent, err := s.agentFor(w, r)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, apiResponse{Error: "Не удалось создать сессию"})
 		return
 	}
-	session.Reset()
+	chatAgent.Reset()
 	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -301,7 +301,7 @@ func hasJSONContentType(r *http.Request) bool {
 	return err == nil && contentType == "application/json"
 }
 
-func (s *server) sessionFor(w http.ResponseWriter, r *http.Request) (*chat.Session, error) {
+func (s *server) agentFor(w http.ResponseWriter, r *http.Request) (*agent.Agent, error) {
 	now := time.Now()
 	if cookie, err := r.Cookie(sessionCookie); err == nil && validSessionID(cookie.Value) {
 		s.mu.Lock()
@@ -309,7 +309,7 @@ func (s *server) sessionFor(w http.ResponseWriter, r *http.Request) (*chat.Sessi
 		if entry != nil && now.Sub(entry.lastUsed) <= sessionTTL {
 			entry.lastUsed = now
 			s.mu.Unlock()
-			return entry.session, nil
+			return entry.agent, nil
 		}
 		delete(s.sessions, cookie.Value)
 		s.mu.Unlock()
@@ -319,7 +319,7 @@ func (s *server) sessionFor(w http.ResponseWriter, r *http.Request) (*chat.Sessi
 	if err != nil {
 		return nil, err
 	}
-	entry := &sessionEntry{session: chat.NewSession(s.responder), lastUsed: now}
+	entry := &sessionEntry{agent: agent.New(s.llm, s.model), lastUsed: now}
 
 	s.mu.Lock()
 	s.pruneSessions(now)
@@ -335,7 +335,7 @@ func (s *server) sessionFor(w http.ResponseWriter, r *http.Request) (*chat.Sessi
 		SameSite: http.SameSiteStrictMode,
 		Secure:   r.TLS != nil,
 	})
-	return entry.session, nil
+	return entry.agent, nil
 }
 
 func (s *server) pruneSessions(now time.Time) {

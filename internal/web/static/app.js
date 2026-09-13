@@ -2,6 +2,7 @@
   "use strict";
 
   const storageKey = "codex-chat-web-messages-v1";
+  const workspace = document.querySelector(".workspace");
   const chat = document.querySelector("#chat");
   const messagesNode = document.querySelector("#messages");
   const emptyState = document.querySelector("#empty-state");
@@ -49,15 +50,6 @@
   });
 
   newChatButton.addEventListener("click", resetChat);
-
-  document.querySelectorAll(".suggestion").forEach((button) => {
-    button.addEventListener("click", () => {
-      input.value = button.dataset.prompt || "";
-      resizeComposer();
-      updateSendButton();
-      input.focus();
-    });
-  });
 
   async function loadStatus() {
     try {
@@ -204,12 +196,14 @@
       transcript = transcript.slice(-80);
     }
     saveTranscript();
+    workspace.classList.add("has-messages");
     chat.classList.add("has-messages");
     messagesNode.append(createMessage(message));
   }
 
   function renderTranscript() {
     messagesNode.replaceChildren();
+    workspace.classList.toggle("has-messages", transcript.length > 0);
     chat.classList.toggle("has-messages", transcript.length > 0);
     emptyState.hidden = transcript.length > 0;
     transcript.forEach((message) => messagesNode.append(createMessage(message)));
