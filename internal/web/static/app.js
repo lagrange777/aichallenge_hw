@@ -12,8 +12,9 @@
   const lengthLimitInput = document.querySelector("#length-limit");
   const completionConditionInput = document.querySelector("#completion-condition");
   const temperatureInput = document.querySelector("#temperature");
-  const compressionEnabledInput = document.querySelector("#compression-enabled");
+  const contextStrategyInput = document.querySelector("#context-strategy");
   const contextKeepLastInput = document.querySelector("#context-keep-last");
+  const strategyDescription = document.querySelector("#strategy-description");
   const optionInputs = [responseFormatInput, lengthLimitInput, completionConditionInput, temperatureInput];
   const sendButton = document.querySelector("#send-button");
   const newChatButton = document.querySelector("#new-chat");
@@ -28,19 +29,34 @@
   const conversationHistoryTokens = document.querySelector("#conversation-history-tokens");
   const conversationTotalTokens = document.querySelector("#conversation-total-tokens");
   const conversationTotalCost = document.querySelector("#conversation-total-cost");
-  const conversationCompressionStatus = document.querySelector("#conversation-compression-status");
-  const conversationCompressionMessages = document.querySelector("#conversation-compression-messages");
-  const conversationCompressionTokens = document.querySelector("#conversation-compression-tokens");
-  const conversationSavedTokens = document.querySelector("#conversation-saved-tokens");
+  const conversationStrategy = document.querySelector("#conversation-strategy");
+  const conversationWindowMessages = document.querySelector("#conversation-window-messages");
+  const conversationFactsCount = document.querySelector("#conversation-facts-count");
+  const conversationActiveBranch = document.querySelector("#conversation-active-branch");
   const conversationContextWarning = document.querySelector("#conversation-context-warning");
+  const factsPanel = document.querySelector("#facts-panel");
+  const factsList = document.querySelector("#facts-list");
+  const branchPanel = document.querySelector("#branch-panel");
+  const createBranchesButton = document.querySelector("#create-branches");
+  const branchSelectLabel = document.querySelector(".branch-select");
+  const branchSelect = document.querySelector("#branch-select");
+  const checkpointLabel = document.querySelector("#checkpoint-label");
   const toast = document.querySelector("#toast");
 
   let transcript = [];
   let sending = false;
   let historyReady = false;
   let toastTimer = 0;
+  let contextState = {
+    strategy: { type: "sliding_window", keepLast: 10 },
+    facts: {},
+    branches: [],
+    activeBranchId: "",
+    checkpoint: null
+  };
 
   renderTranscript();
+  updateStrategySettings();
   resizeComposer();
   updateSendButton();
   loadStatus();
@@ -66,7 +82,9 @@
   });
 
   newChatButton.addEventListener("click", resetChat);
-  compressionEnabledInput.addEventListener("change", updateSessionSettings);
+  contextStrategyInput.addEventListener("change", updateStrategySettings);
+  createBranchesButton.addEventListener("click", createBranches);
+  branchSelect.addEventListener("change", () => switchBranch(branchSelect.value));
 
   async function loadStatus() {
     try {
@@ -111,15 +129,20 @@
         throw new Error(payload.error || "История недоступна");
       }
       const messages = Array.isArray(payload.messages) ? payload.messages : [];
-      if (payload.compression && typeof payload.compression === "object") {
-        compressionEnabledInput.checked = Boolean(payload.compression.enabled);
-        const keepLast = Number(payload.compression.keepLast);
+      if (payload.context && typeof payload.context === "object") {
+        applyContextState(payload.context);
+        const keepLast = Number(payload.context.strategy && payload.context.strategy.keepLast);
         if (Number.isInteger(keepLast) && keepLast >= 1 && keepLast <= 1000) {
           contextKeepLastInput.value = String(keepLast);
+        }
+        const strategy = payload.context.strategy && payload.context.strategy.type;
+        if (Array.from(contextStrategyInput.options).some((option) => option.value === strategy)) {
+          contextStrategyInput.value = strategy;
         }
       }
       transcript = messages.filter(isHistoryMessage);
       setSessionSettingsLocked(transcript.length > 0);
+      updateStrategySettings();
       renderTranscript();
     } catch (error) {
       showToast("Не удалось восстановить историю диалога");
@@ -146,7 +169,7 @@
       contextKeepLastInput.focus();
       return;
     }
-    responseOptions.compressionEnabled = compressionEnabledInput.checked;
+    responseOptions.contextStrategy = contextStrategyInput.value;
     responseOptions.contextKeepLast = contextKeepLast;
     const temperature = temperatureInput.value.trim();
     if (temperature !== "") {
@@ -191,6 +214,9 @@
       pending.remove();
       if (!response.ok) {
         throw new Error(payload.error || `Ошибка сервера (${response.status})`);
+      }
+      if (payload.context) {
+        applyContextState(payload.context);
       }
       addMessage({
         role: "assistant",
@@ -237,6 +263,11 @@
       input.value = "";
       optionInputs.forEach((field) => { field.value = ""; });
       responseOptionsDetails.open = false;
+      contextState = {
+        strategy: { type: contextStrategyInput.value, keepLast: Number(contextKeepLastInput.value) || 10 },
+        facts: {}, branches: [], activeBranchId: "", checkpoint: null
+      };
+      renderStrategyPanels();
       setSessionSettingsLocked(false);
       resizeComposer();
       updateSendButton();
@@ -267,6 +298,7 @@
     transcript.forEach((message) => messagesNode.append(createMessage(message)));
     const latestAssistant = [...transcript].reverse().find((message) => message.role === "assistant" && message.metrics);
     updateConversationMetrics(latestAssistant ? latestAssistant.metrics : null);
+    renderStrategyPanels();
     requestAnimationFrame(scrollToLatest);
   }
 
@@ -315,6 +347,9 @@
     if (model) {
       node.append(metricItem("модель", model));
     }
+    if (metrics.contextStrategy) {
+      node.append(metricItem("контекст", strategyLabel(metrics.contextStrategy)));
+    }
     node.append(metricItem("время", formatDuration(metrics.durationMs)));
 
     if (metrics.tokenCountAvailable) {
@@ -338,8 +373,8 @@
     node.append(metricItem("ответ", `${formatNumber(metrics.outputTokens)} ток.`));
     node.append(metricItem("ход", `${formatNumber(totalTokens)} ток.`, tokenTitle.join(" · ")));
 
-    if (metrics.compressionApplied) {
-      node.append(metricItem("сжатие", `−${formatNumber(metrics.savedInputTokens)} ток.`, "Сравнение полного локального транскрипта и запроса с summary."));
+    if (Number(metrics.memoryUpdates) > 0 && metrics.contextStrategy === "sticky_facts") {
+      node.append(metricItem("facts", `${formatNumber(metrics.factsCount)} · ${formatNumber(metrics.memoryTotalTokens)} ток.`));
     }
 
     const cost = Number(metrics.costUsd);
@@ -388,24 +423,14 @@
       ? formatCost(cumulativeCost)
       : "неизвестно";
 
-    const compressionEnabled = Boolean(metrics && metrics.compressionEnabled);
-    const compressionRuns = Math.max(0, Number(metrics && metrics.compressionRuns) || 0);
-    conversationCompressionStatus.textContent = compressionEnabled
-      ? (compressionRuns > 0 ? `${formatNumber(compressionRuns)} сжат.` : "включено")
-      : "выключено";
-    conversationCompressionMessages.textContent = metrics
-      ? `${formatNumber(metrics.summaryMessages)} / ${formatNumber(metrics.retainedMessages)} сообщ.`
-      : "0 / 0 сообщ.";
-    const beforeTokens = Math.max(0, Number(metrics && metrics.uncompressedInputTokens) || 0);
-    const afterTokens = Math.max(0, Number(metrics && metrics.compressedInputTokens) || 0);
-    conversationCompressionTokens.textContent = beforeTokens > 0
-      ? `${formatNumber(beforeTokens)} / ${formatNumber(afterTokens)} ток.`
-      : "—";
-    const savedTokens = Math.max(0, Number(metrics && metrics.savedInputTokens) || 0);
-    const savingsPercent = Math.max(0, Number(metrics && metrics.tokenSavingsPercent) || 0);
-    conversationSavedTokens.textContent = beforeTokens > 0
-      ? `${formatNumber(savedTokens)} ток. (${savingsPercent.toLocaleString("ru-RU", { maximumFractionDigits: 1 })}%)`
-      : "—";
+    const strategy = (metrics && metrics.contextStrategy) || (contextState.strategy && contextState.strategy.type) || "sliding_window";
+    conversationStrategy.textContent = strategyLabel(strategy);
+    conversationWindowMessages.textContent = metrics ? formatNumber(metrics.windowMessages) : "0";
+    conversationFactsCount.textContent = metrics ? formatNumber(metrics.factsCount) : "0";
+    const activeBranch = Array.isArray(contextState.branches)
+      ? contextState.branches.find((branch) => branch.id === contextState.activeBranchId)
+      : null;
+    conversationActiveBranch.textContent = activeBranch ? activeBranch.name : "—";
 
     const contextWarning = warning || (metrics && typeof metrics.contextWarning === "string" ? metrics.contextWarning : "");
     conversationContextWarning.textContent = contextWarning;
@@ -454,9 +479,7 @@
       normalized.cumulativeCostUsd = transcriptCost;
     }
 
-    normalized.compressionEnabled = compressionEnabledInput.checked;
-    const summaryMessages = Math.max(0, Number(normalized.summaryMessages) || 0);
-    normalized.retainedMessages = Math.max(0, committedMessages - summaryMessages);
+    normalized.retainedMessages = committedMessages;
     return normalized;
   }
 
@@ -537,12 +560,143 @@
   }
 
   function setSessionSettingsLocked(locked) {
-    compressionEnabledInput.disabled = locked;
-    contextKeepLastInput.disabled = locked || !compressionEnabledInput.checked;
+    contextStrategyInput.disabled = locked;
+    contextKeepLastInput.disabled = locked || contextStrategyInput.value === "branching";
   }
 
-  function updateSessionSettings() {
-    contextKeepLastInput.disabled = !compressionEnabledInput.checked;
+  function updateStrategySettings() {
+    const descriptions = {
+      sliding_window: "Последние N сообщений, остальное отбрасывается",
+      sticky_facts: "Facts key-value + последние N сообщений",
+      branching: "Две независимые ветки из одного checkpoint"
+    };
+    strategyDescription.textContent = descriptions[contextStrategyInput.value] || descriptions.sliding_window;
+    contextKeepLastInput.disabled = contextStrategyInput.disabled || contextStrategyInput.value === "branching";
+    if (transcript.length === 0) {
+      contextState.strategy = {
+        type: contextStrategyInput.value,
+        keepLast: Number(contextKeepLastInput.value) || 10
+      };
+      renderStrategyPanels();
+    }
+  }
+
+  function strategyLabel(strategy) {
+    return {
+      sliding_window: "Sliding Window",
+      sticky_facts: "Sticky Facts",
+      branching: "Branching"
+    }[strategy] || strategy;
+  }
+
+  function applyContextState(next) {
+    if (!next || typeof next !== "object") {
+      return;
+    }
+    contextState = {
+      strategy: next.strategy && typeof next.strategy === "object"
+        ? next.strategy
+        : { type: "sliding_window", keepLast: 10 },
+      facts: next.facts && typeof next.facts === "object" ? next.facts : {},
+      branches: Array.isArray(next.branches) ? next.branches : [],
+      activeBranchId: typeof next.activeBranchId === "string" ? next.activeBranchId : "",
+      checkpoint: next.checkpoint && typeof next.checkpoint === "object" ? next.checkpoint : null
+    };
+    renderStrategyPanels();
+  }
+
+  function renderStrategyPanels() {
+    const strategy = contextState.strategy && contextState.strategy.type;
+    factsPanel.hidden = strategy !== "sticky_facts" || transcript.length === 0;
+    factsList.replaceChildren();
+    Object.entries(contextState.facts || {}).sort(([first], [second]) => first.localeCompare(second, "ru")).forEach(([key, value]) => {
+      const row = document.createElement("div");
+      const name = document.createElement("dt");
+      const content = document.createElement("dd");
+      name.textContent = key;
+      content.textContent = value;
+      row.append(name, content);
+      factsList.append(row);
+    });
+    if (!factsPanel.hidden && factsList.childElementCount === 0) {
+      const empty = document.createElement("div");
+      empty.className = "strategy-empty";
+      empty.textContent = "Важные факты пока не выделены";
+      factsList.append(empty);
+    }
+
+    branchPanel.hidden = strategy !== "branching" || transcript.length === 0;
+    const branches = Array.isArray(contextState.branches) ? contextState.branches : [];
+    createBranchesButton.hidden = branches.length > 0;
+    branchSelectLabel.hidden = branches.length === 0;
+    branchSelect.replaceChildren();
+    branches.forEach((branch) => {
+      const option = document.createElement("option");
+      option.value = branch.id;
+      option.textContent = `${branch.name} · ${formatNumber(branch.messageCount)} сообщ.`;
+      branchSelect.append(option);
+    });
+    if (branches.some((branch) => branch.id === contextState.activeBranchId)) {
+      branchSelect.value = contextState.activeBranchId;
+    }
+    checkpointLabel.textContent = contextState.checkpoint
+      ? `Checkpoint: ${formatNumber(contextState.checkpoint.messageCount)} сообщений`
+      : "Сначала соберите общий контекст, затем создайте две ветки";
+  }
+
+  async function createBranches() {
+    if (sending) {
+      return;
+    }
+    createBranchesButton.disabled = true;
+    try {
+      const response = await fetch("/api/branches/create", {
+        method: "POST",
+        headers: { "X-Codex-Chat": "1" }
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload.error || "Не удалось создать ветки");
+      }
+      transcript = Array.isArray(payload.messages) ? payload.messages.filter(isHistoryMessage) : transcript;
+      applyContextState(payload.context);
+      renderTranscript();
+      showToast("Checkpoint сохранён, созданы две ветки");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Не удалось создать ветки");
+    } finally {
+      createBranchesButton.disabled = false;
+    }
+  }
+
+  async function switchBranch(branchId) {
+    if (sending || !branchId || branchId === contextState.activeBranchId) {
+      return;
+    }
+    branchSelect.disabled = true;
+    try {
+      const response = await fetch("/api/branches/switch", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Codex-Chat": "1"
+        },
+        body: JSON.stringify({ branchId })
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload.error || "Не удалось переключить ветку");
+      }
+      transcript = Array.isArray(payload.messages) ? payload.messages.filter(isHistoryMessage) : [];
+      applyContextState(payload.context);
+      renderTranscript();
+      showToast("Ветка переключена");
+    } catch (error) {
+      renderStrategyPanels();
+      showToast(error instanceof Error ? error.message : "Не удалось переключить ветку");
+    } finally {
+      branchSelect.disabled = false;
+    }
   }
 
   function scrollToLatest() {

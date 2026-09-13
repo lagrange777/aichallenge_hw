@@ -56,23 +56,38 @@
             <dd id="conversation-total-cost">неизвестно</dd>
           </div>
           <div>
-            <dt>Сжатие</dt>
-            <dd id="conversation-compression-status">ожидание</dd>
+            <dt>Стратегия</dt>
+            <dd id="conversation-strategy">—</dd>
           </div>
           <div>
-            <dt>Summary / последние</dt>
-            <dd id="conversation-compression-messages">0 / 0 сообщ.</dd>
+            <dt>Сообщений в окне</dt>
+            <dd id="conversation-window-messages">0</dd>
           </div>
           <div>
-            <dt>До / после</dt>
-            <dd id="conversation-compression-tokens">—</dd>
+            <dt>Facts</dt>
+            <dd id="conversation-facts-count">0</dd>
           </div>
           <div>
-            <dt>Экономия</dt>
-            <dd id="conversation-saved-tokens">—</dd>
+            <dt>Активная ветка</dt>
+            <dd id="conversation-active-branch">—</dd>
           </div>
         </dl>
         <p class="conversation-context-warning" id="conversation-context-warning" role="status" hidden></p>
+      </section>
+
+      <section class="strategy-panel" id="facts-panel" hidden>
+        <p class="sidebar-label">Sticky Facts</p>
+        <dl class="facts-list" id="facts-list"></dl>
+      </section>
+
+      <section class="strategy-panel branch-panel" id="branch-panel" hidden>
+        <p class="sidebar-label">Ветки диалога</p>
+        <button class="checkpoint-button" id="create-branches" type="button">Создать checkpoint и 2 ветки</button>
+        <label class="branch-select" for="branch-select" hidden>
+          <span>Текущая ветка</span>
+          <select id="branch-select"></select>
+        </label>
+        <span class="checkpoint-label" id="checkpoint-label"></span>
       </section>
 
       <div class="sidebar-footer">
@@ -117,16 +132,22 @@
                 <strong id="session-settings-title">Контекст сессии</strong>
                 <span>Настройки фиксируются после первого сообщения</span>
               </div>
-              <label class="compression-toggle" for="compression-enabled">
-                <input id="compression-enabled" type="checkbox" checked>
-                <span aria-hidden="true"></span>
-                <b>Сжатие</b>
-              </label>
             </div>
+            <label class="strategy-select" for="context-strategy">
+              <span>
+                <strong>Стратегия</strong>
+                <small id="strategy-description">Последние N сообщений, остальное отбрасывается</small>
+              </span>
+              <select id="context-strategy">
+                <option value="sliding_window">Sliding Window</option>
+                <option value="sticky_facts">Sticky Facts</option>
+                <option value="branching">Branching</option>
+              </select>
+            </label>
             <label class="session-number" for="context-keep-last">
               <span>
-                <strong>Последние сообщения без изменений</strong>
-                <small>Остальная история заменяется summary</small>
+                <strong>Последние N сообщений</strong>
+                <small>Сообщение пользователя и ответ считаются отдельно</small>
               </span>
               <input id="context-keep-last" type="number" min="1" max="1000" step="1" value="10" inputmode="numeric">
             </label>

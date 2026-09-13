@@ -32,6 +32,7 @@ type Request struct {
 	CompletionCondition string
 	Temperature         *float64
 	CompressionEnabled  *bool
+	ContextStrategy     string
 	ContextKeepLast     *int
 }
 
@@ -107,12 +108,18 @@ type Message struct {
 
 // ConversationState is the complete state needed to restore an Agent.
 type ConversationState struct {
-	PreviousResponseID string               `json:"previousResponseId,omitempty"`
-	ActiveModel        string               `json:"activeModel,omitempty"`
-	Messages           []Message            `json:"messages"`
-	Summary            *ConversationSummary `json:"summary,omitempty"`
-	Compression        *CompressionConfig   `json:"compression,omitempty"`
-	UpdatedAt          time.Time            `json:"updatedAt"`
+	PreviousResponseID string                 `json:"previousResponseId,omitempty"`
+	ActiveModel        string                 `json:"activeModel,omitempty"`
+	Messages           []Message              `json:"messages"`
+	Summary            *ConversationSummary   `json:"summary,omitempty"`
+	Compression        *CompressionConfig     `json:"compression,omitempty"`
+	Strategy           *StrategyConfig        `json:"strategy,omitempty"`
+	Facts              map[string]string      `json:"facts,omitempty"`
+	Memory             MemoryUsage            `json:"memory,omitempty"`
+	Branches           map[string]BranchState `json:"branches,omitempty"`
+	ActiveBranchID     string                 `json:"activeBranchId,omitempty"`
+	Checkpoint         *Checkpoint            `json:"checkpoint,omitempty"`
+	UpdatedAt          time.Time              `json:"updatedAt"`
 }
 
 // ErrHistoryNotFound indicates that a conversation has not been saved yet.
@@ -137,16 +144,28 @@ type Agent struct {
 	messages           []Message
 	summary            ConversationSummary
 	compression        CompressionConfig
+	strategy           StrategyConfig
+	defaultStrategy    StrategyConfig
+	facts              map[string]string
+	memory             MemoryUsage
+	branches           map[string]BranchState
+	activeBranchID     string
+	checkpoint         *Checkpoint
 	history            History
 	conversationID     string
 }
 
 // New creates an independent agent conversation.
 func New(llm LLM, defaultModel string, options ...Option) *Agent {
+	defaultStrategy := normalizeStrategyConfig(StrategyConfig{Type: StrategySlidingWindow})
 	a := &Agent{
-		llm:          llm,
-		defaultModel: strings.TrimSpace(defaultModel),
-		compression:  normalizeCompressionConfig(CompressionConfig{}),
+		llm:             llm,
+		defaultModel:    strings.TrimSpace(defaultModel),
+		compression:     normalizeCompressionConfig(CompressionConfig{}),
+		strategy:        defaultStrategy,
+		defaultStrategy: defaultStrategy,
+		facts:           make(map[string]string),
+		branches:        make(map[string]BranchState),
 	}
 	if counter, ok := llm.(TokenCounter); ok {
 		a.tokenCounter = counter
@@ -182,11 +201,29 @@ func NewPersistent(llm LLM, defaultModel, conversationID string, history History
 	a.previousResponseID = strings.TrimSpace(state.PreviousResponseID)
 	a.activeModel = strings.TrimSpace(state.ActiveModel)
 	a.messages = cloneMessages(state.Messages)
+	if state.Strategy != nil {
+		a.strategy = normalizeStrategyConfig(*state.Strategy)
+	} else if state.Compression != nil {
+		// Histories created by the previous summary-only version migrate to a
+		// plain sliding window so new sessions never depend on a summary.
+		a.strategy = normalizeStrategyConfig(StrategyConfig{Type: StrategySlidingWindow, KeepLast: state.Compression.KeepLast})
+		a.previousResponseID = ""
+	}
+	a.facts = cloneFacts(state.Facts)
+	a.memory = cloneMemoryUsage(state.Memory)
+	a.branches = cloneBranches(state.Branches)
+	a.activeBranchID = strings.TrimSpace(state.ActiveBranchID)
+	a.checkpoint = cloneCheckpoint(state.Checkpoint)
 	if state.Summary != nil {
 		a.summary = normalizeSummary(*state.Summary, len(a.messages))
 	}
 	if state.Compression != nil {
 		a.compression = normalizeCompressionConfig(*state.Compression)
+	}
+	if a.strategy.Type == StrategyBranching && a.activeBranchID != "" {
+		if branch, ok := a.branches[a.activeBranchID]; ok {
+			a.restoreBranchLocked(branch)
+		}
 	}
 	if !a.compression.Enabled && a.summary.MessageCount > 0 {
 		a.previousResponseID = ""
@@ -215,16 +252,45 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 	request.Format = strings.TrimSpace(request.Format)
 	request.LengthLimit = strings.TrimSpace(request.LengthLimit)
 	request.CompletionCondition = strings.TrimSpace(request.CompletionCondition)
-	if err := a.applySessionCompression(request.CompressionEnabled, request.ContextKeepLast); err != nil {
+	if request.CompressionEnabled != nil {
+		if err := a.applySessionCompression(request.CompressionEnabled, request.ContextKeepLast); err != nil {
+			return Response{}, err
+		}
+	} else if err := a.applySessionStrategy(request.ContextStrategy, request.ContextKeepLast); err != nil {
 		return Response{}, err
 	}
 
-	prepared := a.prepareCompression(ctx, request.Model)
-	previousResponseID := a.previousResponseID
+	prepared := preparedCompression{Summary: cloneSummary(a.summary)}
+	preparedFacts := cloneFacts(a.facts)
+	preparedMemory := cloneMemoryUsage(a.memory)
+	strategyWarning := ""
+	previousResponseID := ""
 	var replayHistory []ContextMessage
-	if len(a.messages) > 0 && (prepared.Applied || previousResponseID == "" || request.Model != a.activeModel) {
-		previousResponseID = ""
-		replayHistory = a.requestHistory(prepared.Summary)
+	var metricSummary *ConversationSummary
+	switch a.strategy.Type {
+	case StrategySummary:
+		prepared = a.prepareCompression(ctx, request.Model)
+		metricSummary = &prepared.Summary
+		previousResponseID = a.previousResponseID
+		if len(a.messages) > 0 && (prepared.Applied || previousResponseID == "" || request.Model != a.activeModel) {
+			previousResponseID = ""
+			replayHistory = a.requestHistory(prepared.Summary)
+		}
+	case StrategyStickyFacts:
+		var delta MemoryUsage
+		preparedFacts, delta, strategyWarning = a.updateFacts(ctx, request.Model, request.Message)
+		preparedMemory = mergeMemoryUsage(a.memory, delta)
+		replayHistory = a.factsHistory(preparedFacts)
+	case StrategyBranching:
+		previousResponseID = a.previousResponseID
+		if len(a.messages) > 0 && (previousResponseID == "" || request.Model != a.activeModel) {
+			previousResponseID = ""
+			replayHistory = contextMessages(a.messages)
+		}
+	case StrategySlidingWindow:
+		replayHistory = a.windowHistory()
+	default:
+		return Response{}, fmt.Errorf("unsupported context strategy %q", a.strategy.Type)
 	}
 	completionRequest := CompletionRequest{
 		Input:               request.Message,
@@ -238,15 +304,27 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 	}
 	response := Response{
 		Model:        request.Model,
-		TokenMetrics: a.measureTokens(ctx, completionRequest, &prepared.Summary),
+		TokenMetrics: a.measureTokens(ctx, completionRequest, metricSummary),
 	}
+	response.TokenMetrics.ContextStrategy = string(a.strategy.Type)
+	response.TokenMetrics.WindowMessages = countConversationMessages(replayHistory)
+	if a.strategy.Type == StrategyBranching {
+		response.TokenMetrics.WindowMessages = len(a.messages)
+	}
+	response.TokenMetrics.FactsCount = len(preparedFacts)
+	response.TokenMetrics.ActiveBranchID = a.activeBranchID
+	response.TokenMetrics.MemoryUpdates = preparedMemory.Updates
+	response.TokenMetrics.MemoryInputTokens = preparedMemory.InputTokens
+	response.TokenMetrics.MemoryOutputTokens = preparedMemory.OutputTokens
+	response.TokenMetrics.MemoryTotalTokens = preparedMemory.TotalTokens
 	response.TokenMetrics.CompressionApplied = prepared.Applied
 	response.TokenMetrics.CompressionWarning = prepared.Warning
-	if prepared.Warning != "" {
+	combinedWarning := strings.TrimSpace(strings.Join([]string{prepared.Warning, strategyWarning}, " "))
+	if combinedWarning != "" {
 		if response.TokenMetrics.ContextWarning == "" {
-			response.TokenMetrics.ContextWarning = prepared.Warning
+			response.TokenMetrics.ContextWarning = combinedWarning
 		} else {
-			response.TokenMetrics.ContextWarning += " " + prepared.Warning
+			response.TokenMetrics.ContextWarning += " " + combinedWarning
 		}
 	}
 	completion, err := a.llm.Complete(ctx, completionRequest)
@@ -270,6 +348,15 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 		response.CostUSD = &cost
 	}
 	response.TokenMetrics = a.completeTokenMetrics(response.TokenMetrics, response.Usage, response.CostUSD)
+	if preparedMemory.TotalTokens > a.memory.TotalTokens {
+		deltaTotal := preparedMemory.TotalTokens - a.memory.TotalTokens
+		deltaInput := preparedMemory.InputTokens - a.memory.InputTokens
+		deltaOutput := preparedMemory.OutputTokens - a.memory.OutputTokens
+		response.TokenMetrics.CumulativeInputTokens += max(0, deltaInput)
+		response.TokenMetrics.CumulativeOutputTokens += max(0, deltaOutput)
+		response.TokenMetrics.CumulativeTotalTokens += max(0, deltaTotal)
+		response.TokenMetrics.CumulativeCostUSD = addKnownCosts(response.TokenMetrics.CumulativeCostUSD, costDifference(a.memory.CostUSD, preparedMemory.CostUSD))
+	}
 	// The token snapshot is prepared before the model call. The visible
 	// conversation counters, however, describe the state after this successful
 	// turn, which adds both the user request and the assistant response.
@@ -299,6 +386,15 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 			},
 		},
 	)
+	nextBranches := cloneBranches(a.branches)
+	if a.strategy.Type == StrategyBranching && a.activeBranchID != "" {
+		branch := nextBranches[a.activeBranchID]
+		branch.PreviousResponseID = completion.ResponseID
+		branch.ActiveModel = request.Model
+		branch.Messages = cloneMessages(nextMessages)
+		branch.UpdatedAt = time.Now().UTC()
+		nextBranches[a.activeBranchID] = branch
+	}
 	if a.history != nil {
 		state := ConversationState{
 			PreviousResponseID: completion.ResponseID,
@@ -306,6 +402,12 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 			Messages:           nextMessages,
 			Summary:            summaryPointer(prepared.Summary),
 			Compression:        compressionPointer(a.compression),
+			Strategy:           strategyPointer(a.strategy),
+			Facts:              cloneFacts(preparedFacts),
+			Memory:             cloneMemoryUsage(preparedMemory),
+			Branches:           nextBranches,
+			ActiveBranchID:     a.activeBranchID,
+			Checkpoint:         cloneCheckpoint(a.checkpoint),
 			UpdatedAt:          time.Now().UTC(),
 		}
 		if err := a.history.Save(a.conversationID, state); err != nil {
@@ -316,7 +418,20 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 	a.activeModel = request.Model
 	a.messages = nextMessages
 	a.summary = prepared.Summary
+	a.facts = preparedFacts
+	a.memory = preparedMemory
+	a.branches = nextBranches
 	return response, nil
+}
+
+func countConversationMessages(history []ContextMessage) int {
+	count := 0
+	for _, message := range history {
+		if message.Role == "user" || message.Role == "assistant" {
+			count++
+		}
+	}
+	return count
 }
 
 func contextMessages(messages []Message) []ContextMessage {
@@ -345,6 +460,12 @@ func (a *Agent) Reset() error {
 	a.activeModel = ""
 	a.messages = nil
 	a.summary = ConversationSummary{}
+	a.strategy = a.defaultStrategy
+	a.facts = make(map[string]string)
+	a.memory = MemoryUsage{}
+	a.branches = make(map[string]BranchState)
+	a.activeBranchID = ""
+	a.checkpoint = nil
 	return nil
 }
 

@@ -98,7 +98,7 @@ func TestServesWebApplication(t *testing.T) {
 		contentType string
 		contains    string
 	}{
-		{path: "/", contentType: "text/html", contains: `id="session-settings"`},
+		{path: "/", contentType: "text/html", contains: `id="context-strategy"`},
 		{path: "/app.css", contentType: "text/css", contains: ".app-shell"},
 		{path: "/app.js", contentType: "text/javascript", contains: "sendMessage"},
 		{path: "/markdown.js", contentType: "text/javascript", contains: "CodexMarkdown"},
@@ -155,8 +155,12 @@ func TestChatCarriesConversationState(t *testing.T) {
 
 	llm.mu.Lock()
 	defer llm.mu.Unlock()
-	if len(llm.requests) != 2 || llm.requests[0].PreviousResponseID != "" || llm.requests[1].PreviousResponseID != "resp_1" {
+	if len(llm.requests) != 2 || llm.requests[0].PreviousResponseID != "" || llm.requests[1].PreviousResponseID != "" {
 		t.Fatalf("requests = %#v", llm.requests)
+	}
+	wantHistory := []agent.ContextMessage{{Role: "user", Content: "first"}, {Role: "assistant", Content: "reply to first"}}
+	if !reflect.DeepEqual(llm.requests[1].History, wantHistory) {
+		t.Fatalf("second request history = %#v, want %#v", llm.requests[1].History, wantHistory)
 	}
 
 	var payload apiResponse
@@ -171,22 +175,21 @@ func TestChatCarriesConversationState(t *testing.T) {
 	}
 }
 
-func TestCompressionSettingsAreChosenBeforeSessionAndThenLocked(t *testing.T) {
+func TestContextStrategyIsChosenBeforeSessionAndThenLocked(t *testing.T) {
 	llm := &fakeLLM{}
-	handler := NewHandler(llm, "test-model", nil, agent.WithCompression(agent.CompressionConfig{
-		Enabled:   true,
-		KeepLast:  10,
-		BatchSize: 10,
+	handler := NewHandler(llm, "test-model", nil, agent.WithContextStrategy(agent.StrategyConfig{
+		Type:     agent.StrategySlidingWindow,
+		KeepLast: 10,
 	}))
-	first := performChatBody(handler, nil, `{"message":"first","compressionEnabled":false,"contextKeepLast":6}`)
+	first := performChatBody(handler, nil, `{"message":"first","contextStrategy":"sticky_facts","contextKeepLast":4}`)
 	if first.Code != http.StatusOK {
 		t.Fatalf("first status = %d, body = %s", first.Code, first.Body.String())
 	}
 	cookie := sessionCookieFrom(t, first)
 
-	changed := performChatBody(handler, cookie, `{"message":"second","compressionEnabled":true,"contextKeepLast":6}`)
+	changed := performChatBody(handler, cookie, `{"message":"second","contextStrategy":"sliding_window","contextKeepLast":4}`)
 	if changed.Code != http.StatusConflict {
-		t.Fatalf("changed settings status = %d, want %d; body = %s", changed.Code, http.StatusConflict, changed.Body.String())
+		t.Fatalf("changed strategy status = %d, want %d; body = %s", changed.Code, http.StatusConflict, changed.Body.String())
 	}
 
 	historyRequest := httptest.NewRequest(http.MethodGet, "/api/history", nil)
@@ -197,14 +200,64 @@ func TestCompressionSettingsAreChosenBeforeSessionAndThenLocked(t *testing.T) {
 	if err := json.Unmarshal(historyResponse.Body.Bytes(), &payload); err != nil {
 		t.Fatalf("decode history response: %v", err)
 	}
-	if payload.Compression == nil || payload.Compression.Enabled || payload.Compression.KeepLast != 6 {
-		t.Fatalf("compression settings = %#v", payload.Compression)
+	if payload.Context == nil || payload.Context.Strategy.Type != agent.StrategyStickyFacts || payload.Context.Strategy.KeepLast != 4 {
+		t.Fatalf("* context strategy = %#v", payload.Context)
+	}
+}
+
+func TestBranchingAPIKeepsBranchesIndependent(t *testing.T) {
+	llm := &fakeLLM{}
+	handler := NewHandler(llm, "test-model", nil)
+	first := performChatBody(handler, nil, `{"message":"common","contextStrategy":"branching","contextKeepLast":10}`)
+	if first.Code != http.StatusOK {
+		t.Fatalf("first status = %d, body = %s", first.Code, first.Body.String())
+	}
+	cookie := sessionCookieFrom(t, first)
+
+	createRequest := httptest.NewRequest(http.MethodPost, "/api/branches/create", nil)
+	createRequest.Header.Set("X-Codex-Chat", "1")
+	createRequest.AddCookie(cookie)
+	createResponse := httptest.NewRecorder()
+	handler.ServeHTTP(createResponse, createRequest)
+	if createResponse.Code != http.StatusOK {
+		t.Fatalf("create branches status = %d, body = %s", createResponse.Code, createResponse.Body.String())
+	}
+
+	branchA := performChat(handler, cookie, "only A")
+	if branchA.Code != http.StatusOK {
+		t.Fatalf("branch A status = %d", branchA.Code)
+	}
+	switchRequest := httptest.NewRequest(http.MethodPost, "/api/branches/switch", strings.NewReader(`{"branchId":"branch-b"}`))
+	switchRequest.Header.Set("Content-Type", "application/json")
+	switchRequest.Header.Set("X-Codex-Chat", "1")
+	switchRequest.AddCookie(cookie)
+	switchResponse := httptest.NewRecorder()
+	handler.ServeHTTP(switchResponse, switchRequest)
+	if switchResponse.Code != http.StatusOK {
+		t.Fatalf("switch status = %d, body = %s", switchResponse.Code, switchResponse.Body.String())
+	}
+	var switched apiResponse
+	if err := json.Unmarshal(switchResponse.Body.Bytes(), &switched); err != nil {
+		t.Fatalf("decode switch response: %v", err)
+	}
+	if len(switched.Messages) != 2 || switched.Context == nil || switched.Context.ActiveBranchID != "branch-b" {
+		t.Fatalf("branch B state = %#v", switched)
+	}
+
+	branchB := performChat(handler, cookie, "only B")
+	if branchB.Code != http.StatusOK {
+		t.Fatalf("branch B status = %d", branchB.Code)
+	}
+	llm.mu.Lock()
+	defer llm.mu.Unlock()
+	if len(llm.requests) != 3 || llm.requests[1].PreviousResponseID != "resp_1" || llm.requests[2].PreviousResponseID != "resp_1" {
+		t.Fatalf("independent branch requests = %#v", llm.requests)
 	}
 }
 
 func TestConversationSurvivesApplicationRestart(t *testing.T) {
 	llm := &fakeLLM{respond: func(request agent.CompletionRequest) string {
-		if request.Input == "Как меня зовут?" && request.PreviousResponseID == "resp_1" {
+		if request.Input == "Как меня зовут?" && len(request.History) >= 2 && request.History[0].Content == "Меня зовут Мила" {
 			return "Вас зовут Мила"
 		}
 		return "Запомнил"
@@ -240,7 +293,7 @@ func TestConversationSurvivesApplicationRestart(t *testing.T) {
 	}
 
 	llm.mu.Lock()
-	if len(llm.requests) != 2 || llm.requests[1].PreviousResponseID != "resp_1" {
+	if len(llm.requests) != 2 || llm.requests[1].PreviousResponseID != "" || len(llm.requests[1].History) != 2 {
 		llm.mu.Unlock()
 		t.Fatalf("requests after restart = %#v", llm.requests)
 	}
@@ -331,6 +384,7 @@ func TestAPIValidation(t *testing.T) {
 		{name: "temperature above range", method: http.MethodPost, header: true, contentType: "application/json", body: `{"message":"hi","temperature":2.1}`, want: http.StatusBadRequest},
 		{name: "context keep below range", method: http.MethodPost, header: true, contentType: "application/json", body: `{"message":"hi","contextKeepLast":0}`, want: http.StatusBadRequest},
 		{name: "context keep above range", method: http.MethodPost, header: true, contentType: "application/json", body: `{"message":"hi","contextKeepLast":1001}`, want: http.StatusBadRequest},
+		{name: "unknown context strategy", method: http.MethodPost, header: true, contentType: "application/json", body: `{"message":"hi","contextStrategy":"unknown"}`, want: http.StatusBadRequest},
 		{name: "unknown model", method: http.MethodPost, header: true, contentType: "application/json", body: `{"message":"hi","model":"unknown"}`, want: http.StatusBadRequest},
 		{name: "cross origin", method: http.MethodPost, header: true, origin: "https://example.org", contentType: "application/json", body: `{\"message\":\"hi\"}`, want: http.StatusForbidden},
 	}

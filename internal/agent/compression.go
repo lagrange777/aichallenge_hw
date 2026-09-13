@@ -31,6 +31,9 @@ type Option func(*Agent)
 func WithCompression(config CompressionConfig) Option {
 	return func(a *Agent) {
 		a.compression = normalizeCompressionConfig(config)
+		legacy := normalizeStrategyConfig(StrategyConfig{Type: StrategySummary, KeepLast: a.compression.KeepLast})
+		a.strategy = legacy
+		a.defaultStrategy = legacy
 	}
 }
 
@@ -198,6 +201,7 @@ func (a *Agent) applySessionCompression(enabled *bool, keepLast *int) error {
 		return ErrCompressionLocked
 	}
 	a.compression = next
+	a.strategy = normalizeStrategyConfig(StrategyConfig{Type: StrategySummary, KeepLast: next.KeepLast})
 	return nil
 }
 

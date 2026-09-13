@@ -297,6 +297,91 @@ select:focus-visible {
   display: none;
 }
 
+.strategy-panel {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.strategy-panel[hidden] {
+  display: none;
+}
+
+.facts-list {
+  display: grid;
+  gap: 8px;
+  margin: 10px 0 0;
+}
+
+.facts-list > div {
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.facts-list dt {
+  overflow: hidden;
+  color: #aeb6b1;
+  font: 600 10px var(--mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.facts-list dd {
+  margin: 4px 0 0;
+  color: #d8dedb;
+  font-size: 11px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.strategy-empty,
+.checkpoint-label {
+  display: block;
+  color: #909994;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.checkpoint-button,
+.branch-select select {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 9px;
+  color: #e4e9e6;
+  background: var(--sidebar-soft);
+  font: 600 11px var(--sans);
+}
+
+.checkpoint-button {
+  margin: 10px 0 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+
+.checkpoint-button:hover {
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+.branch-select {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0 8px;
+  color: #9ba49f;
+  font-size: 10px;
+}
+
+.branch-select[hidden] {
+  display: none;
+}
+
+.branch-select select {
+  padding: 0 9px;
+}
+
 .sidebar-footer {
   margin-top: auto;
   padding: 14px 8px 0;
@@ -529,6 +614,48 @@ select:focus-visible {
   gap: 18px;
 }
 
+.strategy-select,
+.session-number {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.strategy-select {
+  margin-top: 14px;
+}
+
+.strategy-select > span,
+.session-number > span {
+  display: grid;
+  gap: 3px;
+  text-align: left;
+}
+
+.strategy-select strong,
+.session-number strong {
+  font-size: 12px;
+}
+
+.strategy-select small,
+.session-number small {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.strategy-select select {
+  width: 168px;
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  color: var(--ink);
+  background: var(--surface);
+  font: 600 12px var(--sans);
+}
+
 .session-settings-head > div,
 .session-number > span {
   display: grid;
@@ -547,60 +674,6 @@ select:focus-visible {
   color: var(--muted);
   font-size: 11px;
   line-height: 1.4;
-}
-
-.compression-toggle {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-}
-
-.compression-toggle input {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-}
-
-.compression-toggle > span {
-  position: relative;
-  width: 34px;
-  height: 20px;
-  border-radius: 999px;
-  background: #b9beba;
-  transition: background 160ms ease;
-}
-
-.compression-toggle > span::after {
-  position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
-  content: "";
-  transition: transform 160ms ease;
-}
-
-.compression-toggle input:checked + span {
-  background: var(--accent);
-}
-
-.compression-toggle input:checked + span::after {
-  transform: translateX(14px);
-}
-
-.compression-toggle input:focus-visible + span {
-  outline: 3px solid rgba(23, 132, 95, 0.2);
-  outline-offset: 2px;
-}
-
-.compression-toggle b {
-  font-size: 12px;
-  font-weight: 600;
 }
 
 .session-number {
@@ -627,7 +700,7 @@ select:focus-visible {
 }
 
 .session-number input:disabled,
-.compression-toggle:has(input:disabled) {
+.strategy-select select:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }

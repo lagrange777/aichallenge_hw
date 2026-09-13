@@ -26,6 +26,32 @@ type compressionLLM struct {
 	calls    int
 }
 
+type factsLLM struct {
+	requests []CompletionRequest
+	calls    int
+}
+
+func (f *factsLLM) Complete(_ context.Context, request CompletionRequest) (CompletionResponse, error) {
+	f.requests = append(f.requests, request)
+	f.calls++
+	output := "answer"
+	usage := Usage{InputTokens: 40, OutputTokens: 10, TotalTokens: 50}
+	if request.Instructions == factsInstructions {
+		output = `{"goal":"подготовить ТЗ","constraint":"только web"}`
+		usage = Usage{InputTokens: 20, OutputTokens: 8, TotalTokens: 28}
+	}
+	return CompletionResponse{
+		ResponseID: "resp_" + string(rune('0'+f.calls)),
+		Output:     output,
+		Model:      request.Model,
+		Usage:      usage,
+	}, nil
+}
+
+func (f *factsLLM) CountTokens(_ context.Context, request CompletionRequest) (TokenCounts, error) {
+	return TokenCounts{CurrentRequestTokens: 10, ProjectedInputTokens: 10 + len(request.History)*20}, nil
+}
+
 func (f *compressionLLM) Complete(_ context.Context, request CompletionRequest) (CompletionResponse, error) {
 	f.requests = append(f.requests, request)
 	f.calls++
@@ -103,7 +129,7 @@ func (f *fakeLLM) Complete(_ context.Context, request CompletionRequest) (Comple
 
 func TestAgentCarriesAndResetsResponseID(t *testing.T) {
 	llm := &fakeLLM{}
-	agent := New(llm, "model-a")
+	agent := New(llm, "model-a", WithContextStrategy(StrategyConfig{Type: StrategyBranching}))
 
 	if _, err := agent.Ask(context.Background(), Request{Message: "first"}); err != nil {
 		t.Fatalf("first Ask() error = %v", err)
@@ -128,7 +154,7 @@ func TestAgentCarriesAndResetsResponseID(t *testing.T) {
 
 func TestAgentKeepsStateAfterError(t *testing.T) {
 	llm := &fakeLLM{}
-	agent := New(llm, "model-a")
+	agent := New(llm, "model-a", WithContextStrategy(StrategyConfig{Type: StrategyBranching}))
 
 	if _, err := agent.Ask(context.Background(), Request{Message: "first"}); err != nil {
 		t.Fatalf("first Ask() error = %v", err)
@@ -171,7 +197,7 @@ func TestAgentNormalizesRequestAndBuildsResponse(t *testing.T) {
 
 func TestAgentReplaysHistoryAfterModelChange(t *testing.T) {
 	llm := &fakeLLM{}
-	agent := New(llm, "model-a")
+	agent := New(llm, "model-a", WithContextStrategy(StrategyConfig{Type: StrategyBranching}))
 
 	if _, err := agent.Ask(context.Background(), Request{Message: "first", Model: "model-a"}); err != nil {
 		t.Fatalf("first Ask() error = %v", err)
@@ -281,6 +307,214 @@ func TestAgentContinuesWhenTokenCountingFails(t *testing.T) {
 	}
 	if response.TokenMetrics.SummaryMessages != 0 || response.TokenMetrics.RetainedMessages != 2 {
 		t.Fatalf("conversation message counters = %#v, want 0 summary and 2 retained", response.TokenMetrics)
+	}
+}
+
+func TestSlidingWindowAlwaysSendsOnlyLastNMessages(t *testing.T) {
+	llm := &fakeLLM{}
+	a := New(llm, "model-a", WithContextStrategy(StrategyConfig{Type: StrategySlidingWindow, KeepLast: 2}))
+
+	for _, message := range []string{"first", "second", "third"} {
+		if _, err := a.Ask(context.Background(), Request{Message: message}); err != nil {
+			t.Fatalf("Ask(%q) error = %v", message, err)
+		}
+	}
+
+	if len(llm.requests) != 3 {
+		t.Fatalf("requests = %d, want 3", len(llm.requests))
+	}
+	for index, request := range llm.requests {
+		if request.PreviousResponseID != "" {
+			t.Fatalf("request %d unexpectedly continues a hidden API chain: %#v", index, request)
+		}
+	}
+	want := []ContextMessage{{Role: "user", Content: "second"}, {Role: "assistant", Content: "answer"}}
+	if !reflect.DeepEqual(llm.requests[2].History, want) {
+		t.Fatalf("third request history = %#v, want %#v", llm.requests[2].History, want)
+	}
+}
+
+func TestStickyFactsUpdatesMemoryAfterEveryUserMessage(t *testing.T) {
+	llm := &factsLLM{}
+	history := &memoryHistory{}
+	a, err := NewPersistent(llm, "gpt-5.3-codex", "conversation", history, WithContextStrategy(StrategyConfig{Type: StrategyStickyFacts, KeepLast: 2}))
+	if err != nil {
+		t.Fatalf("NewPersistent() error = %v", err)
+	}
+
+	for _, message := range []string{"Цель — подготовить ТЗ", "Ограничение — только web"} {
+		if _, err := a.Ask(context.Background(), Request{Message: message}); err != nil {
+			t.Fatalf("Ask(%q) error = %v", message, err)
+		}
+	}
+
+	if len(llm.requests) != 4 {
+		t.Fatalf("requests = %d, want 4 (facts + answer for each message)", len(llm.requests))
+	}
+	for _, index := range []int{0, 2} {
+		if llm.requests[index].Instructions != factsInstructions {
+			t.Fatalf("request %d is not a facts update: %#v", index, llm.requests[index])
+		}
+	}
+	for _, index := range []int{1, 3} {
+		request := llm.requests[index]
+		if request.PreviousResponseID != "" || len(request.History) == 0 || request.History[0].Role != "developer" || !strings.Contains(request.History[0].Content, `"goal":"подготовить ТЗ"`) {
+			t.Fatalf("answer request %d does not contain facts: %#v", index, request)
+		}
+	}
+	snapshot := a.Snapshot()
+	if len(snapshot.Facts) != 2 || snapshot.Facts["constraint"] != "только web" {
+		t.Fatalf("facts = %#v", snapshot.Facts)
+	}
+	last := a.Messages()[3].Metrics
+	if last == nil || last.MemoryUpdates != 2 || last.MemoryTotalTokens != 56 {
+		t.Fatalf("memory metrics = %#v", last)
+	}
+	restarted, err := NewPersistent(llm, "gpt-5.3-codex", "conversation", history)
+	if err != nil {
+		t.Fatalf("restart error = %v", err)
+	}
+	if restarted.Snapshot().Facts["constraint"] != "только web" || restarted.Snapshot().Strategy.Type != StrategyStickyFacts {
+		t.Fatalf("restored strategy state = %#v", restarted.Snapshot())
+	}
+}
+
+func TestBranchingCreatesIndependentContinuationsFromCheckpoint(t *testing.T) {
+	llm := &fakeLLM{}
+	history := &memoryHistory{}
+	a, err := NewPersistent(llm, "model-a", "conversation", history, WithContextStrategy(StrategyConfig{Type: StrategyBranching}))
+	if err != nil {
+		t.Fatalf("NewPersistent() error = %v", err)
+	}
+	if _, err := a.Ask(context.Background(), Request{Message: "common"}); err != nil {
+		t.Fatalf("common Ask() error = %v", err)
+	}
+	if _, err := a.CreateBranches(); err != nil {
+		t.Fatalf("CreateBranches() error = %v", err)
+	}
+	if _, err := a.Ask(context.Background(), Request{Message: "path A"}); err != nil {
+		t.Fatalf("branch A Ask() error = %v", err)
+	}
+	if _, err := a.SwitchBranch("branch-b"); err != nil {
+		t.Fatalf("SwitchBranch() error = %v", err)
+	}
+	if got := len(a.Messages()); got != 2 {
+		t.Fatalf("branch B starts with %d messages, want checkpoint length 2", got)
+	}
+	if _, err := a.Ask(context.Background(), Request{Message: "path B"}); err != nil {
+		t.Fatalf("branch B Ask() error = %v", err)
+	}
+
+	if len(llm.requests) != 3 || llm.requests[1].PreviousResponseID != "resp_1" || llm.requests[2].PreviousResponseID != "resp_1" {
+		t.Fatalf("branch requests = %#v", llm.requests)
+	}
+	if _, err := a.SwitchBranch("branch-a"); err != nil {
+		t.Fatalf("switch back error = %v", err)
+	}
+	messages := a.Messages()
+	if len(messages) != 4 || messages[2].Text != "path A" {
+		t.Fatalf("branch A messages = %#v", messages)
+	}
+	if history.state.ActiveBranchID != "branch-a" || len(history.state.Branches) != 2 {
+		t.Fatalf("persisted branches = %#v", history.state)
+	}
+	restarted, err := NewPersistent(llm, "model-a", "conversation", history, WithContextStrategy(StrategyConfig{Type: StrategyBranching}))
+	if err != nil {
+		t.Fatalf("restart error = %v", err)
+	}
+	if restarted.Snapshot().ActiveBranchID != "branch-a" || len(restarted.Messages()) != 4 {
+		t.Fatalf("restored active branch = %#v, messages=%#v", restarted.Snapshot(), restarted.Messages())
+	}
+	if _, err := restarted.SwitchBranch("branch-b"); err != nil {
+		t.Fatalf("switch restored branch error = %v", err)
+	}
+	if messages := restarted.Messages(); len(messages) != 4 || messages[2].Text != "path B" {
+		t.Fatalf("restored branch B messages = %#v", messages)
+	}
+}
+
+func TestContextStrategySettingsLockAfterFirstMessage(t *testing.T) {
+	llm := &fakeLLM{}
+	a := New(llm, "model-a")
+	keep := 4
+	if _, err := a.Ask(context.Background(), Request{
+		Message:         "first",
+		ContextStrategy: string(StrategySlidingWindow),
+		ContextKeepLast: &keep,
+	}); err != nil {
+		t.Fatalf("first Ask() error = %v", err)
+	}
+	if _, err := a.Ask(context.Background(), Request{
+		Message:         "second",
+		ContextStrategy: string(StrategyStickyFacts),
+		ContextKeepLast: &keep,
+	}); !errors.Is(err, ErrStrategyLocked) {
+		t.Fatalf("strategy change error = %v, want ErrStrategyLocked", err)
+	}
+	if llm.callCount != 1 {
+		t.Fatalf("LLM calls = %d, want 1", llm.callCount)
+	}
+}
+
+func TestSpecificationScenarioAcrossAllContextStrategies(t *testing.T) {
+	common := []string{
+		"Цель — собрать ТЗ",
+		"Аудитория — разработчики",
+		"Платформа — web",
+		"Срок — две недели",
+		"Бюджет ограничен",
+		"Подготовь итоговое ТЗ",
+	}
+
+	slidingLLM := &fakeLLM{}
+	sliding := New(slidingLLM, "model-a", WithContextStrategy(StrategyConfig{Type: StrategySlidingWindow, KeepLast: 4}))
+	for _, message := range common {
+		if _, err := sliding.Ask(context.Background(), Request{Message: message}); err != nil {
+			t.Fatalf("Sliding Window Ask(%q) error = %v", message, err)
+		}
+	}
+	if got := len(slidingLLM.requests[len(slidingLLM.requests)-1].History); got != 4 {
+		t.Fatalf("Sliding Window history = %d messages, want 4", got)
+	}
+
+	factsLLM := &factsLLM{}
+	facts := New(factsLLM, "gpt-5.3-codex", WithContextStrategy(StrategyConfig{Type: StrategyStickyFacts, KeepLast: 4}))
+	for _, message := range common {
+		if _, err := facts.Ask(context.Background(), Request{Message: message}); err != nil {
+			t.Fatalf("Sticky Facts Ask(%q) error = %v", message, err)
+		}
+	}
+	lastFactsRequest := factsLLM.requests[len(factsLLM.requests)-1]
+	if len(lastFactsRequest.History) != 5 || lastFactsRequest.History[0].Role != "developer" || facts.Snapshot().Facts["goal"] == "" {
+		t.Fatalf("Sticky Facts context = %#v, snapshot = %#v", lastFactsRequest.History, facts.Snapshot())
+	}
+
+	branchLLM := &fakeLLM{}
+	branching := New(branchLLM, "model-a", WithContextStrategy(StrategyConfig{Type: StrategyBranching, KeepLast: 4}))
+	for _, message := range common[:3] {
+		if _, err := branching.Ask(context.Background(), Request{Message: message}); err != nil {
+			t.Fatalf("Branching common Ask(%q) error = %v", message, err)
+		}
+	}
+	if _, err := branching.CreateBranches(); err != nil {
+		t.Fatalf("CreateBranches() error = %v", err)
+	}
+	for _, message := range common[3:] {
+		if _, err := branching.Ask(context.Background(), Request{Message: "A: " + message}); err != nil {
+			t.Fatalf("branch A Ask(%q) error = %v", message, err)
+		}
+	}
+	if _, err := branching.SwitchBranch("branch-b"); err != nil {
+		t.Fatalf("SwitchBranch() error = %v", err)
+	}
+	for _, message := range common[3:] {
+		if _, err := branching.Ask(context.Background(), Request{Message: "B: " + message}); err != nil {
+			t.Fatalf("branch B Ask(%q) error = %v", message, err)
+		}
+	}
+	snapshot := branching.Snapshot()
+	if len(snapshot.Branches) != 2 || snapshot.Branches[0].MessageCount != 12 || snapshot.Branches[1].MessageCount != 12 {
+		t.Fatalf("Branching scenario state = %#v", snapshot)
 	}
 }
 

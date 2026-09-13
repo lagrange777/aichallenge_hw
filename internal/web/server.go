@@ -55,29 +55,28 @@ type chatRequest struct {
 	LengthLimit         string   `json:"lengthLimit,omitempty"`
 	CompletionCondition string   `json:"completionCondition,omitempty"`
 	Temperature         *float64 `json:"temperature,omitempty"`
-	CompressionEnabled  *bool    `json:"compressionEnabled,omitempty"`
+	ContextStrategy     string   `json:"contextStrategy,omitempty"`
 	ContextKeepLast     *int     `json:"contextKeepLast,omitempty"`
 }
 
 type apiResponse struct {
-	Answer      string               `json:"answer,omitempty"`
-	Error       string               `json:"error,omitempty"`
-	Warning     string               `json:"warning,omitempty"`
-	Model       string               `json:"model,omitempty"`
-	Models      []modelOption        `json:"models,omitempty"`
-	Metrics     *responseMetrics     `json:"metrics,omitempty"`
-	Messages    []agent.Message      `json:"messages,omitempty"`
-	Compression *compressionSettings `json:"compression,omitempty"`
+	Answer   string                  `json:"answer,omitempty"`
+	Error    string                  `json:"error,omitempty"`
+	Warning  string                  `json:"warning,omitempty"`
+	Model    string                  `json:"model,omitempty"`
+	Models   []modelOption           `json:"models,omitempty"`
+	Metrics  *responseMetrics        `json:"metrics,omitempty"`
+	Messages []agent.Message         `json:"messages,omitempty"`
+	Context  *agent.StrategySnapshot `json:"context,omitempty"`
+}
+
+type branchRequest struct {
+	BranchID string `json:"branchId"`
 }
 
 type modelOption struct {
 	ID    string `json:"id"`
 	Label string `json:"label"`
-}
-
-type compressionSettings struct {
-	Enabled  bool `json:"enabled"`
-	KeepLast int  `json:"keepLast"`
 }
 
 type responseMetrics struct {
@@ -121,6 +120,8 @@ func NewHandler(llm agent.LLM, model string, history agent.History, agentOptions
 	mux.HandleFunc("/api/chat", app.handleChat)
 	mux.HandleFunc("/api/history", app.handleHistory)
 	mux.HandleFunc("/api/reset", app.handleReset)
+	mux.HandleFunc("/api/branches/create", app.handleCreateBranches)
+	mux.HandleFunc("/api/branches/switch", app.handleSwitchBranch)
 	mux.HandleFunc("/api/status", app.handleStatus)
 	mux.HandleFunc("/healthz", app.handleHealth)
 	return securityHeaders(mux)
@@ -223,6 +224,11 @@ func (s *server) handleChat(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, apiResponse{Error: "Количество последних сообщений должно быть от 1 до 1000"})
 		return
 	}
+	request.ContextStrategy = strings.TrimSpace(request.ContextStrategy)
+	if request.ContextStrategy != "" && request.ContextStrategy != string(agent.StrategySlidingWindow) && request.ContextStrategy != string(agent.StrategyStickyFacts) && request.ContextStrategy != string(agent.StrategyBranching) {
+		writeJSON(w, http.StatusBadRequest, apiResponse{Error: "Выберите стратегию управления контекстом из списка"})
+		return
+	}
 
 	chatAgent, err := s.agentFor(w, r)
 	if err != nil {
@@ -236,15 +242,15 @@ func (s *server) handleChat(w http.ResponseWriter, r *http.Request) {
 		LengthLimit:         request.LengthLimit,
 		CompletionCondition: request.CompletionCondition,
 		Temperature:         request.Temperature,
-		CompressionEnabled:  request.CompressionEnabled,
+		ContextStrategy:     request.ContextStrategy,
 		ContextKeepLast:     request.ContextKeepLast,
 	})
 	if err != nil {
 		status := http.StatusBadGateway
 		message := err.Error()
-		if errors.Is(err, agent.ErrCompressionLocked) {
+		if errors.Is(err, agent.ErrStrategyLocked) {
 			status = http.StatusConflict
-			message = "Настройки сжатия можно изменить только до первого сообщения"
+			message = "Стратегию и N можно изменить только до первого сообщения"
 		}
 		writeJSON(w, status, apiResponse{
 			Error:   message,
@@ -259,6 +265,7 @@ func (s *server) handleChat(w http.ResponseWriter, r *http.Request) {
 		Warning: result.TokenMetrics.ContextWarning,
 		Model:   result.Model,
 		Metrics: metricsFromResponse(result),
+		Context: snapshotPointer(chatAgent.Snapshot()),
 	})
 }
 
@@ -308,11 +315,64 @@ func (s *server) handleHistory(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, apiResponse{Error: "Не удалось загрузить историю"})
 		return
 	}
-	compression := chatAgent.Compression()
 	writeJSON(w, http.StatusOK, apiResponse{
-		Messages:    chatAgent.Messages(),
-		Compression: &compressionSettings{Enabled: compression.Enabled, KeepLast: compression.KeepLast},
+		Messages: chatAgent.Messages(),
+		Context:  snapshotPointer(chatAgent.Snapshot()),
 	})
+}
+
+func (s *server) handleCreateBranches(w http.ResponseWriter, r *http.Request) {
+	if !allowAPIRequest(w, r, http.MethodPost) {
+		return
+	}
+	chatAgent, err := s.agentFor(w, r)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, apiResponse{Error: "Не удалось загрузить сессию"})
+		return
+	}
+	snapshot, err := chatAgent.CreateBranches()
+	if err != nil {
+		writeJSON(w, http.StatusConflict, apiResponse{Error: err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, apiResponse{Messages: chatAgent.Messages(), Context: snapshotPointer(snapshot)})
+}
+
+func (s *server) handleSwitchBranch(w http.ResponseWriter, r *http.Request) {
+	if !allowAPIRequest(w, r, http.MethodPost) {
+		return
+	}
+	if !hasJSONContentType(r) {
+		writeJSON(w, http.StatusUnsupportedMediaType, apiResponse{Error: "Ожидается Content-Type: application/json"})
+		return
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBytes)
+	var request branchRequest
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&request); err != nil || strings.TrimSpace(request.BranchID) == "" {
+		writeJSON(w, http.StatusBadRequest, apiResponse{Error: "Выберите ветку"})
+		return
+	}
+	chatAgent, err := s.agentFor(w, r)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, apiResponse{Error: "Не удалось загрузить сессию"})
+		return
+	}
+	snapshot, err := chatAgent.SwitchBranch(request.BranchID)
+	if err != nil {
+		status := http.StatusConflict
+		if errors.Is(err, agent.ErrBranchNotFound) {
+			status = http.StatusNotFound
+		}
+		writeJSON(w, status, apiResponse{Error: err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, apiResponse{Messages: chatAgent.Messages(), Context: snapshotPointer(snapshot)})
+}
+
+func snapshotPointer(snapshot agent.StrategySnapshot) *agent.StrategySnapshot {
+	return &snapshot
 }
 
 func (s *server) handleStatus(w http.ResponseWriter, r *http.Request) {

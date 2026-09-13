@@ -51,10 +51,9 @@ func run(logger *log.Logger) error {
 
 	server := &http.Server{
 		Addr: cfg.WebAddr,
-		Handler: chatweb.NewHandler(apiClient, cfg.Model, historyStore, agent.WithCompression(agent.CompressionConfig{
-			Enabled:   cfg.CompressionEnabled,
-			KeepLast:  cfg.ContextKeepLast,
-			BatchSize: cfg.SummaryBatchSize,
+		Handler: chatweb.NewHandler(apiClient, cfg.Model, historyStore, agent.WithContextStrategy(agent.StrategyConfig{
+			Type:     agent.ContextStrategy(cfg.ContextStrategy),
+			KeepLast: cfg.ContextKeepLast,
 		})),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,

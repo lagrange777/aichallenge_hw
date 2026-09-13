@@ -12,9 +12,8 @@ func TestLoadDefaults(t *testing.T) {
 	t.Setenv("OPENAI_TIMEOUT", "")
 	t.Setenv("WEB_ADDR", "")
 	t.Setenv("HISTORY_PATH", "")
-	t.Setenv("CONTEXT_COMPRESSION_ENABLED", "")
 	t.Setenv("CONTEXT_KEEP_LAST", "")
-	t.Setenv("CONTEXT_SUMMARY_BATCH", "")
+	t.Setenv("CONTEXT_STRATEGY", "")
 
 	cfg, err := Load()
 	if err != nil {
@@ -39,8 +38,11 @@ func TestLoadDefaults(t *testing.T) {
 	if cfg.HistoryPath != defaultHistoryPath {
 		t.Fatalf("HistoryPath = %q, want %q", cfg.HistoryPath, defaultHistoryPath)
 	}
-	if !cfg.CompressionEnabled || cfg.ContextKeepLast != 10 || cfg.SummaryBatchSize != 10 {
-		t.Fatalf("compression config = enabled %v, keep %d, batch %d", cfg.CompressionEnabled, cfg.ContextKeepLast, cfg.SummaryBatchSize)
+	if cfg.ContextKeepLast != 10 {
+		t.Fatalf("ContextKeepLast = %d", cfg.ContextKeepLast)
+	}
+	if cfg.ContextStrategy != "sliding_window" {
+		t.Fatalf("ContextStrategy = %q", cfg.ContextStrategy)
 	}
 }
 
@@ -59,9 +61,8 @@ func TestLoadOverrides(t *testing.T) {
 	t.Setenv("OPENAI_TIMEOUT", "30s")
 	t.Setenv("WEB_ADDR", "0.0.0.0:9090")
 	t.Setenv("HISTORY_PATH", "/tmp/chat-history.json")
-	t.Setenv("CONTEXT_COMPRESSION_ENABLED", "false")
 	t.Setenv("CONTEXT_KEEP_LAST", "14")
-	t.Setenv("CONTEXT_SUMMARY_BATCH", "6")
+	t.Setenv("CONTEXT_STRATEGY", "sticky_facts")
 
 	cfg, err := Load()
 	if err != nil {
@@ -83,8 +84,11 @@ func TestLoadOverrides(t *testing.T) {
 	if cfg.HistoryPath != "/tmp/chat-history.json" {
 		t.Fatalf("HistoryPath = %q", cfg.HistoryPath)
 	}
-	if cfg.CompressionEnabled || cfg.ContextKeepLast != 14 || cfg.SummaryBatchSize != 6 {
-		t.Fatalf("compression config = enabled %v, keep %d, batch %d", cfg.CompressionEnabled, cfg.ContextKeepLast, cfg.SummaryBatchSize)
+	if cfg.ContextKeepLast != 14 {
+		t.Fatalf("ContextKeepLast = %d", cfg.ContextKeepLast)
+	}
+	if cfg.ContextStrategy != "sticky_facts" {
+		t.Fatalf("ContextStrategy = %q", cfg.ContextStrategy)
 	}
 }
 
@@ -97,20 +101,18 @@ func TestLoadRejectsInvalidWebAddress(t *testing.T) {
 	}
 }
 
-func TestLoadRejectsInvalidCompressionSettings(t *testing.T) {
+func TestLoadRejectsInvalidContextSettings(t *testing.T) {
 	t.Setenv("OPENAI_API_KEY", "test-key")
 	for _, test := range []struct {
 		name  string
 		value string
 	}{
-		{name: "CONTEXT_COMPRESSION_ENABLED", value: "sometimes"},
 		{name: "CONTEXT_KEEP_LAST", value: "0"},
-		{name: "CONTEXT_SUMMARY_BATCH", value: "not-a-number"},
+		{name: "CONTEXT_STRATEGY", value: "unknown"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			t.Setenv("CONTEXT_COMPRESSION_ENABLED", "")
 			t.Setenv("CONTEXT_KEEP_LAST", "")
-			t.Setenv("CONTEXT_SUMMARY_BATCH", "")
+			t.Setenv("CONTEXT_STRATEGY", "")
 			t.Setenv(test.name, test.value)
 			if _, err := Load(); err == nil {
 				t.Fatalf("Load() error = nil for %s=%q", test.name, test.value)
