@@ -1,7 +1,6 @@
 (() => {
   "use strict";
 
-  const storageKey = "codex-chat-web-messages-v1";
   const workspace = document.querySelector(".workspace");
   const chat = document.querySelector("#chat");
   const messagesNode = document.querySelector("#messages");
@@ -21,14 +20,16 @@
   const connectionLabel = document.querySelector("#connection-label");
   const toast = document.querySelector("#toast");
 
-  let transcript = loadTranscript();
+  let transcript = [];
   let sending = false;
+  let historyReady = false;
   let toastTimer = 0;
 
   renderTranscript();
   resizeComposer();
   updateSendButton();
   loadStatus();
+  loadHistory();
 
   form.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -83,6 +84,24 @@
       connection.classList.add("offline");
       connection.classList.remove("online");
       connectionLabel.textContent = "соединение потеряно";
+    }
+  }
+
+  async function loadHistory() {
+    try {
+      const response = await fetch("/api/history", { headers: { Accept: "application/json" } });
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload.error || "История недоступна");
+      }
+      const messages = Array.isArray(payload.messages) ? payload.messages : [];
+      transcript = messages.filter(isHistoryMessage);
+      renderTranscript();
+    } catch (error) {
+      showToast("Не удалось восстановить историю диалога");
+    } finally {
+      historyReady = true;
+      updateSendButton();
     }
   }
 
@@ -174,7 +193,6 @@
         throw new Error("reset failed");
       }
       transcript = [];
-      saveTranscript();
       renderTranscript();
       input.value = "";
       optionInputs.forEach((field) => { field.value = ""; });
@@ -192,10 +210,6 @@
 
   function addMessage(message) {
     transcript.push(message);
-    if (transcript.length > 80) {
-      transcript = transcript.slice(-80);
-    }
-    saveTranscript();
     workspace.classList.add("has-messages");
     chat.classList.add("has-messages");
     messagesNode.append(createMessage(message));
@@ -354,7 +368,7 @@
   }
 
   function updateSendButton() {
-    sendButton.disabled = sending || !input.value.trim();
+    sendButton.disabled = sending || !historyReady || !input.value.trim();
   }
 
   function scrollToLatest() {
@@ -366,25 +380,8 @@
     return new Intl.DateTimeFormat("ru", { hour: "2-digit", minute: "2-digit" }).format(date);
   }
 
-  function loadTranscript() {
-    try {
-      const value = JSON.parse(sessionStorage.getItem(storageKey) || "[]");
-      return Array.isArray(value) ? value.filter(isStoredMessage).slice(-80) : [];
-    } catch (error) {
-      return [];
-    }
-  }
-
-  function isStoredMessage(message) {
+  function isHistoryMessage(message) {
     return message && (message.role === "user" || message.role === "assistant") && typeof message.text === "string";
-  }
-
-  function saveTranscript() {
-    try {
-      sessionStorage.setItem(storageKey, JSON.stringify(transcript));
-    } catch (error) {
-      // The chat continues even when private browsing blocks storage.
-    }
   }
 
   function showToast(message) {

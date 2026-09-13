@@ -9,10 +9,16 @@ services:
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
       OPENAI_TIMEOUT: ${OPENAI_TIMEOUT:-2m}
       WEB_ADDR: 0.0.0.0:8080
+      HISTORY_PATH: /data/history.json
     ports:
       - "127.0.0.1:8080:8080"
     read_only: true
+    volumes:
+      - chat-history:/data
     cap_drop:
       - ALL
     security_opt:
       - no-new-privileges:true
+
+volumes:
+  chat-history:
