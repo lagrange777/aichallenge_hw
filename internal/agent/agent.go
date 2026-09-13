@@ -5,6 +5,7 @@ package agent
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"sync"
 	"time"
@@ -65,6 +66,45 @@ type Response struct {
 	CostUSD  *float64
 }
 
+// MessageMetrics contains metadata saved together with an assistant message.
+type MessageMetrics struct {
+	DurationMS        int64    `json:"durationMs"`
+	InputTokens       int      `json:"inputTokens"`
+	CachedInputTokens int      `json:"cachedInputTokens"`
+	CacheWriteTokens  int      `json:"cacheWriteTokens"`
+	OutputTokens      int      `json:"outputTokens"`
+	ReasoningTokens   int      `json:"reasoningTokens"`
+	TotalTokens       int      `json:"totalTokens"`
+	CostUSD           *float64 `json:"costUsd"`
+}
+
+// Message is one durable item in a conversation transcript.
+type Message struct {
+	Role    string          `json:"role"`
+	Text    string          `json:"text"`
+	Time    int64           `json:"time"`
+	Model   string          `json:"model,omitempty"`
+	Metrics *MessageMetrics `json:"metrics,omitempty"`
+}
+
+// ConversationState is the complete state needed to restore an Agent.
+type ConversationState struct {
+	PreviousResponseID string    `json:"previousResponseId,omitempty"`
+	ActiveModel        string    `json:"activeModel,omitempty"`
+	Messages           []Message `json:"messages"`
+	UpdatedAt          time.Time `json:"updatedAt"`
+}
+
+// ErrHistoryNotFound indicates that a conversation has not been saved yet.
+var ErrHistoryNotFound = errors.New("conversation history not found")
+
+// History is the persistence boundary owned by Agent.
+type History interface {
+	Load(conversationID string) (ConversationState, error)
+	Save(conversationID string, state ConversationState) error
+	Delete(conversationID string) error
+}
+
 // Agent owns one conversation and encapsulates its LLM request/response flow.
 type Agent struct {
 	llm          LLM
@@ -73,11 +113,40 @@ type Agent struct {
 	mu                 sync.Mutex
 	previousResponseID string
 	activeModel        string
+	messages           []Message
+	history            History
+	conversationID     string
 }
 
 // New creates an independent agent conversation.
 func New(llm LLM, defaultModel string) *Agent {
 	return &Agent{llm: llm, defaultModel: strings.TrimSpace(defaultModel)}
+}
+
+// NewPersistent creates an agent and restores its conversation when it exists.
+func NewPersistent(llm LLM, defaultModel, conversationID string, history History) (*Agent, error) {
+	conversationID = strings.TrimSpace(conversationID)
+	if history == nil {
+		return New(llm, defaultModel), nil
+	}
+	if conversationID == "" {
+		return nil, errors.New("conversation ID is required for persistent history")
+	}
+
+	a := New(llm, defaultModel)
+	a.history = history
+	a.conversationID = conversationID
+	state, err := history.Load(conversationID)
+	if errors.Is(err, ErrHistoryNotFound) {
+		return a, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("load conversation history: %w", err)
+	}
+	a.previousResponseID = strings.TrimSpace(state.PreviousResponseID)
+	a.activeModel = strings.TrimSpace(state.ActiveModel)
+	a.messages = cloneMessages(state.Messages)
+	return a, nil
 }
 
 // Ask normalizes a user request, calls the LLM and prepares the final response.
@@ -119,8 +188,6 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 		return Response{}, err
 	}
 
-	a.previousResponseID = completion.ResponseID
-	a.activeModel = request.Model
 	if completion.Model == "" {
 		completion.Model = request.Model
 	}
@@ -137,13 +204,84 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 	if cost, ok := models.EstimateCost(request.Model, completion.Usage.InputTokens, completion.Usage.CachedInputTokens, completion.Usage.CacheWriteTokens, completion.Usage.OutputTokens); ok {
 		response.CostUSD = &cost
 	}
+
+	durationMS := response.Duration.Milliseconds()
+	if durationMS < 1 {
+		durationMS = 1
+	}
+	nextMessages := append(cloneMessages(a.messages),
+		Message{Role: "user", Text: request.Message, Time: started.UnixMilli()},
+		Message{
+			Role:  "assistant",
+			Text:  response.Text,
+			Time:  time.Now().UnixMilli(),
+			Model: response.Model,
+			Metrics: &MessageMetrics{
+				DurationMS:        durationMS,
+				InputTokens:       response.Usage.InputTokens,
+				CachedInputTokens: response.Usage.CachedInputTokens,
+				CacheWriteTokens:  response.Usage.CacheWriteTokens,
+				OutputTokens:      response.Usage.OutputTokens,
+				ReasoningTokens:   response.Usage.ReasoningTokens,
+				TotalTokens:       response.Usage.TotalTokens,
+				CostUSD:           response.CostUSD,
+			},
+		},
+	)
+	if a.history != nil {
+		state := ConversationState{
+			PreviousResponseID: completion.ResponseID,
+			ActiveModel:        request.Model,
+			Messages:           nextMessages,
+			UpdatedAt:          time.Now().UTC(),
+		}
+		if err := a.history.Save(a.conversationID, state); err != nil {
+			return Response{}, fmt.Errorf("save conversation history: %w", err)
+		}
+	}
+	a.previousResponseID = completion.ResponseID
+	a.activeModel = request.Model
+	a.messages = nextMessages
 	return response, nil
 }
 
 // Reset clears the conversation context without replacing the agent.
-func (a *Agent) Reset() {
+func (a *Agent) Reset() error {
 	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.history != nil {
+		if err := a.history.Delete(a.conversationID); err != nil {
+			return fmt.Errorf("delete conversation history: %w", err)
+		}
+	}
 	a.previousResponseID = ""
 	a.activeModel = ""
-	a.mu.Unlock()
+	a.messages = nil
+	return nil
+}
+
+// Messages returns a snapshot of the conversation transcript.
+func (a *Agent) Messages() []Message {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return cloneMessages(a.messages)
+}
+
+func cloneMessages(messages []Message) []Message {
+	if len(messages) == 0 {
+		return nil
+	}
+	cloned := make([]Message, len(messages))
+	for index, message := range messages {
+		cloned[index] = message
+		if message.Metrics != nil {
+			metrics := *message.Metrics
+			if message.Metrics.CostUSD != nil {
+				cost := *message.Metrics.CostUSD
+				metrics.CostUSD = &cost
+			}
+			cloned[index].Metrics = &metrics
+		}
+	}
+	return cloned
 }

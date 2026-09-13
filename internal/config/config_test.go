@@ -11,6 +11,7 @@ func TestLoadDefaults(t *testing.T) {
 	t.Setenv("OPENAI_BASE_URL", "")
 	t.Setenv("OPENAI_TIMEOUT", "")
 	t.Setenv("WEB_ADDR", "")
+	t.Setenv("HISTORY_PATH", "")
 
 	cfg, err := Load()
 	if err != nil {
@@ -32,6 +33,9 @@ func TestLoadDefaults(t *testing.T) {
 	if cfg.WebAddr != defaultWebAddr {
 		t.Fatalf("WebAddr = %q, want %q", cfg.WebAddr, defaultWebAddr)
 	}
+	if cfg.HistoryPath != defaultHistoryPath {
+		t.Fatalf("HistoryPath = %q, want %q", cfg.HistoryPath, defaultHistoryPath)
+	}
 }
 
 func TestLoadRequiresAPIKey(t *testing.T) {
@@ -48,6 +52,7 @@ func TestLoadOverrides(t *testing.T) {
 	t.Setenv("OPENAI_BASE_URL", "http://localhost:8080/v1/")
 	t.Setenv("OPENAI_TIMEOUT", "30s")
 	t.Setenv("WEB_ADDR", "0.0.0.0:9090")
+	t.Setenv("HISTORY_PATH", "/tmp/chat-history.json")
 
 	cfg, err := Load()
 	if err != nil {
@@ -65,6 +70,9 @@ func TestLoadOverrides(t *testing.T) {
 	}
 	if cfg.WebAddr != "0.0.0.0:9090" {
 		t.Fatalf("WebAddr = %q", cfg.WebAddr)
+	}
+	if cfg.HistoryPath != "/tmp/chat-history.json" {
+		t.Fatalf("HistoryPath = %q", cfg.HistoryPath)
 	}
 }
 

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"codex-chat-cli/internal/config"
+	"codex-chat-cli/internal/history"
 	"codex-chat-cli/internal/openai"
 	chatweb "codex-chat-cli/internal/web"
 )
@@ -42,10 +43,14 @@ func run(logger *log.Logger) error {
 	if err != nil {
 		return fmt.Errorf("инициализация клиента: %w", err)
 	}
+	historyStore, err := history.NewJSONStore(cfg.HistoryPath)
+	if err != nil {
+		return fmt.Errorf("инициализация истории: %w", err)
+	}
 
 	server := &http.Server{
 		Addr:              cfg.WebAddr,
-		Handler:           chatweb.NewHandler(apiClient, cfg.Model),
+		Handler:           chatweb.NewHandler(apiClient, cfg.Model, historyStore),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      cfg.Timeout + 10*time.Second,

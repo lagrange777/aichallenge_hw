@@ -23,6 +23,7 @@ const (
 	maxOptionLength = 4000
 	sessionCookie   = "codex_chat_session"
 	sessionTTL      = 12 * time.Hour
+	cookieTTL       = 365 * 24 * time.Hour
 	maxSessions     = 256
 )
 
@@ -36,6 +37,7 @@ type sessionEntry struct {
 
 type server struct {
 	llm     agent.LLM
+	history agent.History
 	model   string
 	models  []modelOption
 	allowed map[string]bool
@@ -54,11 +56,12 @@ type chatRequest struct {
 }
 
 type apiResponse struct {
-	Answer  string           `json:"answer,omitempty"`
-	Error   string           `json:"error,omitempty"`
-	Model   string           `json:"model,omitempty"`
-	Models  []modelOption    `json:"models,omitempty"`
-	Metrics *responseMetrics `json:"metrics,omitempty"`
+	Answer   string           `json:"answer,omitempty"`
+	Error    string           `json:"error,omitempty"`
+	Model    string           `json:"model,omitempty"`
+	Models   []modelOption    `json:"models,omitempty"`
+	Metrics  *responseMetrics `json:"metrics,omitempty"`
+	Messages []agent.Message  `json:"messages,omitempty"`
 }
 
 type modelOption struct {
@@ -78,7 +81,7 @@ type responseMetrics struct {
 }
 
 // NewHandler returns the complete local web application handler.
-func NewHandler(llm agent.LLM, model string) http.Handler {
+func NewHandler(llm agent.LLM, model string, history agent.History) http.Handler {
 	model = strings.TrimSpace(model)
 	definitions := models.Available(model)
 	options := make([]modelOption, 0, len(definitions))
@@ -89,6 +92,7 @@ func NewHandler(llm agent.LLM, model string) http.Handler {
 	}
 	app := &server{
 		llm:      llm,
+		history:  history,
 		model:    model,
 		models:   options,
 		allowed:  allowed,
@@ -102,6 +106,7 @@ func NewHandler(llm agent.LLM, model string) http.Handler {
 	mux.HandleFunc("/markdown.js", app.handleMarkdownJS)
 	mux.HandleFunc("/favicon.svg", app.handleFavicon)
 	mux.HandleFunc("/api/chat", app.handleChat)
+	mux.HandleFunc("/api/history", app.handleHistory)
 	mux.HandleFunc("/api/reset", app.handleReset)
 	mux.HandleFunc("/api/status", app.handleStatus)
 	mux.HandleFunc("/healthz", app.handleHealth)
@@ -248,9 +253,26 @@ func (s *server) handleReset(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, apiResponse{Error: "Не удалось создать сессию"})
 		return
 	}
-	chatAgent.Reset()
+	if err := chatAgent.Reset(); err != nil {
+		writeJSON(w, http.StatusInternalServerError, apiResponse{Error: "Не удалось очистить историю"})
+		return
+	}
 	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *server) handleHistory(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", "GET")
+		writeJSON(w, http.StatusMethodNotAllowed, apiResponse{Error: "Метод не поддерживается"})
+		return
+	}
+	chatAgent, err := s.agentFor(w, r)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, apiResponse{Error: "Не удалось загрузить историю"})
+		return
+	}
+	writeJSON(w, http.StatusOK, apiResponse{Messages: chatAgent.Messages()})
 }
 
 func (s *server) handleStatus(w http.ResponseWriter, r *http.Request) {
@@ -309,33 +331,59 @@ func (s *server) agentFor(w http.ResponseWriter, r *http.Request) (*agent.Agent,
 		if entry != nil && now.Sub(entry.lastUsed) <= sessionTTL {
 			entry.lastUsed = now
 			s.mu.Unlock()
+			s.setSessionCookie(w, r, cookie.Value)
 			return entry.agent, nil
 		}
 		delete(s.sessions, cookie.Value)
 		s.mu.Unlock()
+
+		chatAgent, err := agent.NewPersistent(s.llm, s.model, cookie.Value, s.history)
+		if err != nil {
+			return nil, err
+		}
+		entry = &sessionEntry{agent: chatAgent, lastUsed: now}
+		s.mu.Lock()
+		if current := s.sessions[cookie.Value]; current != nil {
+			entry = current
+			entry.lastUsed = now
+		} else {
+			s.pruneSessions(now)
+			s.sessions[cookie.Value] = entry
+		}
+		s.mu.Unlock()
+		s.setSessionCookie(w, r, cookie.Value)
+		return entry.agent, nil
 	}
 
 	id, err := newSessionID()
 	if err != nil {
 		return nil, err
 	}
-	entry := &sessionEntry{agent: agent.New(s.llm, s.model), lastUsed: now}
+	chatAgent, err := agent.NewPersistent(s.llm, s.model, id, s.history)
+	if err != nil {
+		return nil, err
+	}
+	entry := &sessionEntry{agent: chatAgent, lastUsed: now}
 
 	s.mu.Lock()
 	s.pruneSessions(now)
 	s.sessions[id] = entry
 	s.mu.Unlock()
 
+	s.setSessionCookie(w, r, id)
+	return entry.agent, nil
+}
+
+func (s *server) setSessionCookie(w http.ResponseWriter, r *http.Request, id string) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     sessionCookie,
 		Value:    id,
 		Path:     "/",
-		MaxAge:   int(sessionTTL.Seconds()),
+		MaxAge:   int(cookieTTL.Seconds()),
 		HttpOnly: true,
 		SameSite: http.SameSiteStrictMode,
 		Secure:   r.TLS != nil,
 	})
-	return entry.agent, nil
 }
 
 func (s *server) pruneSessions(now time.Time) {

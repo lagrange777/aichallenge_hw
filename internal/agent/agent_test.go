@@ -35,7 +35,9 @@ func TestAgentCarriesAndResetsResponseID(t *testing.T) {
 	if _, err := agent.Ask(context.Background(), Request{Message: "second"}); err != nil {
 		t.Fatalf("second Ask() error = %v", err)
 	}
-	agent.Reset()
+	if err := agent.Reset(); err != nil {
+		t.Fatalf("Reset() error = %v", err)
+	}
 	if _, err := agent.Ask(context.Background(), Request{Message: "third"}); err != nil {
 		t.Fatalf("third Ask() error = %v", err)
 	}
