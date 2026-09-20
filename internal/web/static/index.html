@@ -108,7 +108,6 @@
           <button id="tab-tasks" class="workspace-tab" type="button" role="tab" aria-selected="false" aria-controls="tasks-panel" tabindex="-1">Задачи</button>
           <button id="tab-profiles" class="workspace-tab" type="button" role="tab" aria-selected="false" aria-controls="profiles-panel" tabindex="-1">Профили</button>
         </nav>
-        <button id="active-profile" class="memory-button profile-indicator" type="button" disabled>Профиль…</button>
         <button id="open-memory" class="memory-button" type="button" disabled>Память <span id="memory-pending-count"></span></button>
         <label class="model-badge" title="Модель OpenAI" for="model-select">
           <span class="model-pulse"></span>
@@ -116,6 +115,7 @@
             <option value="">загрузка…</option>
           </select>
         </label>
+        <button id="active-profile" class="memory-button profile-indicator" type="button" disabled>Профиль…</button>
       </header>
 
       <div id="chat-panel" role="tabpanel" aria-labelledby="tab-chat">

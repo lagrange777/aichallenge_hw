@@ -462,6 +462,7 @@ select:focus-visible {
 .topbar {
   display: flex;
   align-items: center;
+  gap: 8px;
   justify-content: space-between;
   padding: 0 30px;
   border-bottom: 1px solid rgba(205, 208, 202, 0.72);
