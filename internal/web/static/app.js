@@ -125,18 +125,22 @@
   window.addEventListener("codex:memory-saved", event => {
     showToast(event.detail === "working" ? "Сохранено в рабочую память" : "Сохранено в долговременную память");
   });
-  window.addEventListener("codex:new-task", event => {
-    transcript = [];
-    input.value = "";
+  const taskDrafts = new Map();
+  window.addEventListener("codex:task-changed", event => {
+    taskDrafts.set(event.detail.previousTaskId, input.value);
+    transcript = (event.detail.messages || []).filter(isHistoryMessage);
+    input.value = taskDrafts.get(event.detail.memory.task.id) || "";
     applyContextState(event.detail.context);
     contextStrategyInput.value = contextState.strategy.type;
     contextKeepLastInput.value = String(contextState.strategy.keepLast);
-    setSessionSettingsLocked(false);
+    setSessionSettingsLocked(transcript.length > 0);
+    const lastReply = transcript.slice().reverse().find(message => message.role === "assistant" && message.model);
+    if (lastReply && Array.from(modelSelect.options).some(option => option.value === lastReply.model)) modelSelect.value = lastReply.model;
     updateStrategySettings();
     renderTranscript();
     resizeComposer();
     updateSendButton();
-    showToast("Новая задача начата. Профиль сохранён.");
+    showToast(event.detail.created ? "Новая задача создана. Предыдущая сохранена." : "Диалог и память задачи восстановлены.");
   });
 
   async function loadStatus() {

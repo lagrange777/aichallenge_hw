@@ -82,6 +82,7 @@ func memorySource(user, answer string) string {
 
 type MemoryView struct {
 	memory.State
+	Tasks             []memory.Task   `json:"tasks"`
 	ShortTermMessages int             `json:"shortTermMessages"`
 	ContextMessages   int             `json:"contextMessages"`
 	Strategy          ContextStrategy `json:"strategy"`
@@ -92,7 +93,11 @@ func (a *Agent) memoryViewLocked(state memory.State) MemoryView {
 	if a.strategy.Type == StrategySlidingWindow || a.strategy.Type == StrategyStickyFacts {
 		count = min(count, a.strategy.KeepLast)
 	}
-	return MemoryView{State: state, ShortTermMessages: len(a.messages), ContextMessages: count, Strategy: a.strategy.Type}
+	tasks := []memory.Task{state.Task}
+	for _, archived := range state.Archived {
+		tasks = append(tasks, archived.Task)
+	}
+	return MemoryView{State: state, Tasks: tasks, ShortTermMessages: len(a.messages), ContextMessages: count, Strategy: a.strategy.Type}
 }
 func (a *Agent) Memories() (MemoryView, error) {
 	a.mu.Lock()
@@ -127,19 +132,67 @@ func (a *Agent) NewTask(taskID, name string) (MemoryView, error) {
 	if a.memoryStore == nil {
 		return MemoryView{}, fmt.Errorf("memory is disabled")
 	}
+	if taskID != a.taskID {
+		return MemoryView{}, memory.ErrConflict
+	}
+	if err := a.saveCurrentTaskLocked(); err != nil {
+		return MemoryView{}, err
+	}
 	state, err := a.memoryStore.NewTask(a.conversationID, taskID, name)
 	if err != nil {
 		return MemoryView{}, err
 	}
-	// The task switch is committed first. Persisted chat carries its task ID,
-	// so it cannot be restored into the new task even if deleting it fails.
+	a.taskID = state.Task.ID
 	a.clearConversationLocked()
-	if a.history != nil {
-		if err = a.history.Delete(a.conversationID); err != nil {
-			return a.memoryViewLocked(state), err
+	return a.memoryViewLocked(state), nil
+}
+
+func (a *Agent) SwitchTask(taskID, targetID string) (MemoryView, error) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.memoryStore == nil {
+		return MemoryView{}, fmt.Errorf("memory is disabled")
+	}
+	state, err := a.memoryStore.Get(a.conversationID)
+	if err != nil {
+		return MemoryView{}, err
+	}
+	if taskID != a.taskID || taskID != state.Task.ID {
+		return MemoryView{}, memory.ErrConflict
+	}
+	if targetID == taskID {
+		return a.memoryViewLocked(state), nil
+	}
+	found := false
+	for _, archived := range state.Archived {
+		if archived.Task.ID == targetID {
+			found = true
+			break
 		}
 	}
+	if !found {
+		return MemoryView{}, memory.ErrConflict
+	}
+	// All history I/O precedes the atomic memory switch. A failure leaves the
+	// current task active and its transcript intact.
+	target, err := a.loadTaskHistory(targetID)
+	if err != nil {
+		return MemoryView{}, err
+	}
+	if err = a.saveCurrentTaskLocked(); err != nil {
+		return MemoryView{}, err
+	}
+	state, err = a.memoryStore.SwitchTask(a.conversationID, taskID, targetID)
+	if err != nil {
+		return MemoryView{}, err
+	}
+	a.taskID = state.Task.ID
+	a.restoreConversationLocked(target)
 	return a.memoryViewLocked(state), nil
+}
+
+func (a *Agent) saveCurrentTaskLocked() error {
+	return a.saveStateLocked(a.previousResponseID, a.activeModel, a.messages, a.summary, a.facts, a.memory, a.branches, a.activeBranchID, a.checkpoint)
 }
 
 func memoryContext(state memory.State) ContextMessage {

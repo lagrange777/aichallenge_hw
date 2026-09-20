@@ -77,6 +77,7 @@
   }
   async function mutate(path, body) {
     if (!state || busy || chatBusy) return;
+    const previousTaskId = state.task.id;
     busy = true;
     loadVersion++;
     syncBusy();
@@ -93,10 +94,11 @@
       state = payload.memory;
       render();
       setStatus("Сохранено. Изменения будут учтены в следующем ответе.");
-      if (path === "/api/tasks/new") {
-        tasksStatus.textContent = "Новая задача создана. Перейдите в чат, чтобы начать работу.";
-        document.querySelector("#new-task-name").value = "";
-        window.dispatchEvent(new CustomEvent("codex:new-task", { detail: payload }));
+      if (path === "/api/tasks/new" || path === "/api/tasks/switch") {
+        const created = path === "/api/tasks/new";
+        tasksStatus.textContent = created ? "Новая задача создана. Предыдущая сохранена в списке." : `Задача «${state.task.name}» открыта. Перейдите в чат, чтобы продолжить.`;
+        if (created) document.querySelector("#new-task-name").value = "";
+        window.dispatchEvent(new CustomEvent("codex:task-changed", { detail: { ...payload, previousTaskId, created } }));
       }
       return payload;
     } catch (error) {
@@ -189,6 +191,22 @@
   }
   function render() {
     if (!state) return;
+    const tasksList = document.querySelector("#tasks-list");
+    tasksList.replaceChildren();
+    for (const task of state.tasks || [state.task]) {
+      const current = task.id === state.task.id;
+      const item = node("div", undefined, "task-list-item");
+      item.append(node("span", task.name, "task-list-name"));
+      if (current) {
+        item.classList.add("is-current");
+        item.append(node("span", "Текущая", "task-badge"));
+      } else {
+        const action = button("Открыть", () => mutate("/api/tasks/switch", { id: task.id }));
+        action.setAttribute("aria-label", `Открыть задачу «${task.name}»`);
+        item.append(action);
+      }
+      tasksList.append(item);
+    }
     document.querySelector("#short-memory-count").textContent = `${state.shortTermMessages} сообщений в диалоге · ${state.contextMessages} в активной истории`;
     document.querySelector("#memory-task-name").textContent = state.task.name;
     document.querySelector("#tasks-current-name").textContent = state.task.name;

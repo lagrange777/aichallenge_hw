@@ -444,7 +444,7 @@ func (a *Agent) saveStateLocked(
 		}
 		state.MemoryTaskID = layers.Task.ID
 	}
-	if err := a.history.Save(a.conversationID, state); err != nil {
+	if err := a.history.Save(a.historyKey(a.taskID), state); err != nil {
 		return fmt.Errorf("save conversation history: %w", err)
 	}
 	return nil

@@ -134,6 +134,7 @@ func NewHandler(llm agent.LLM, model string, history agent.History, agentOptions
 	mux.HandleFunc("/api/memory/edit", app.handleMemoryMutation)
 	mux.HandleFunc("/api/memory/delete", app.handleMemoryMutation)
 	mux.HandleFunc("/api/tasks/new", app.handleMemoryMutation)
+	mux.HandleFunc("/api/tasks/switch", app.handleMemoryMutation)
 	return securityHeaders(mux)
 }
 

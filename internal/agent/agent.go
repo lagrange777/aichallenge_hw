@@ -157,6 +157,7 @@ type Agent struct {
 	checkpoint         *Checkpoint
 	history            History
 	conversationID     string
+	taskID             string
 }
 
 // New creates an independent agent conversation.
@@ -192,29 +193,57 @@ func NewPersistent(llm LLM, defaultModel, conversationID string, history History
 	a := New(llm, defaultModel, options...)
 	a.history = history
 	a.conversationID = conversationID
-	if history == nil {
-		return a, nil
-	}
-	state, err := history.Load(conversationID)
-	if errors.Is(err, ErrHistoryNotFound) {
-		return a, nil
-	}
-	if err != nil {
-		return nil, fmt.Errorf("load conversation history: %w", err)
-	}
 	if a.memoryStore != nil {
 		layers, err := a.memoryStore.Get(conversationID)
 		if err != nil {
 			return nil, err
 		}
-		oldTask := state.MemoryTaskID
-		if oldTask == "" {
-			oldTask = conversationID
-		}
-		if oldTask != layers.Task.ID {
-			return a, nil
+		a.taskID = layers.Task.ID
+	}
+	state, err := a.loadTaskHistory(a.taskID)
+	if err != nil {
+		return nil, err
+	}
+	a.restoreConversationLocked(state)
+	return a, nil
+}
+
+func (a *Agent) historyKey(taskID string) string {
+	if taskID == "" {
+		return a.conversationID
+	}
+	return a.conversationID + "/" + taskID
+}
+
+func (a *Agent) loadTaskHistory(taskID string) (ConversationState, error) {
+	if a.history == nil {
+		return ConversationState{}, nil
+	}
+	state, err := a.history.Load(a.historyKey(taskID))
+	if errors.Is(err, ErrHistoryNotFound) && taskID != "" {
+		// Read the pre-task-switching history only when it belongs to this task.
+		state, err = a.history.Load(a.conversationID)
+		if err == nil {
+			oldTask := state.MemoryTaskID
+			if oldTask == "" {
+				oldTask = a.conversationID
+			}
+			if oldTask != taskID {
+				return ConversationState{}, nil
+			}
 		}
 	}
+	if errors.Is(err, ErrHistoryNotFound) {
+		return ConversationState{}, nil
+	}
+	if err != nil {
+		return ConversationState{}, fmt.Errorf("load conversation history: %w", err)
+	}
+	return state, nil
+}
+
+func (a *Agent) restoreConversationLocked(state ConversationState) {
+	a.clearConversationLocked()
 	a.previousResponseID = strings.TrimSpace(state.PreviousResponseID)
 	a.activeModel = strings.TrimSpace(state.ActiveModel)
 	a.messages = cloneMessages(state.Messages)
@@ -245,7 +274,6 @@ func NewPersistent(llm LLM, defaultModel, conversationID string, history History
 	if !a.compression.Enabled && a.summary.MessageCount > 0 {
 		a.previousResponseID = ""
 	}
-	return a, nil
 }
 
 // Ask normalizes a user request, calls the LLM and prepares the final response.
@@ -463,7 +491,7 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 			Checkpoint:         cloneCheckpoint(a.checkpoint),
 			UpdatedAt:          time.Now().UTC(),
 		}
-		if err := a.history.Save(a.conversationID, state); err != nil {
+		if err := a.history.Save(a.historyKey(a.taskID), state); err != nil {
 			return Response{}, fmt.Errorf("save conversation history: %w", err)
 		}
 	}
@@ -511,8 +539,15 @@ func (a *Agent) Reset() error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	if a.history != nil {
-		if err := a.history.Delete(a.conversationID); err != nil {
-			return fmt.Errorf("delete conversation history: %w", err)
+		var err error
+		if a.taskID != "" {
+			// An empty task record also prevents legacy history from reappearing.
+			err = a.history.Save(a.historyKey(a.taskID), ConversationState{MemoryTaskID: a.taskID})
+		} else {
+			err = a.history.Delete(a.conversationID)
+		}
+		if err != nil {
+			return fmt.Errorf("clear conversation history: %w", err)
 		}
 	}
 	a.clearConversationLocked()

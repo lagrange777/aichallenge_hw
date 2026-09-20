@@ -9,6 +9,35 @@ import (
 
 const owner = "00112233445566778899aabbccddeeff"
 
+func TestSingleTaskRevisionWithoutArchiveMigrates(t *testing.T) {
+	root := t.TempDir()
+	store, _ := NewStore(root)
+	state, _ := store.Get(owner)
+	state, err := store.SaveMessage(owner, state.Task.ID, "message", Working, "goal", "Existing goal", "user")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var revision string
+	if err = readJSON(filepath.Join(root, owner, "CURRENT.json"), &revision); err != nil {
+		t.Fatal(err)
+	}
+	if err = os.Remove(filepath.Join(root, owner, revision, "tasks.json")); err != nil {
+		t.Fatal(err)
+	}
+	store, _ = NewStore(root)
+	next, err := store.NewTask(owner, state.Task.ID, "New task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	restored, err := store.SwitchTask(owner, next.Task.ID, state.Task.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(restored.Working) != 1 || restored.Working[0].Value != "Existing goal" {
+		t.Fatal("legacy working memory lost")
+	}
+}
+
 func TestSeparateLayersReviewLifecycleAndIsolation(t *testing.T) {
 	root := t.TempDir()
 	store, err := NewStore(root)

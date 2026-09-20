@@ -75,6 +75,8 @@ func (s *server) handleMemoryMutation(w http.ResponseWriter, r *http.Request) {
 		state, err = a.EditMemory(request.TaskID, request.ID, request.Layer, request.Key, request.Value, false)
 	case "/api/memory/delete":
 		state, err = a.EditMemory(request.TaskID, request.ID, request.Layer, "", "", true)
+	case "/api/tasks/switch":
+		state, err = a.SwitchTask(request.TaskID, request.ID)
 	case "/api/tasks/new":
 		state, err = a.NewTask(request.TaskID, request.Name)
 	}

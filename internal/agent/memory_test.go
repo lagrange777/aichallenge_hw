@@ -168,49 +168,55 @@ func TestMemoryBranchingReplaysCurrentLayersAfterDeletionAndRestart(t *testing.T
 	}
 }
 
-type failingDeleteHistory struct{ memoryHistory }
+type failingSaveHistory struct {
+	memoryHistory
+	fail bool
+}
 
-func (h *failingDeleteHistory) Delete(string) error { return errors.New("disk error") }
-func TestNewTaskCannotRestoreOldChatWhenHistoryDeletionFails(t *testing.T) {
-	store, err := memory.NewStore(t.TempDir())
+func (h *failingSaveHistory) Save(id string, state ConversationState) error {
+	if h.fail {
+		return errors.New("disk error")
+	}
+	return h.memoryHistory.Save(id, state)
+}
+func TestTaskChangeFailurePreservesCurrentTask(t *testing.T) {
+	store, _ := memory.NewStore(t.TempDir())
+	hist := &failingSaveHistory{}
+	a, err := NewPersistent(&layeredLLM{}, "gpt-5.3-codex", profileID, hist, WithMemory(store))
 	if err != nil {
 		t.Fatal(err)
 	}
-	hist := &failingDeleteHistory{}
-	llm := &layeredLLM{}
-	a, err := NewPersistent(llm, "gpt-5.3-codex", profileID, hist, WithMemory(store))
+	if _, err = a.Ask(context.Background(), Request{Message: "original task"}); err != nil {
+		t.Fatal(err)
+	}
+	original, _ := a.Memories()
+	second, err := a.NewTask(original.Task.ID, "Second")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = a.Ask(context.Background(), Request{Message: "old task secret"}); err != nil {
+	if _, err = a.Ask(context.Background(), Request{Message: "second task"}); err != nil {
 		t.Fatal(err)
 	}
-	view, err := a.Memories()
+	hist.fail = true
+	if _, err = a.NewTask(second.Task.ID, "Third"); err == nil {
+		t.Fatal("expected save error")
+	}
+	if _, err = a.SwitchTask(second.Task.ID, original.Task.ID); err == nil {
+		t.Fatal("expected save error")
+	}
+	if err = a.Reset(); err == nil {
+		t.Fatal("expected save error")
+	}
+	view, _ := a.Memories()
+	if view.Task.ID != second.Task.ID || len(view.Tasks) != 2 || len(a.Messages()) != 2 {
+		t.Fatal("failed operation changed active task")
+	}
+	restored, err := NewPersistent(&layeredLLM{}, "gpt-5.3-codex", profileID, hist, WithMemory(store))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = a.NewTask(view.Task.ID, "New task"); err == nil {
-		t.Fatal("expected history deletion error")
-	}
-	if len(a.Messages()) != 0 {
-		t.Fatal("old transcript remains in active agent")
-	}
-	restored, err := NewPersistent(llm, "gpt-5.3-codex", profileID, hist, WithMemory(store))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(restored.Messages()) != 0 {
-		t.Fatal("old task transcript restored into new task")
-	}
-	if _, err = restored.Ask(context.Background(), Request{Message: "new task"}); err != nil {
-		t.Fatal(err)
-	}
-	restored, err = NewPersistent(llm, "gpt-5.3-codex", profileID, hist, WithMemory(store))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(restored.Messages()) != 2 || restored.Messages()[0].Text != "new task" {
-		t.Fatal("new task transcript was not restored")
+	if len(restored.Messages()) != 2 || restored.Messages()[0].Text != "second task" {
+		t.Fatal("active task did not survive restart")
 	}
 }
 

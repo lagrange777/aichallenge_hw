@@ -156,3 +156,66 @@ func TestSaveMessageMemoryAPI(t *testing.T) {
 		t.Fatalf("saving triggered model calls: %d", llm.calls)
 	}
 }
+
+func TestTaskSwitchAPIAndRestart(t *testing.T) {
+	root := t.TempDir()
+	store, _ := memory.NewStore(filepath.Join(root, "memory"))
+	hist, _ := history.NewJSONStore(filepath.Join(root, "history.json"))
+	llm := &fakeLLM{respond: func(r agent.CompletionRequest) string {
+		if strings.Contains(r.Instructions, "You suggest memories") {
+			return `{"proposals":[]}`
+		}
+		return "answer"
+	}}
+	handler := NewHandler(llm, "test-model", hist, agent.WithMemory(store))
+	chat := performChatBody(handler, nil, `{"message":"First task conversation"}`)
+	if chat.Code != 200 {
+		t.Fatal(chat.Body.String())
+	}
+	cookie := sessionCookieFrom(t, chat)
+	call := func(path string, identity *http.Cookie, body map[string]string) (int, apiResponse) {
+		t.Helper()
+		encoded, _ := json.Marshal(body)
+		req := httptest.NewRequest("POST", path, strings.NewReader(string(encoded)))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("X-Codex-Chat", "1")
+		if identity != nil {
+			req.AddCookie(identity)
+		}
+		res := httptest.NewRecorder()
+		handler.ServeHTTP(res, req)
+		var payload apiResponse
+		if err := json.Unmarshal(res.Body.Bytes(), &payload); err != nil {
+			t.Fatal(err)
+		}
+		return res.Code, payload
+	}
+	state, _ := store.Get(cookie.Value)
+	firstID := state.Task.ID
+	code, created := call("/api/tasks/new", cookie, map[string]string{"taskId": firstID, "name": "Second task"})
+	if code != 200 || len(created.Memory.Tasks) != 2 || len(created.Messages) != 0 {
+		t.Fatalf("create: %d %#v", code, created)
+	}
+	secondID := created.Memory.Task.ID
+	if chat = performChatBody(handler, cookie, `{"message":"Second task conversation"}`); chat.Code != 200 {
+		t.Fatal(chat.Body.String())
+	}
+	switchBody := map[string]string{"taskId": secondID, "id": firstID}
+	if code, _ = call("/api/tasks/switch", nil, switchBody); code != 409 {
+		t.Fatalf("other profile: %d", code)
+	}
+	code, restored := call("/api/tasks/switch", cookie, switchBody)
+	if code != 200 || len(restored.Messages) != 2 || restored.Messages[0].Text != "First task conversation" || restored.Memory.Task.ID != firstID {
+		t.Fatalf("switch: %d %#v", code, restored)
+	}
+	if code, _ = call("/api/tasks/switch", cookie, switchBody); code != 409 {
+		t.Fatalf("stale switch: %d", code)
+	}
+	store, _ = memory.NewStore(filepath.Join(root, "memory"))
+	hist, _ = history.NewJSONStore(filepath.Join(root, "history.json"))
+	handler = NewHandler(llm, "test-model", hist, agent.WithMemory(store))
+	code, restored = call("/api/tasks/switch", cookie, map[string]string{"taskId": firstID, "id": secondID})
+	if code != 200 || len(restored.Messages) != 2 || restored.Messages[0].Text != "Second task conversation" || len(restored.Memory.Tasks) != 2 {
+		t.Fatalf("restart: %d %#v", code, restored)
+	}
+}

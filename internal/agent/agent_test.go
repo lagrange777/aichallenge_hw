@@ -79,24 +79,37 @@ func (f *compressionLLM) CountTokens(_ context.Context, request CompletionReques
 }
 
 type memoryHistory struct {
-	state ConversationState
-	saved bool
+	states map[string]ConversationState
+	state  ConversationState
+	saved  bool
 }
 
-func (h *memoryHistory) Load(string) (ConversationState, error) {
+func (h *memoryHistory) Load(id string) (ConversationState, error) {
+	if h.states != nil {
+		state, ok := h.states[id]
+		if !ok {
+			return ConversationState{}, ErrHistoryNotFound
+		}
+		return state, nil
+	}
 	if !h.saved {
 		return ConversationState{}, ErrHistoryNotFound
 	}
 	return h.state, nil
 }
 
-func (h *memoryHistory) Save(_ string, state ConversationState) error {
+func (h *memoryHistory) Save(id string, state ConversationState) error {
+	if h.states == nil {
+		h.states = make(map[string]ConversationState)
+	}
+	h.states[id] = state
 	h.state = state
 	h.saved = true
 	return nil
 }
 
-func (h *memoryHistory) Delete(string) error {
+func (h *memoryHistory) Delete(id string) error {
+	delete(h.states, id)
 	h.state = ConversationState{}
 	h.saved = false
 	return nil

@@ -199,11 +199,15 @@
       <section id="tasks-panel" class="tasks-panel" role="tabpanel" aria-labelledby="tab-tasks" hidden>
         <div class="tasks-content">
           <header class="tasks-header">
-            <div><p class="eyebrow">Управление задачами</p><h1>Задачи</h1><p>Одна задача может продолжаться в нескольких чатах.</p></div>
+            <div><p class="eyebrow">Управление задачами</p><h1>Задачи</h1><p>Возвращайтесь к задачам с сохранённой перепиской и рабочей памятью.</p></div>
             <button id="tasks-open-chat" type="button" class="memory-button">Перейти в чат</button>
           </header>
           <p id="tasks-status" role="status"></p>
           <fieldset id="tasks-controls" disabled>
+            <section class="task-saved" aria-labelledby="tasks-list-title">
+              <h2 id="tasks-list-title">Сохранённые задачи</h2>
+              <div id="tasks-list" class="tasks-list"></div>
+            </section>
             <section class="task-current" aria-labelledby="tasks-current-name">
               <span class="task-badge">Текущая задача</span>
               <h2 id="tasks-current-name">Загрузка…</h2>
@@ -218,7 +222,7 @@
               </section>
               <form id="new-task-form" class="task-new">
                 <h2>Начать новую задачу</h2>
-                <p>Текущая переписка, рабочая память и предложения будут очищены. Долговременная память останется.</p>
+                <p>Текущая задача сохранится в списке вместе с перепиской и рабочей памятью. Долговременная память общая для всех задач.</p>
                 <label>Название задачи<input id="new-task-name" maxlength="100" required placeholder="Например, авторизация в API"></label>
                 <button type="submit" class="memory-button memory-primary">Начать новую задачу</button>
               </form>

@@ -85,11 +85,19 @@ type Task struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
 }
-type State struct {
+
+// TaskMemory contains only task-scoped layers. Profile memory stays shared.
+type TaskMemory struct {
 	Task      Task       `json:"task"`
 	Working   []Entry    `json:"working"`
-	LongTerm  []Entry    `json:"longTerm"`
 	Proposals []Proposal `json:"proposals"`
+}
+type State struct {
+	Task      Task         `json:"task"`
+	Working   []Entry      `json:"working"`
+	LongTerm  []Entry      `json:"longTerm"`
+	Proposals []Proposal   `json:"proposals"`
+	Archived  []TaskMemory `json:"-"`
 }
 
 // Store is single-process. Each revision contains independent layer files; an
@@ -172,6 +180,10 @@ func (s *Store) read(owner string) (State, string, error) {
 			return State{}, "", err
 		}
 	}
+	// Older revisions contain a single task and have no archive yet.
+	if err = readJSON(filepath.Join(dir, "tasks.json"), &state.Archived); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return State{}, "", err
+	}
 	return state, revision, nil
 }
 func readJSON(path string, dst any) error {
@@ -212,7 +224,7 @@ func (s *Store) write(owner string, state State, previous string) error {
 			_ = os.RemoveAll(next)
 		}
 	}()
-	for name, value := range map[string]any{"task.json": state.Task, "working.json": state.Working, "long_term.json": state.LongTerm, "proposals.json": state.Proposals} {
+	for name, value := range map[string]any{"task.json": state.Task, "working.json": state.Working, "long_term.json": state.LongTerm, "proposals.json": state.Proposals, "tasks.json": state.Archived} {
 		if err = writeJSON(filepath.Join(next, name), value); err != nil {
 			return err
 		}
@@ -380,10 +392,31 @@ func (s *Store) NewTask(owner, taskID, name string) (State, error) {
 		if err != nil {
 			return err
 		}
+		state.Archived = append(state.Archived, TaskMemory{state.Task, state.Working, state.Proposals})
 		state.Task = Task{ID: id, Name: name}
 		state.Working = []Entry{}
-		// Suggestions belong to the old task; only confirmed profile memory survives.
+		// The previous task's suggestions remain in its archive.
 		state.Proposals = []Proposal{}
 		return nil
+	})
+}
+
+func (s *Store) SwitchTask(owner, currentID, targetID string) (State, error) {
+	return s.update(owner, func(state *State) error {
+		if state.Task.ID != currentID {
+			return ErrConflict
+		}
+		if currentID == targetID {
+			return nil
+		}
+		for i, target := range state.Archived {
+			if target.Task.ID != targetID {
+				continue
+			}
+			state.Archived[i] = TaskMemory{state.Task, state.Working, state.Proposals}
+			state.Task, state.Working, state.Proposals = target.Task, target.Working, target.Proposals
+			return nil
+		}
+		return ErrConflict
 	})
 }
