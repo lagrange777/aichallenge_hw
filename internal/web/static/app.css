@@ -434,18 +434,18 @@ select:focus-visible {
   display: grid;
   min-width: 0;
   min-height: 0;
-  grid-template-rows: 70px minmax(0, 1fr) auto;
+  grid-template-rows: 70px auto minmax(0, 1fr) auto;
   background:
     radial-gradient(circle at 50% 18%, rgba(255, 255, 255, 0.95), transparent 40%),
     var(--paper);
 }
 
 .workspace:not(.has-messages) {
-  grid-template-rows: 70px auto minmax(0, 1fr);
+  grid-template-rows: 70px auto minmax(0, 1fr) auto;
 }
 
 .workspace:not(.has-messages) .chat {
-  overflow: visible;
+  overflow: auto;
 }
 
 .workspace:not(.has-messages) .empty-state {
@@ -1333,11 +1333,11 @@ kbd {
 
   .workspace {
     height: 100dvh;
-    grid-template-rows: 62px minmax(0, 1fr) auto;
+    grid-template-rows: 62px auto minmax(0, 1fr) auto;
   }
 
   .workspace:not(.has-messages) {
-    grid-template-rows: 62px auto minmax(0, 1fr);
+    grid-template-rows: 62px auto minmax(0, 1fr) auto;
   }
 
   .workspace:not(.has-messages) .empty-state {
@@ -1628,7 +1628,7 @@ kbd {
 .profile-snapshot dd { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 @media (max-width: 900px) {
   .topbar { flex-wrap: wrap; height: auto; padding: 10px 12px; gap: 8px; }
-  .workspace, .workspace:not(.has-messages) { grid-template-rows: auto minmax(0, 1fr) auto; }
+  .workspace, .workspace:not(.has-messages) { grid-template-rows: auto auto minmax(0, 1fr) auto; }
   .workspace.tasks-active { grid-template-rows: auto minmax(0, 1fr); }
   .workspace-tabs { flex-basis: 100%; }
   .profile-indicator { max-width: 38vw; font-size: 12px; }

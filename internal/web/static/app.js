@@ -816,7 +816,7 @@
   }
 
   function scrollToLatest() {
-    chat.scrollTop = chat.scrollHeight;
+    chat.scrollTop = transcript.length ? chat.scrollHeight : 0;
   }
 
   function formatTime(timestamp) {
