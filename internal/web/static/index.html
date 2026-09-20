@@ -191,10 +191,15 @@
           </details>
           <div class="composer-bar">
             <span class="composer-hint"><kbd>Shift</kbd> + <kbd>Enter</kbd> — новая строка</span>
+            <div class="composer-actions">
+              <button id="composer-task-next" type="button" class="memory-button" disabled>Следующий этап</button>
+              <button id="composer-task-pause" type="button" class="memory-button" disabled>Пауза</button>
             <button class="send-button" id="send-button" type="submit" aria-label="Отправить сообщение" disabled>
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 7-7 7 7M12 5v14"/></svg>
             </button>
+            </div>
           </div>
+          <p id="composer-task-status" role="status"></p>
         </form>
         <p class="disclaimer">Ответы модели могут содержать ошибки. Проверяйте важный код.</p>
       </footer>
@@ -316,6 +321,15 @@
       <label>Что запомнить<textarea id="save-message-value" rows="7" required></textarea></label>
       <p id="save-message-status" role="status"></p>
       <div class="memory-actions"><button id="save-message-submit" type="submit" class="memory-button memory-primary">Сохранить в память</button></div>
+    </form>
+  </dialog>
+  <dialog id="task-transition-dialog" aria-labelledby="task-transition-title">
+    <form id="task-transition-form">
+      <header class="memory-header"><h2 id="task-transition-title">Следующий этап</h2><button id="task-transition-cancel" type="button" class="memory-button">Отмена</button></header>
+      <p id="task-transition-reason"></p>
+      <div id="task-transition-fields"></div>
+      <p id="task-transition-status" role="status"></p>
+      <button id="task-transition-confirm" type="submit" class="memory-button memory-primary">Подтвердить переход</button>
     </form>
   </dialog>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>

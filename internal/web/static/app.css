@@ -1664,3 +1664,18 @@ kbd {
   .task-list-item { flex-wrap: wrap; }
   .chat-task-state { padding: 8px 12px; }
 }
+
+.composer-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+.composer-actions .send-button { flex-shrink: 0; }
+#composer-task-status { margin: 8px 0 0; font-size: 12px; color: var(--muted); }
+#composer-task-status:empty { display: none; }
+#task-transition-dialog { width: min(640px, calc(100vw - 32px)); max-height: 85dvh; overflow: auto; padding: 24px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); color: var(--ink); }
+#task-transition-dialog::backdrop { background: rgba(20, 30, 24, .35); }
+#task-transition-fields { display: grid; gap: 12px; margin: 20px 0; }
+#task-transition-fields label { display: grid; gap: 6px; font-size: 13px; }
+#task-transition-fields textarea, #task-transition-fields select { width: 100%; min-width: 0; padding: 10px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: var(--surface-soft); font: inherit; }
+#task-transition-status, #task-transition-reason { font-size: 13px; }
+@media (max-width: 900px) {
+  .composer-bar { gap: 8px; flex-wrap: wrap; }
+  .composer-actions { margin-left: auto; }
+}

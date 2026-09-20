@@ -72,6 +72,7 @@
   });
   search.addEventListener("input", filterMemory);
   function syncBusy() {
+    window.CodexTaskState.setBusy(!state || busy || chatBusy || profileBusy);
     controls.disabled = !state || busy || chatBusy || profileBusy;
     tasksControls.disabled = !state || busy || chatBusy || profileBusy;
     saveForm.querySelectorAll("input, textarea, select, button").forEach(element => { element.disabled = busy || chatBusy || profileBusy; });
@@ -118,6 +119,7 @@
     syncBusy();
     window.dispatchEvent(new CustomEvent("codex:memory-busy", { detail: true }));
     setStatus("Сохраняем…");
+    if (path === "/api/tasks/state") window.CodexTaskState.setStatus("Сохраняем…");
     try {
       const response = await fetch(path, {
         method: "POST",
@@ -129,6 +131,7 @@
       state = payload.memory;
       messages = payload.messages || [];
       render();
+      if (path === "/api/tasks/state") window.CodexTaskState.setStatus(state.task.workflow.paused ? "Задача на паузе" : "Состояние задачи сохранено");
       setStatus("Сохранено. Изменения будут учтены в следующем ответе.");
       if (dialog.open && !saveDialog.open) document.querySelector(`#memory-tab-${activeMemoryTab}`).focus();
       if (path === "/api/tasks/new" || path === "/api/tasks/switch") {
@@ -140,6 +143,7 @@
       return payload;
     } catch (error) {
       setStatus(error.message);
+      if (path === "/api/tasks/state") window.CodexTaskState.setStatus(error.message);
       if (saveDialog.open) saveStatus.textContent = error.message;
       return null;
     } finally {

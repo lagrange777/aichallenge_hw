@@ -11,6 +11,77 @@
   ];
   const transitions = { planning: ["execution"], execution: ["validation"], validation: ["execution", "done"], done: [] };
   let current = null;
+  let change = null;
+  let busy = true;
+  let pendingTransition = null;
+  const nextButton = document.querySelector("#composer-task-next");
+  const pauseButton = document.querySelector("#composer-task-pause");
+  const transitionDialog = document.querySelector("#task-transition-dialog");
+  const transitionForm = document.querySelector("#task-transition-form");
+  const forward = { planning: "execution", execution: "validation", validation: "done" };
+  function nextStage(w) {
+    const proposed = w.proposal?.progress.stage;
+    return proposed && proposed !== w.stage && transitions[w.stage].includes(proposed) ? proposed : forward[w.stage];
+  }
+  function syncControls() {
+    const w = current?.workflow;
+    const next = w && nextStage(w);
+    nextButton.textContent = next === "done" ? "Завершить задачу" : w?.stage === "validation" && next === "execution" ? "К исправлениям" : "Следующий этап";
+    nextButton.title = next ? `${stages[w.stage]} → ${stages[next]}` : "Задача завершена";
+    nextButton.disabled = busy || !w || w.paused || !next;
+    pauseButton.textContent = w?.paused ? "Продолжить" : "Пауза";
+    pauseButton.title = w?.paused ? "Снять паузу задачи" : "Приостановить задачу между ответами";
+    pauseButton.disabled = busy || !w || w.stage === "done";
+    transitionForm.querySelectorAll("input, textarea, select, button").forEach(el => { el.disabled = busy; });
+  }
+  pauseButton.addEventListener("click", () => {
+    if (pauseButton.disabled) return;
+    change("/api/tasks/state", { action: current.workflow.paused ? "resume" : "pause", version: current.workflow.version, profileId: window.CodexProfiles.activeID() });
+  });
+  nextButton.addEventListener("click", () => {
+    if (nextButton.disabled) return;
+    const w = current.workflow;
+    const target = nextStage(w);
+    const proposed = w.proposal?.progress.stage === target;
+    const progress = { ...(proposed ? w.proposal.progress : w), stage: target };
+    if (!proposed) {
+      const defaults = {
+        execution: ["Выполнить согласованный план", "Выполнить следующий шаг по сохранённой цели и плану"],
+        validation: ["Проверить результат по критериям готовности", "Проверить сохранённый результат и сообщить о найденных несоответствиях"],
+        done: ["Задача завершена", "Дальнейших действий не требуется"]
+      };
+      [progress.currentStep, progress.expectedAction] = defaults[target];
+      progress.expectedActor = target === "done" ? "user" : "agent";
+    }
+    pendingTransition = { taskId: current.id, profileId: window.CodexProfiles.activeID(), version: w.version, target };
+    document.querySelector("#task-transition-title").textContent = `${stages[w.stage]} → ${stages[target]}`;
+    document.querySelector("#task-transition-reason").textContent = proposed ? w.proposal.reason : "Проверьте точку продолжения перед переходом. Сохранённые результаты будут переданы агенту.";
+    document.querySelector("#task-transition-status").textContent = "";
+    const fieldsRoot = document.querySelector("#task-transition-fields");
+    fieldsRoot.replaceChildren();
+    const actorLabel = node("label", "Кто должен действовать");
+    const actor = node("select"); actor.name = "expectedActor";
+    for (const [key, text] of [["agent", "Агент"], ["user", "Вы"]]) { const option = node("option", text); option.value = key; actor.append(option); }
+    actor.value = progress.expectedActor; actorLabel.append(actor); fieldsRoot.append(actorLabel);
+    for (const [key, label, max] of fields) {
+      const wrapper = node("label", label);
+      const input = node("textarea"); input.name = key; input.value = progress[key] || ""; input.rows = 2; input.maxLength = max;
+      input.required = ["goal", "currentStep", "expectedAction"].includes(key) || key === "result" && ["validation", "done"].includes(target) || key === "validation" && target === "done";
+      wrapper.append(input); fieldsRoot.append(wrapper);
+    }
+    document.querySelector("#task-transition-confirm").textContent = target === "done" ? "Подтвердить завершение" : "Подтвердить переход";
+    syncControls(); transitionDialog.showModal();
+  });
+  transitionForm.addEventListener("submit", async event => {
+    event.preventDefault();
+    if (busy || !pendingTransition) return;
+    const { target, ...identity } = pendingTransition;
+    const progress = { ...Object.fromEntries(new FormData(transitionForm)), stage: target };
+    const payload = await change("/api/tasks/state", { ...identity, action: "save", progress });
+    if (payload) transitionDialog.close();
+  });
+  document.querySelector("#task-transition-cancel").addEventListener("click", () => transitionDialog.close());
+  transitionDialog.addEventListener("cancel", event => { if (busy) event.preventDefault(); });
   function node(tag, text, className) {
     const el = document.createElement(tag);
     if (text !== undefined) el.textContent = text;
@@ -30,8 +101,12 @@
     return list;
   }
   function render(state, mutate) {
+    if (current?.id !== state.task.id) document.querySelector("#composer-task-status").textContent = "";
     current = state.task;
+    change = mutate;
     const w = current.workflow;
+    if (transitionDialog.open && pendingTransition && (pendingTransition.taskId !== current.id || pendingTransition.version !== w.version)) transitionDialog.close();
+    syncControls();
     const root = document.querySelector("#task-workflow");
     root.replaceChildren();
     const command = (action, progress) => mutate("/api/tasks/state", {
@@ -105,5 +180,11 @@
     banner.title = `${w.currentStep}. ${w.expectedActor === "agent" ? "Агент" : "Вы"}: ${w.expectedAction}`;
     window.dispatchEvent(new CustomEvent("codex:task-state", { detail: current }));
   }
-  window.CodexTaskState = Object.freeze({ render, stages, current: () => current });
+  window.CodexTaskState = Object.freeze({ render, stages, current: () => current,
+    setBusy(value) { busy = value; syncControls(); },
+    setStatus(text) {
+      document.querySelector("#composer-task-status").textContent = text;
+      document.querySelector("#task-transition-status").textContent = text;
+    }
+  });
 })();
