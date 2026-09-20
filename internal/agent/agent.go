@@ -12,6 +12,7 @@ import (
 
 	"codex-chat-cli/internal/memory"
 	"codex-chat-cli/internal/models"
+	"codex-chat-cli/internal/profile"
 )
 
 // LLM is the transport boundary used by Agent to call a language model.
@@ -26,6 +27,7 @@ type TokenCounter interface {
 
 // Request is a user request accepted by the agent.
 type Request struct {
+	ProfileID           string
 	Message             string
 	Model               string
 	Format              string
@@ -39,6 +41,8 @@ type Request struct {
 
 // CompletionRequest is a normalized request sent from the agent to an LLM.
 type CompletionRequest struct {
+	Profile             *profile.Profile
+	Internal            bool
 	Input               string
 	History             []ContextMessage
 	Model               string
@@ -100,12 +104,13 @@ type MessageMetrics struct {
 
 // Message is one durable item in a conversation transcript.
 type Message struct {
-	ID      string          `json:"id"`
-	Role    string          `json:"role"`
-	Text    string          `json:"text"`
-	Time    int64           `json:"time"`
-	Model   string          `json:"model,omitempty"`
-	Metrics *MessageMetrics `json:"metrics,omitempty"`
+	Profile *profile.Profile `json:"profile,omitempty"`
+	ID      string           `json:"id"`
+	Role    string           `json:"role"`
+	Text    string           `json:"text"`
+	Time    int64            `json:"time"`
+	Model   string           `json:"model,omitempty"`
+	Metrics *MessageMetrics  `json:"metrics,omitempty"`
 }
 
 // ConversationState is the complete state needed to restore an Agent.
@@ -137,10 +142,13 @@ type History interface {
 
 // Agent owns one conversation and encapsulates its LLM request/response flow.
 type Agent struct {
-	memoryStore  *memory.Store
-	llm          LLM
-	tokenCounter TokenCounter
-	defaultModel string
+	profileStore  *profile.Store
+	browserID     string
+	activeProfile *profile.Profile
+	memoryStore   *memory.Store
+	llm           LLM
+	tokenCounter  TokenCounter
+	defaultModel  string
 
 	mu                 sync.Mutex
 	previousResponseID string
@@ -193,8 +201,18 @@ func NewPersistent(llm LLM, defaultModel, conversationID string, history History
 	a := New(llm, defaultModel, options...)
 	a.history = history
 	a.conversationID = conversationID
+	a.browserID = conversationID
+	if a.profileStore != nil {
+		profiles, err := a.profileStore.Get(a.browserID)
+		if err != nil {
+			return nil, err
+		}
+		p := profiles.Active()
+		a.activeProfile = &p
+		a.conversationID = p.ID
+	}
 	if a.memoryStore != nil {
-		layers, err := a.memoryStore.Get(conversationID)
+		layers, err := a.memoryStore.Get(a.conversationID)
 		if err != nil {
 			return nil, err
 		}
@@ -283,6 +301,17 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
+	if a.profileStore != nil {
+		profiles, err := a.profileStore.Get(a.browserID)
+		if err != nil {
+			return Response{}, err
+		}
+		if profiles.ActiveID != a.conversationID || (request.ProfileID != "" && request.ProfileID != profiles.ActiveID) {
+			return Response{}, profile.ErrConflict
+		}
+		p := profiles.Active()
+		a.activeProfile = &p
+	}
 	request.Message = strings.TrimSpace(request.Message)
 	if request.Message == "" {
 		return Response{}, errors.New("message is required")
@@ -340,6 +369,7 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 		return Response{}, fmt.Errorf("unsupported context strategy %q", a.strategy.Type)
 	}
 	completionRequest := CompletionRequest{
+		Profile:             a.activeProfile,
 		Input:               request.Message,
 		History:             replayHistory,
 		Model:               request.Model,
@@ -348,6 +378,11 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 		LengthLimit:         request.LengthLimit,
 		CompletionCondition: request.CompletionCondition,
 		Temperature:         request.Temperature,
+	}
+	if a.activeProfile != nil && completionRequest.PreviousResponseID != "" {
+		// Profile edits must not keep older instructions in a hidden response chain.
+		completionRequest.History = contextMessages(a.messages)
+		completionRequest.PreviousResponseID = ""
 	}
 	var layers memory.State
 	if a.memoryStore != nil {
@@ -449,10 +484,11 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 	nextMessages := append(cloneMessages(a.messages),
 		Message{Role: "user", Text: request.Message, Time: started.UnixMilli()},
 		Message{
-			Role:  "assistant",
-			Text:  response.Text,
-			Time:  time.Now().UnixMilli(),
-			Model: response.Model,
+			Role:    "assistant",
+			Profile: a.activeProfile,
+			Text:    response.Text,
+			Time:    time.Now().UnixMilli(),
+			Model:   response.Model,
 			Metrics: &MessageMetrics{
 				DurationMS:        durationMS,
 				InputTokens:       response.Usage.InputTokens,
@@ -582,6 +618,10 @@ func cloneMessages(messages []Message) []Message {
 	for index, message := range messages {
 		cloned[index] = message
 		cloned[index].ID = messageID(message)
+		if message.Profile != nil {
+			p := *message.Profile
+			cloned[index].Profile = &p
+		}
 		if message.Metrics != nil {
 			metrics := *message.Metrics
 			if message.Metrics.CostUSD != nil {

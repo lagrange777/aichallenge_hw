@@ -76,7 +76,7 @@ func (a *Agent) prepareCompression(ctx context.Context, model string) preparedCo
 		// many older messages are merged by one summarization request; a partial
 		// batch must not postpone compression beyond the configured N messages.
 		compactThrough := min(prepared.Summary.MessageCount+a.compression.BatchSize, eligible)
-		completion, err := a.llm.Complete(ctx, CompletionRequest{
+		completion, err := a.completeInternal(ctx, CompletionRequest{
 			Model:        model,
 			Instructions: summaryInstructions,
 			Input:        summaryInput(prepared.Summary.Text, a.messages[prepared.Summary.MessageCount:compactThrough]),

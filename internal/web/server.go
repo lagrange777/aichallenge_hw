@@ -16,6 +16,7 @@ import (
 
 	"codex-chat-cli/internal/agent"
 	"codex-chat-cli/internal/models"
+	"codex-chat-cli/internal/profile"
 )
 
 const (
@@ -28,7 +29,7 @@ const (
 	maxSessions     = 256
 )
 
-//go:embed static/index.html static/app.css static/app.js static/memory.js static/markdown.js static/favicon.svg
+//go:embed static/index.html static/app.css static/app.js static/memory.js static/profiles.js static/markdown.js static/favicon.svg
 var staticFiles embed.FS
 
 type sessionEntry struct {
@@ -49,6 +50,7 @@ type server struct {
 }
 
 type chatRequest struct {
+	ProfileID           string   `json:"profileId,omitempty"`
 	Message             string   `json:"message"`
 	Model               string   `json:"model,omitempty"`
 	ResponseFormat      string   `json:"responseFormat,omitempty"`
@@ -60,6 +62,7 @@ type chatRequest struct {
 }
 
 type apiResponse struct {
+	Profiles *agent.ProfileView      `json:"profiles,omitempty"`
 	Memory   *agent.MemoryView       `json:"memory,omitempty"`
 	Answer   string                  `json:"answer,omitempty"`
 	Error    string                  `json:"error,omitempty"`
@@ -135,6 +138,13 @@ func NewHandler(llm agent.LLM, model string, history agent.History, agentOptions
 	mux.HandleFunc("/api/memory/delete", app.handleMemoryMutation)
 	mux.HandleFunc("/api/tasks/new", app.handleMemoryMutation)
 	mux.HandleFunc("/api/tasks/switch", app.handleMemoryMutation)
+	mux.HandleFunc("/profiles.js", func(w http.ResponseWriter, r *http.Request) {
+		app.serveStatic(w, r, "profiles.js", "text/javascript; charset=utf-8")
+	})
+	mux.HandleFunc("/api/profiles", app.handleProfiles)
+	mux.HandleFunc("/api/profiles/new", app.handleProfileMutation)
+	mux.HandleFunc("/api/profiles/edit", app.handleProfileMutation)
+	mux.HandleFunc("/api/profiles/switch", app.handleProfileMutation)
 	return securityHeaders(mux)
 }
 
@@ -247,6 +257,7 @@ func (s *server) handleChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	result, err := chatAgent.Ask(r.Context(), agent.Request{
+		ProfileID:           request.ProfileID,
 		Message:             request.Message,
 		Model:               request.Model,
 		Format:              request.ResponseFormat,
@@ -259,6 +270,9 @@ func (s *server) handleChat(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		status := http.StatusBadGateway
 		message := err.Error()
+		if errors.Is(err, profile.ErrConflict) {
+			status, message = 409, "Активный профиль изменился. Обновите страницу перед отправкой."
+		}
 		if errors.Is(err, agent.ErrStrategyLocked) {
 			status = http.StatusConflict
 			message = "Стратегию и N можно изменить только до первого сообщения"

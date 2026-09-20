@@ -163,7 +163,7 @@ func (a *Agent) factsHistory(facts map[string]string) []ContextMessage {
 func (a *Agent) updateFacts(ctx context.Context, model, userMessage string) (map[string]string, MemoryUsage, string) {
 	next := cloneFacts(a.facts)
 	input := factsUpdateInput(next, userMessage)
-	completion, err := a.llm.Complete(ctx, CompletionRequest{
+	completion, err := a.completeInternal(ctx, CompletionRequest{
 		Model:        model,
 		Instructions: factsInstructions,
 		Input:        input,
