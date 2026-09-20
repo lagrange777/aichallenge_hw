@@ -26,7 +26,7 @@ func (s *server) handleMemory(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 500, apiResponse{Error: "Не удалось загрузить память"})
 		return
 	}
-	writeJSON(w, 200, apiResponse{Memory: &state})
+	writeJSON(w, 200, apiResponse{Memory: &state, Messages: a.Messages()})
 }
 
 type memoryRequest struct {

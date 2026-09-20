@@ -12,6 +12,10 @@
   const saveKey = document.querySelector("#save-message-key");
   const saveValue = document.querySelector("#save-message-value");
   const saveStatus = document.querySelector("#save-message-status");
+  const memoryTabs = Array.from(document.querySelectorAll(".memory-tab"));
+  const search = document.querySelector("#memory-search");
+  let activeMemoryTab = "short";
+  let messages = [];
   let selectedMessage = null;
   let selectedTask = "";
   let state = null;
@@ -37,6 +41,35 @@
     element.addEventListener("click", callback);
     return element;
   }
+  function selectMemoryTab(name, focus = false) {
+    activeMemoryTab = name;
+    for (const tab of memoryTabs) {
+      const selected = tab.id === `memory-tab-${name}`;
+      tab.setAttribute("aria-selected", String(selected));
+      tab.tabIndex = selected ? 0 : -1;
+      document.getElementById(tab.getAttribute("aria-controls")).hidden = !selected;
+      if (selected && focus) { tab.focus(); tab.scrollIntoView({ block: "nearest", inline: "nearest" }); }
+    }
+    document.querySelector(".memory-body").scrollTop = 0;
+    filterMemory();
+  }
+  function filterMemory() {
+    const query = search.value.trim().toLocaleLowerCase("ru-RU");
+    const panel = document.querySelector(`#memory-panel-${activeMemoryTab}`);
+    const cards = Array.from(panel.querySelectorAll("[data-memory-search]"));
+    for (const card of cards) card.hidden = !card.dataset.memorySearch.includes(query);
+    document.querySelector("#memory-search-empty").hidden = !query || !cards.length || cards.some(card => !card.hidden);
+  }
+  memoryTabs.forEach((tab, index) => {
+    tab.addEventListener("click", () => selectMemoryTab(tab.id.replace("memory-tab-", "")));
+    tab.addEventListener("keydown", event => {
+      if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+      event.preventDefault();
+      const next = event.key === "Home" ? 0 : event.key === "End" ? memoryTabs.length - 1 : (index + (event.key === "ArrowRight" ? 1 : -1) + memoryTabs.length) % memoryTabs.length;
+      selectMemoryTab(memoryTabs[next].id.replace("memory-tab-", ""), true);
+    });
+  });
+  search.addEventListener("input", filterMemory);
   function syncBusy() {
     controls.disabled = !state || busy || chatBusy;
     tasksControls.disabled = !state || busy || chatBusy;
@@ -66,9 +99,10 @@
       if (!response.ok) throw new Error(payload.error || "Память недоступна");
       if (version !== loadVersion || busy) return;
       state = payload.memory;
+      messages = payload.messages || [];
       render();
       if (!chatBusy) {
-        status.textContent = "Подтверждённые записи используются со следующего сообщения. Удаление записи не удаляет её упоминания из переписки.";
+        status.textContent = "Изменения памяти учитываются со следующего ответа. Удаление записи не удаляет её упоминания из диалога.";
         tasksStatus.textContent = "";
       }
     } catch (error) {
@@ -92,8 +126,10 @@
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || "Не удалось сохранить память");
       state = payload.memory;
+      messages = payload.messages || [];
       render();
       setStatus("Сохранено. Изменения будут учтены в следующем ответе.");
+      if (dialog.open && !saveDialog.open) document.querySelector(`#memory-tab-${activeMemoryTab}`).focus();
       if (path === "/api/tasks/new" || path === "/api/tasks/switch") {
         const created = path === "/api/tasks/new";
         tasksStatus.textContent = created ? "Новая задача создана. Предыдущая сохранена в списке." : `Задача «${state.task.name}» открыта. Перейдите в чат, чтобы продолжить.`;
@@ -150,14 +186,33 @@
     }
     return actions;
   }
+  function sourceDetails(item) {
+    const source = node("details", undefined, "memory-source");
+    source.append(node("summary", "Источник записи"), node("p", item.source || "Источник не указан"));
+    return source;
+  }
+  function record(item, layer, badge) {
+    const card = node("article", undefined, "memory-entry memory-record");
+    card.dataset.memorySearch = `${item.key} ${item.value} ${item.source || ""}`.toLocaleLowerCase("ru-RU");
+    const meta = node("div", undefined, "memory-record-meta");
+    meta.append(node("span", badge || labels[layer], `memory-label memory-label-${layer}`));
+    const date = item.reviewedAt || item.updatedAt || item.createdAt;
+    if (date) meta.append(node("time", new Date(date).toLocaleString("ru-RU")));
+    card.append(meta, node("h4", item.key), node("p", item.value, "memory-record-value"));
+    return card;
+  }
   function editor(item, layer, proposal) {
-    const card = node("article", undefined, "memory-entry");
+    const card = record(item, layer, proposal ? `На подтверждении · ${labels[layer]}` : labels[layer]);
+    if (proposal) card.append(node("p", item.reason, "memory-reason"));
+    card.append(sourceDetails(item));
+    const edit = node("details", undefined, "memory-edit");
+    edit.append(node("summary", proposal ? "Изменить текст или слой" : "Редактировать запись"));
     const key = node("input");
     key.value = item.key;
     key.maxLength = 100;
     const value = node("textarea");
     value.value = item.value;
-    value.rows = 3;
+    value.rows = 4;
     value.maxLength = 2000;
     const destination = node("select");
     for (const [id, label] of Object.entries(labels)) {
@@ -166,27 +221,25 @@
       destination.append(option);
     }
     destination.value = layer;
-    if (proposal) {
-      card.append(field("Сохранить в слой", destination), node("p", item.reason, "memory-reason"));
-    }
-    card.append(field("Ключ", key), field("Значение", value));
-    const source = node("details");
-    source.append(node("summary", "Источник и время"), node("p", item.source));
-    source.append(node("small", new Date(item.createdAt || item.updatedAt).toLocaleString("ru-RU")));
-    card.append(source);
-    const actions = node("div", undefined, "memory-actions");
-    if (proposal) {
+    if (proposal) edit.append(field("Сохранить в слой", destination));
+    edit.append(field("Название", key), field("Что запомнить", value));
+    if (!proposal) {
+      const actions = node("div", undefined, "memory-actions");
       actions.append(
-        button("Подтвердить", () => mutate("/api/memory/review", { id: item.id, action: "accept", layer: destination.value, key: key.value, value: value.value })),
-        button("Отклонить", () => mutate("/api/memory/review", { id: item.id, action: "reject" }))
+        button("Сохранить", () => mutate("/api/memory/edit", { id: item.id, layer, key: key.value, value: value.value })),
+        button("Отмена", () => { key.value = item.key; value.value = item.value; edit.open = false; }),
+        button("Удалить запись", () => mutate("/api/memory/delete", { id: item.id, layer }))
       );
-    } else {
-      actions.append(
-        button("Сохранить правку", () => mutate("/api/memory/edit", { id: item.id, layer, key: key.value, value: value.value })),
-        button("Удалить", () => mutate("/api/memory/delete", { id: item.id, layer }))
-      );
+      edit.append(actions);
     }
-    card.append(actions);
+    card.append(edit);
+    if (proposal) {
+      const actions = node("div", undefined, "memory-actions");
+      const accept = button("Подтвердить", () => mutate("/api/memory/review", { id: item.id, action: "accept", layer: destination.value, key: key.value, value: value.value }));
+      accept.classList.add("memory-primary");
+      actions.append(accept, button("Отклонить", () => mutate("/api/memory/review", { id: item.id, action: "reject" })));
+      card.append(actions);
+    }
     return card;
   }
   function render() {
@@ -207,16 +260,16 @@
       }
       tasksList.append(item);
     }
-    document.querySelector("#short-memory-count").textContent = `${state.shortTermMessages} сообщений в диалоге · ${state.contextMessages} в активной истории`;
-    document.querySelector("#memory-task-name").textContent = state.task.name;
+    document.querySelector("#short-memory-count").textContent = `Сообщений в диалоге: ${state.shortTermMessages} · В активной истории: ${state.contextMessages}`;
+    document.querySelector("#memory-scope").textContent = `Текущая задача: ${state.task.name}`;
+    document.querySelector("#memory-scope").title = state.task.name;
     document.querySelector("#tasks-current-name").textContent = state.task.name;
     document.querySelector("#tasks-summary").textContent = `Записей в рабочей памяти: ${(state.working || []).length} · Сообщений в текущем чате: ${state.shortTermMessages}`;
-    document.querySelector("#working-memory-summary").textContent = `Подтверждённых записей: ${(state.working || []).length}. Управление — на вкладке «Задачи».`;
-    for (const [selector, entries, layer] of [["#working-memory-list", state.working, "working"], ["#long-memory-list", state.longTerm, "long_term"]]) {
+    for (const [selector, entries, layer] of [["#working-memory-list", state.working, "working"], ["#memory-working-list", state.working, "working"], ["#long-memory-list", state.longTerm, "long_term"]]) {
       const list = document.querySelector(selector);
       list.replaceChildren();
       for (const entry of entries || []) list.append(editor(entry, layer, false));
-      if (!list.childElementCount) list.append(node("p", "Нет подтверждённых записей", "memory-empty"));
+      if (!list.childElementCount) list.append(node("p", "Пока нет записей. Сохраните важный фрагмент из сообщения или подтвердите предложение агента.", "memory-empty"));
     }
     const proposals = state.proposals || [];
     const pending = proposals.filter(item => item.status === "pending");
@@ -227,13 +280,31 @@
     if (!pending.length) list.append(node("p", "После ответа агент предложит важные сведения для сохранения. Новых предложений пока нет.", "memory-empty"));
     const journal = document.querySelector("#memory-journal-list");
     journal.replaceChildren();
-    proposals.filter(item => item.status !== "pending").reverse().forEach(item => {
-      journal.append(node("p", `${item.status === "accepted" ? "Подтверждено" : "Отклонено"} · ${labels[item.layer]} · ${item.key}: ${item.value}`));
+    const reviewed = proposals.filter(item => item.status !== "pending").reverse();
+    reviewed.forEach(item => {
+      const card = record(item, item.layer, `${item.status === "accepted" ? "Подтверждено" : "Отклонено"} · ${labels[item.layer]}`);
+      card.classList.add(`memory-decision-${item.status}`);
+      card.append(sourceDetails(item));
+      journal.append(card);
     });
-    if (!journal.childElementCount) journal.append(node("p", "Решений пока нет"));
+    if (!journal.childElementCount) journal.append(node("p", "История пока пуста. Здесь появятся ваши решения по предложениям агента.", "memory-empty"));
+    const shortList = document.querySelector("#short-memory-list");
+    shortList.replaceChildren();
+    for (const message of messages) {
+      const card = node("article", undefined, "memory-entry memory-record memory-message");
+      card.dataset.memorySearch = message.text.toLocaleLowerCase("ru-RU");
+      const meta = node("div", undefined, "memory-record-meta");
+      meta.append(node("strong", message.role === "user" ? "Вы" : "Агент"), node("time", new Date(message.time).toLocaleString("ru-RU")));
+      card.append(meta, node("p", message.text, "memory-record-value"));
+      shortList.append(card);
+    }
+    if (!messages.length) shortList.append(node("p", "Диалог пока пуст. Отправьте сообщение агенту — оно появится здесь.", "memory-empty"));
+    const counts = { short: state.shortTermMessages, working: (state.working || []).length, long: (state.longTerm || []).length, proposals: pending.length, journal: reviewed.length };
+    for (const [name, count] of Object.entries(counts)) document.querySelector(`#memory-count-${name}`).textContent = count;
+    filterMemory();
     syncBusy();
   }
-  open.addEventListener("click", () => { dialog.showModal(); load(); });
+  open.addEventListener("click", () => { dialog.showModal(); document.querySelector(`#memory-tab-${activeMemoryTab}`).focus(); load(); });
   document.querySelector("#close-memory").addEventListener("click", () => dialog.close());
   document.querySelector("#memory-open-tasks").addEventListener("click", () => {
     dialog.close();
