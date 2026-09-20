@@ -28,6 +28,8 @@ type TokenCounter interface {
 // Request is a user request accepted by the agent.
 type Request struct {
 	ProfileID           string
+	TaskID              string
+	TaskVersion         *int
 	Message             string
 	Model               string
 	Format              string
@@ -312,6 +314,23 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 		p := profiles.Active()
 		a.activeProfile = &p
 	}
+	var layers memory.State
+	if a.memoryStore != nil {
+		var err error
+		layers, err = a.memoryStore.Get(a.conversationID)
+		if err != nil {
+			return Response{}, fmt.Errorf("load memory: %w", err)
+		}
+		if layers.Task.ID != a.taskID || (request.TaskID != "" && request.TaskID != layers.Task.ID) || (request.TaskVersion != nil && *request.TaskVersion != layers.Task.Workflow.Version) {
+			return Response{}, memory.ErrConflict
+		}
+		if layers.Task.Workflow.Paused {
+			return Response{}, ErrTaskPaused
+		}
+		if layers.Task.Workflow.Stage == "done" {
+			return Response{}, ErrTaskDone
+		}
+	}
 	request.Message = strings.TrimSpace(request.Message)
 	if request.Message == "" {
 		return Response{}, errors.New("message is required")
@@ -384,13 +403,7 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 		completionRequest.History = contextMessages(a.messages)
 		completionRequest.PreviousResponseID = ""
 	}
-	var layers memory.State
 	if a.memoryStore != nil {
-		var err error
-		layers, err = a.memoryStore.Get(a.conversationID)
-		if err != nil {
-			return Response{}, fmt.Errorf("load memory: %w", err)
-		}
 		// Replay explicitly so edits/deletions cannot survive in a hidden API chain.
 		if completionRequest.PreviousResponseID != "" {
 			completionRequest.History = contextMessages(a.messages)
@@ -444,11 +457,12 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 		response.CostUSD = &cost
 	}
 	var proposals []memory.Proposal
+	var taskProposal *memory.TaskProposal
 	if a.memoryStore != nil {
 		var usage Usage
 		var cost *float64
 		var warning string
-		proposals, usage, cost, warning = a.proposeMemories(ctx, request.Model, request.Message, response.Text, layers)
+		proposals, taskProposal, usage, cost, warning = a.proposeMemories(ctx, request.Model, request.Message, response.Text, layers)
 		response.TokenMetrics.ProposalTokens = usage.TotalTokens
 		response.Usage.InputTokens += usage.InputTokens
 		response.Usage.CachedInputTokens += usage.CachedInputTokens
@@ -542,6 +556,11 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 		source := memorySource(request.Message, response.Text)
 		if _, err := a.memoryStore.Propose(a.conversationID, layers.Task.ID, source, proposals); err != nil {
 			response.TokenMetrics.ContextWarning = strings.TrimSpace(response.TokenMetrics.ContextWarning + " Не удалось сохранить предложения памяти; ответ сохранён.")
+		}
+	}
+	if a.memoryStore != nil {
+		if _, err := a.memoryStore.RecordTaskTurn(a.conversationID, layers.Task.ID, layers.Task.Workflow.Version, request.Message, response.Text, taskProposal); err != nil {
+			response.TokenMetrics.ContextWarning = strings.TrimSpace(response.TokenMetrics.ContextWarning + " Не удалось сохранить точку продолжения задачи; ответ сохранён в диалоге.")
 		}
 	}
 	return response, nil

@@ -119,6 +119,7 @@
       </header>
 
       <div id="chat-panel" role="tabpanel" aria-labelledby="tab-chat">
+      <div id="chat-task-state" class="chat-task-state" aria-live="polite"></div>
       <section class="chat" id="chat" aria-label="Диалог">
         <div class="empty-state" id="empty-state">
           <div class="hero-mark" aria-hidden="true">&gt;_</div>
@@ -190,10 +191,15 @@
           </details>
           <div class="composer-bar">
             <span class="composer-hint"><kbd>Shift</kbd> + <kbd>Enter</kbd> — новая строка</span>
+            <div class="composer-actions">
+              <button id="composer-task-next" type="button" class="memory-button" disabled>Следующий этап</button>
+              <button id="composer-task-pause" type="button" class="memory-button" disabled>Пауза</button>
             <button class="send-button" id="send-button" type="submit" aria-label="Отправить сообщение" disabled>
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 7-7 7 7M12 5v14"/></svg>
             </button>
+            </div>
           </div>
+          <p id="composer-task-status" role="status"></p>
         </form>
         <p class="disclaimer">Ответы модели могут содержать ошибки. Проверяйте важный код.</p>
       </footer>
@@ -214,7 +220,7 @@
               <span class="task-badge">Текущая задача</span>
               <h2 id="tasks-current-name">Загрузка…</h2>
               <p id="tasks-summary"></p>
-              <p>«Новый чат» очищает переписку, но сохраняет задачу и её рабочую память.</p>
+              <div id="task-workflow" role="region" aria-label="Состояние задачи"></div>
             </section>
             <div class="tasks-columns">
               <section class="task-working" aria-labelledby="tasks-working-title">
@@ -317,8 +323,18 @@
       <div class="memory-actions"><button id="save-message-submit" type="submit" class="memory-button memory-primary">Сохранить в память</button></div>
     </form>
   </dialog>
+  <dialog id="task-transition-dialog" aria-labelledby="task-transition-title">
+    <form id="task-transition-form">
+      <header class="memory-header"><h2 id="task-transition-title">Следующий этап</h2><button id="task-transition-cancel" type="button" class="memory-button">Отмена</button></header>
+      <p id="task-transition-reason"></p>
+      <div id="task-transition-fields"></div>
+      <p id="task-transition-status" role="status"></p>
+      <button id="task-transition-confirm" type="submit" class="memory-button memory-primary">Подтвердить переход</button>
+    </form>
+  </dialog>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <script src="/markdown.js" defer></script>
+  <script src="/task-state.js" defer></script>
   <script src="/memory.js" defer></script>
   <script src="/profiles.js" defer></script>
   <script src="/app.js" defer></script>

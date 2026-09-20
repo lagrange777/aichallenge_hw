@@ -47,6 +47,7 @@
   let transcript = [];
   let sending = false;
   let memoryBusy = false;
+  let taskBlocked = true;
   let profileBusy = false;
   const sections = ["chat", "tasks", "profiles"];
   const sectionTabs = sections.map(name => document.querySelector(`#tab-${name}`));
@@ -145,6 +146,17 @@
     updateStrategySettings(); renderTranscript(); resizeComposer(); updateSendButton();
     showToast("Профиль переключён. Его задачи и память восстановлены.");
   });
+  window.addEventListener("codex:task-state", event => {
+    const w = event.detail.workflow;
+    taskBlocked = w.paused || w.stage === "done";
+    input.placeholder = w.paused ? "Задача на паузе — продолжите её во вкладке «Задачи»" : w.stage === "done" ? "Задача завершена — создайте новую задачу" : "Сообщение агенту…";
+    updateSendButton();
+  });
+  window.addEventListener("codex:task-continue", event => {
+    selectSection("chat");
+    if (event.detail.run && !input.value.trim()) sendMessage("Продолжи с сохранённого текущего шага задачи. Учти уже выполненное, промежуточный результат и последний обмен. Не повторяй выполненные шаги и не запрашивай сведения, уже сохранённые в состоянии задачи.");
+    else input.focus();
+  });
   const taskDrafts = new Map();
   window.addEventListener("codex:task-changed", event => {
     taskDrafts.set(event.detail.previousTaskId, input.value);
@@ -233,7 +245,7 @@
 
   async function sendMessage(rawMessage) {
     const message = rawMessage.trim();
-    if (!message || sending || memoryBusy || profileBusy) {
+    if (!message || sending || memoryBusy || profileBusy || taskBlocked) {
       return;
     }
 
@@ -288,7 +300,7 @@
           "Content-Type": "application/json",
           "X-Codex-Chat": "1"
         },
-        body: JSON.stringify({ message, profileId: window.CodexProfiles.activeID(), model: modelSelect.value, ...responseOptions })
+        body: JSON.stringify({ message, taskId: window.CodexTaskState.current()?.id, taskVersion: window.CodexTaskState.current()?.workflow.version, profileId: window.CodexProfiles.activeID(), model: modelSelect.value, ...responseOptions })
       });
       const payload = await response.json().catch(() => ({}));
       requestWarning = typeof payload.warning === "string" ? payload.warning : "";
@@ -311,9 +323,9 @@
       addErrorMessage(messageText);
       showToast("Запрос не выполнен. Проверьте сервер и API-ключ.");
     } finally {
+      await window.CodexMemory.load();
       sending = false;
       window.CodexMemory.setChatBusy(false);
-      window.CodexMemory.load();
       optionInputs.forEach((field) => { field.disabled = false; });
       modelSelect.disabled = modelSelect.value === "";
       newChatButton.disabled = false;
@@ -647,7 +659,7 @@
   }
 
   function updateSendButton() {
-    sendButton.disabled = sending || memoryBusy || profileBusy || !historyReady || !input.value.trim();
+    sendButton.disabled = sending || memoryBusy || profileBusy || taskBlocked || !historyReady || !input.value.trim();
   }
 
   function setSessionSettingsLocked(locked) {
@@ -804,7 +816,7 @@
   }
 
   function scrollToLatest() {
-    chat.scrollTop = chat.scrollHeight;
+    chat.scrollTop = transcript.length ? chat.scrollHeight : 0;
   }
 
   function formatTime(timestamp) {

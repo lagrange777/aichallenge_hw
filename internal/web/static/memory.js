@@ -72,6 +72,7 @@
   });
   search.addEventListener("input", filterMemory);
   function syncBusy() {
+    window.CodexTaskState.setBusy(!state || busy || chatBusy || profileBusy);
     controls.disabled = !state || busy || chatBusy || profileBusy;
     tasksControls.disabled = !state || busy || chatBusy || profileBusy;
     saveForm.querySelectorAll("input, textarea, select, button").forEach(element => { element.disabled = busy || chatBusy || profileBusy; });
@@ -118,6 +119,7 @@
     syncBusy();
     window.dispatchEvent(new CustomEvent("codex:memory-busy", { detail: true }));
     setStatus("Сохраняем…");
+    if (path === "/api/tasks/state") window.CodexTaskState.setStatus("Сохраняем…");
     try {
       const response = await fetch(path, {
         method: "POST",
@@ -129,6 +131,7 @@
       state = payload.memory;
       messages = payload.messages || [];
       render();
+      if (path === "/api/tasks/state") window.CodexTaskState.setStatus(state.task.workflow.paused ? "Задача на паузе" : "Состояние задачи сохранено");
       setStatus("Сохранено. Изменения будут учтены в следующем ответе.");
       if (dialog.open && !saveDialog.open) document.querySelector(`#memory-tab-${activeMemoryTab}`).focus();
       if (path === "/api/tasks/new" || path === "/api/tasks/switch") {
@@ -140,6 +143,7 @@
       return payload;
     } catch (error) {
       setStatus(error.message);
+      if (path === "/api/tasks/state") window.CodexTaskState.setStatus(error.message);
       if (saveDialog.open) saveStatus.textContent = error.message;
       return null;
     } finally {
@@ -245,12 +249,14 @@
   }
   function render() {
     if (!state) return;
+    window.CodexTaskState.render(state, mutate);
     const tasksList = document.querySelector("#tasks-list");
     tasksList.replaceChildren();
     for (const task of state.tasks || [state.task]) {
       const current = task.id === state.task.id;
       const item = node("div", undefined, "task-list-item");
       item.append(node("span", task.name, "task-list-name"));
+      item.append(node("span", `${window.CodexTaskState.stages[task.workflow.stage]}${task.workflow.paused ? " · Пауза" : ""}`, "task-badge"));
       if (current) {
         item.classList.add("is-current");
         item.append(node("span", "Текущая", "task-badge"));

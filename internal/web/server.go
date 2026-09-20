@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"codex-chat-cli/internal/agent"
+	"codex-chat-cli/internal/memory"
 	"codex-chat-cli/internal/models"
 	"codex-chat-cli/internal/profile"
 )
@@ -29,7 +30,7 @@ const (
 	maxSessions     = 256
 )
 
-//go:embed static/index.html static/app.css static/app.js static/memory.js static/profiles.js static/markdown.js static/favicon.svg
+//go:embed static/index.html static/app.css static/app.js static/memory.js static/task-state.js static/profiles.js static/markdown.js static/favicon.svg
 var staticFiles embed.FS
 
 type sessionEntry struct {
@@ -50,6 +51,8 @@ type server struct {
 }
 
 type chatRequest struct {
+	TaskID              string   `json:"taskId,omitempty"`
+	TaskVersion         *int     `json:"taskVersion,omitempty"`
 	ProfileID           string   `json:"profileId,omitempty"`
 	Message             string   `json:"message"`
 	Model               string   `json:"model,omitempty"`
@@ -119,6 +122,9 @@ func NewHandler(llm agent.LLM, model string, history agent.History, agentOptions
 	mux.HandleFunc("/", app.handleIndex)
 	mux.HandleFunc("/app.css", app.handleCSS)
 	mux.HandleFunc("/app.js", app.handleJS)
+	mux.HandleFunc("/task-state.js", func(w http.ResponseWriter, r *http.Request) {
+		app.serveStatic(w, r, "task-state.js", "text/javascript; charset=utf-8")
+	})
 	mux.HandleFunc("/memory.js", func(w http.ResponseWriter, r *http.Request) {
 		app.serveStatic(w, r, "memory.js", "text/javascript; charset=utf-8")
 	})
@@ -138,6 +144,7 @@ func NewHandler(llm agent.LLM, model string, history agent.History, agentOptions
 	mux.HandleFunc("/api/memory/delete", app.handleMemoryMutation)
 	mux.HandleFunc("/api/tasks/new", app.handleMemoryMutation)
 	mux.HandleFunc("/api/tasks/switch", app.handleMemoryMutation)
+	mux.HandleFunc("/api/tasks/state", app.handleWorkflow)
 	mux.HandleFunc("/profiles.js", func(w http.ResponseWriter, r *http.Request) {
 		app.serveStatic(w, r, "profiles.js", "text/javascript; charset=utf-8")
 	})
@@ -257,7 +264,8 @@ func (s *server) handleChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	result, err := chatAgent.Ask(r.Context(), agent.Request{
-		ProfileID:           request.ProfileID,
+		ProfileID: request.ProfileID,
+		TaskID:    request.TaskID, TaskVersion: request.TaskVersion,
 		Message:             request.Message,
 		Model:               request.Model,
 		Format:              request.ResponseFormat,
@@ -272,6 +280,12 @@ func (s *server) handleChat(w http.ResponseWriter, r *http.Request) {
 		message := err.Error()
 		if errors.Is(err, profile.ErrConflict) {
 			status, message = 409, "Активный профиль изменился. Обновите страницу перед отправкой."
+		}
+		if errors.Is(err, memory.ErrConflict) {
+			status, message = 409, "Задача изменилась. Обновите страницу перед отправкой."
+		}
+		if errors.Is(err, agent.ErrTaskPaused) || errors.Is(err, agent.ErrTaskDone) {
+			status = 409
 		}
 		if errors.Is(err, agent.ErrStrategyLocked) {
 			status = http.StatusConflict
