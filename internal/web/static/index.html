@@ -103,14 +103,10 @@
 
     <main class="workspace">
       <header class="topbar">
-        <div class="mobile-brand">
-          <span class="brand-mark" aria-hidden="true">&gt;_</span>
-          <span>Codex Chat</span>
-        </div>
-        <div class="workspace-title">
-          <span class="eyebrow">Рабочая область</span>
-          <strong>Новый диалог</strong>
-        </div>
+        <nav class="workspace-tabs" role="tablist" aria-label="Разделы приложения">
+          <button id="tab-chat" class="workspace-tab" type="button" role="tab" aria-selected="true" aria-controls="chat-panel">Чат</button>
+          <button id="tab-tasks" class="workspace-tab" type="button" role="tab" aria-selected="false" aria-controls="tasks-panel" tabindex="-1">Задачи</button>
+        </nav>
         <button id="open-memory" class="memory-button" type="button" disabled>Память <span id="memory-pending-count"></span></button>
         <label class="model-badge" title="Модель OpenAI" for="model-select">
           <span class="model-pulse"></span>
@@ -120,6 +116,7 @@
         </label>
       </header>
 
+      <div id="chat-panel" role="tabpanel" aria-labelledby="tab-chat">
       <section class="chat" id="chat" aria-label="Диалог">
         <div class="empty-state" id="empty-state">
           <div class="hero-mark" aria-hidden="true">&gt;_</div>
@@ -198,6 +195,37 @@
         </form>
         <p class="disclaimer">Ответы модели могут содержать ошибки. Проверяйте важный код.</p>
       </footer>
+      </div>
+      <section id="tasks-panel" class="tasks-panel" role="tabpanel" aria-labelledby="tab-tasks" hidden>
+        <div class="tasks-content">
+          <header class="tasks-header">
+            <div><p class="eyebrow">Управление задачами</p><h1>Задачи</h1><p>Одна задача может продолжаться в нескольких чатах.</p></div>
+            <button id="tasks-open-chat" type="button" class="memory-button">Перейти в чат</button>
+          </header>
+          <p id="tasks-status" role="status"></p>
+          <fieldset id="tasks-controls" disabled>
+            <section class="task-current" aria-labelledby="tasks-current-name">
+              <span class="task-badge">Текущая задача</span>
+              <h2 id="tasks-current-name">Загрузка…</h2>
+              <p id="tasks-summary"></p>
+              <p>«Новый чат» очищает переписку, но сохраняет задачу и её рабочую память.</p>
+            </section>
+            <div class="tasks-columns">
+              <section class="task-working" aria-labelledby="tasks-working-title">
+                <h2 id="tasks-working-title">Рабочая память задачи</h2>
+                <p>Цель, ограничения, решения и текущий прогресс. Добавляйте записи кнопкой «В рабочую память» под сообщением.</p>
+                <div id="working-memory-list"></div>
+              </section>
+              <form id="new-task-form" class="task-new">
+                <h2>Начать новую задачу</h2>
+                <p>Текущая переписка, рабочая память и предложения будут очищены. Долговременная память останется.</p>
+                <label>Название задачи<input id="new-task-name" maxlength="100" required placeholder="Например, авторизация в API"></label>
+                <button type="submit" class="memory-button memory-primary">Начать новую задачу</button>
+              </form>
+            </div>
+          </fieldset>
+        </div>
+      </section>
     </main>
   </div>
 
@@ -219,7 +247,8 @@
           <h3 id="working-memory-title">Рабочая</h3>
           <p id="memory-task-name"></p>
           <p>Цель, ограничения, план и состояние текущей задачи.</p>
-          <div id="working-memory-list"></div>
+          <p id="working-memory-summary"></p>
+          <button id="memory-open-tasks" type="button" class="memory-button">Открыть задачу</button>
         </section>
         <section class="memory-layer" aria-labelledby="long-memory-title">
           <h3 id="long-memory-title">Долговременная</h3>
@@ -233,12 +262,6 @@
         <div id="memory-proposals-list"></div>
       </section>
       <details class="memory-journal"><summary>История решений</summary><div id="memory-journal-list"></div></details>
-      <form id="new-task-form" class="memory-new-task">
-        <h3>Новая задача</h3>
-        <p>Очистит текущую переписку, рабочую память и предложения. Долговременная память останется.</p>
-        <label>Название задачи<input id="new-task-name" maxlength="100" required placeholder="Например, авторизация в API"></label>
-        <button type="submit" class="memory-button">Начать новую задачу</button>
-      </form>
     </fieldset>
   </dialog>
   <dialog id="save-message-dialog" aria-labelledby="save-message-title">

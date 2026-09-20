@@ -4,6 +4,8 @@
   const open = document.querySelector("#open-memory");
   const controls = document.querySelector("#memory-controls");
   const status = document.querySelector("#memory-status");
+  const tasksControls = document.querySelector("#tasks-controls");
+  const tasksStatus = document.querySelector("#tasks-status");
   const saveDialog = document.querySelector("#save-message-dialog");
   const saveForm = document.querySelector("#save-message-form");
   const saveLayer = document.querySelector("#save-message-layer");
@@ -37,6 +39,7 @@
   }
   function syncBusy() {
     controls.disabled = !state || busy || chatBusy;
+    tasksControls.disabled = !state || busy || chatBusy;
     saveForm.querySelectorAll("input, textarea, select, button").forEach(element => { element.disabled = busy || chatBusy; });
     document.querySelectorAll(".message-memory-action").forEach(element => {
       const entries = state ? (element.dataset.layer === "working" ? state.working : state.longTerm) : [];
@@ -48,7 +51,11 @@
       element.disabled = !state || busy || chatBusy || !element.dataset.messageId;
       element.title = !element.dataset.messageId ? "Доступно после успешного ответа" : saved ? "Открыть сохранённую запись" : "Выбрать, что запомнить из сообщения";
     });
-    if (chatBusy) status.textContent = "Агент отвечает. Изменение памяти будет доступно после ответа.";
+    if (chatBusy) setStatus("Агент отвечает. Изменения будут доступны после ответа.");
+  }
+  function setStatus(text) {
+    status.textContent = text;
+    tasksStatus.textContent = text;
   }
   async function load() {
     const version = ++loadVersion;
@@ -60,9 +67,12 @@
       if (version !== loadVersion || busy) return;
       state = payload.memory;
       render();
-      if (!chatBusy) status.textContent = "Подтверждённые записи используются со следующего сообщения. Удаление записи не удаляет её упоминания из переписки.";
+      if (!chatBusy) {
+        status.textContent = "Подтверждённые записи используются со следующего сообщения. Удаление записи не удаляет её упоминания из переписки.";
+        tasksStatus.textContent = "";
+      }
     } catch (error) {
-      if (version === loadVersion) status.textContent = error.message;
+      if (version === loadVersion) setStatus(error.message);
     }
   }
   async function mutate(path, body) {
@@ -71,7 +81,7 @@
     loadVersion++;
     syncBusy();
     window.dispatchEvent(new CustomEvent("codex:memory-busy", { detail: true }));
-    status.textContent = "Сохраняем…";
+    setStatus("Сохраняем…");
     try {
       const response = await fetch(path, {
         method: "POST",
@@ -82,14 +92,15 @@
       if (!response.ok) throw new Error(payload.error || "Не удалось сохранить память");
       state = payload.memory;
       render();
-      status.textContent = "Сохранено. Изменения будут учтены в следующем ответе.";
+      setStatus("Сохранено. Изменения будут учтены в следующем ответе.");
       if (path === "/api/tasks/new") {
+        tasksStatus.textContent = "Новая задача создана. Перейдите в чат, чтобы начать работу.";
         document.querySelector("#new-task-name").value = "";
         window.dispatchEvent(new CustomEvent("codex:new-task", { detail: payload }));
       }
       return payload;
     } catch (error) {
-      status.textContent = error.message;
+      setStatus(error.message);
       if (saveDialog.open) saveStatus.textContent = error.message;
       return null;
     } finally {
@@ -180,6 +191,9 @@
     if (!state) return;
     document.querySelector("#short-memory-count").textContent = `${state.shortTermMessages} сообщений в диалоге · ${state.contextMessages} в активной истории`;
     document.querySelector("#memory-task-name").textContent = state.task.name;
+    document.querySelector("#tasks-current-name").textContent = state.task.name;
+    document.querySelector("#tasks-summary").textContent = `Записей в рабочей памяти: ${(state.working || []).length} · Сообщений в текущем чате: ${state.shortTermMessages}`;
+    document.querySelector("#working-memory-summary").textContent = `Подтверждённых записей: ${(state.working || []).length}. Управление — на вкладке «Задачи».`;
     for (const [selector, entries, layer] of [["#working-memory-list", state.working, "working"], ["#long-memory-list", state.longTerm, "long_term"]]) {
       const list = document.querySelector(selector);
       list.replaceChildren();
@@ -203,6 +217,10 @@
   }
   open.addEventListener("click", () => { dialog.showModal(); load(); });
   document.querySelector("#close-memory").addEventListener("click", () => dialog.close());
+  document.querySelector("#memory-open-tasks").addEventListener("click", () => {
+    dialog.close();
+    window.dispatchEvent(new CustomEvent("codex:open-tasks"));
+  });
   document.querySelector("#new-task-form").addEventListener("submit", event => {
     event.preventDefault();
     mutate("/api/tasks/new", { name: document.querySelector("#new-task-name").value });

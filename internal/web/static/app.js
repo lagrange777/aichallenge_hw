@@ -47,6 +47,35 @@
   let transcript = [];
   let sending = false;
   let memoryBusy = false;
+  const sectionTabs = [document.querySelector("#tab-chat"), document.querySelector("#tab-tasks")];
+  const currentThreadButton = document.querySelector(".thread");
+  function selectSection(name) {
+    const tasks = name === "tasks";
+    document.querySelector("#chat-panel").hidden = tasks;
+    document.querySelector("#tasks-panel").hidden = !tasks;
+    workspace.classList.toggle("tasks-active", tasks);
+    currentThreadButton.classList.toggle("active", !tasks);
+    currentThreadButton.setAttribute("aria-current", tasks ? "false" : "page");
+    sectionTabs.forEach(tab => {
+      const selected = tab.id === `tab-${name}`;
+      tab.setAttribute("aria-selected", String(selected));
+      tab.tabIndex = selected ? 0 : -1;
+    });
+    if (tasks && historyReady) window.CodexMemory.load();
+  }
+  sectionTabs.forEach((tab, index) => {
+    tab.addEventListener("click", () => selectSection(index === 0 ? "chat" : "tasks"));
+    tab.addEventListener("keydown", event => {
+      if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+      event.preventDefault();
+      const next = event.key === "Home" ? 0 : event.key === "End" ? 1 : 1 - index;
+      selectSection(next === 0 ? "chat" : "tasks");
+      sectionTabs[next].focus();
+    });
+  });
+  document.querySelector("#tasks-open-chat").addEventListener("click", () => { selectSection("chat"); input.focus(); });
+  currentThreadButton.addEventListener("click", () => { selectSection("chat"); input.focus(); });
+  window.addEventListener("codex:open-tasks", () => { selectSection("tasks"); sectionTabs[1].focus(); });
   let historyReady = false;
   let toastTimer = 0;
   let contextState = {
@@ -300,6 +329,7 @@
       updateSendButton();
       input.focus();
       showToast("Новый диалог начат");
+      selectSection("chat");
       window.CodexMemory.load();
     } catch (error) {
       showToast("Не удалось начать новый диалог");
