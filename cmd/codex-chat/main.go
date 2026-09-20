@@ -17,10 +17,11 @@ import (
 	"codex-chat-cli/internal/history"
 	"codex-chat-cli/internal/memory"
 	"codex-chat-cli/internal/openai"
+	"codex-chat-cli/internal/profile"
 	chatweb "codex-chat-cli/internal/web"
 )
 
-const instructions = "You are a helpful coding assistant. Answer clearly and concisely."
+const instructions = "You are a helpful coding assistant. Answer clearly. Adapt detail and presentation to the user profile and current request."
 
 func main() {
 	logger := log.New(os.Stderr, "", 0)
@@ -54,12 +55,17 @@ func run(logger *log.Logger) error {
 		return fmt.Errorf("инициализация памяти: %w", err)
 	}
 
+	profileStore, err := profile.NewStore(cfg.ProfilePath)
+	if err != nil {
+		return fmt.Errorf("инициализация профилей: %w", err)
+	}
+
 	server := &http.Server{
 		Addr: cfg.WebAddr,
 		Handler: chatweb.NewHandler(apiClient, cfg.Model, historyStore, agent.WithContextStrategy(agent.StrategyConfig{
 			Type:     agent.ContextStrategy(cfg.ContextStrategy),
 			KeepLast: cfg.ContextKeepLast,
-		}), agent.WithMemory(memoryStore)),
+		}), agent.WithMemory(memoryStore), agent.WithProfiles(profileStore)),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      3*cfg.Timeout + 40*time.Second,

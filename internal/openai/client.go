@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"codex-chat-cli/internal/agent"
+	"codex-chat-cli/internal/profile"
 )
 
 const maxResponseBytes = 10 << 20
@@ -287,6 +288,9 @@ func responseInput(request agent.CompletionRequest) any {
 func responseInstructions(base string, request agent.CompletionRequest) string {
 	if value := strings.TrimSpace(request.Instructions); value != "" {
 		base = value
+	}
+	if request.Profile != nil {
+		base = strings.TrimSpace(base) + "\n\n" + profile.Instructions(*request.Profile, request.Internal)
 	}
 	requirements := make([]string, 0, 3)
 	if value := strings.TrimSpace(request.Format); value != "" {

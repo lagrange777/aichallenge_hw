@@ -21,6 +21,7 @@
   let state = null;
   let busy = false;
   let chatBusy = false;
+  let profileBusy = false;
   let loadVersion = 0;
   const labels = { working: "Рабочая", long_term: "Долговременная" };
 
@@ -71,9 +72,9 @@
   });
   search.addEventListener("input", filterMemory);
   function syncBusy() {
-    controls.disabled = !state || busy || chatBusy;
-    tasksControls.disabled = !state || busy || chatBusy;
-    saveForm.querySelectorAll("input, textarea, select, button").forEach(element => { element.disabled = busy || chatBusy; });
+    controls.disabled = !state || busy || chatBusy || profileBusy;
+    tasksControls.disabled = !state || busy || chatBusy || profileBusy;
+    saveForm.querySelectorAll("input, textarea, select, button").forEach(element => { element.disabled = busy || chatBusy || profileBusy; });
     document.querySelectorAll(".message-memory-action").forEach(element => {
       const entries = state ? (element.dataset.layer === "working" ? state.working : state.longTerm) : [];
       const saved = (entries || []).some(entry => entry.messageId === element.dataset.messageId);
@@ -81,7 +82,7 @@
         ? (saved ? "✓ В рабочей памяти" : "В рабочую память")
         : (saved ? "✓ В долговременной памяти" : "В долговременную память");
       element.classList.toggle("saved", saved);
-      element.disabled = !state || busy || chatBusy || !element.dataset.messageId;
+      element.disabled = !state || busy || chatBusy || profileBusy || !element.dataset.messageId;
       element.title = !element.dataset.messageId ? "Доступно после успешного ответа" : saved ? "Открыть сохранённую запись" : "Выбрать, что запомнить из сообщения";
     });
     if (chatBusy) setStatus("Агент отвечает. Изменения будут доступны после ответа.");
@@ -97,7 +98,7 @@
       const response = await fetch("/api/memory", { headers: { Accept: "application/json" } });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || "Память недоступна");
-      if (version !== loadVersion || busy) return;
+      if (version !== loadVersion || busy || profileBusy) return;
       state = payload.memory;
       messages = payload.messages || [];
       render();
@@ -110,7 +111,7 @@
     }
   }
   async function mutate(path, body) {
-    if (!state || busy || chatBusy) return;
+    if (!state || busy || chatBusy || profileBusy) return;
     const previousTaskId = state.task.id;
     busy = true;
     loadVersion++;
@@ -165,7 +166,7 @@
     saveStatus.textContent = length > 2000 ? `${length} символов. Выберите важный фрагмент — до 2000 символов.` : `${length} / 2000 символов`;
   }
   function openFromMessage(message, layer) {
-    if (!state || busy || chatBusy || !message.id) return;
+    if (!state || busy || chatBusy || profileBusy || !message.id) return;
     selectedMessage = message;
     selectedTask = state.task.id;
     saveLayer.value = layer;
@@ -181,7 +182,7 @@
       action.classList.add("message-memory-action");
       action.dataset.messageId = message.id || "";
       action.dataset.layer = layer;
-      action.disabled = !state || busy || chatBusy || !message.id;
+      action.disabled = !state || busy || chatBusy || profileBusy || !message.id;
       actions.append(action);
     }
     return actions;
@@ -324,7 +325,7 @@
   saveValue.addEventListener("input", updateMessageLength);
   saveForm.addEventListener("submit", async event => {
     event.preventDefault();
-    if (!selectedMessage || busy || chatBusy) return;
+    if (!selectedMessage || busy || chatBusy || profileBusy) return;
     if (!saveKey.value.trim() || !saveValue.value.trim() || Array.from(saveValue.value.trim()).length > 2000) {
       saveStatus.textContent = "Укажите название и текст записи (до 2000 символов).";
       return;
@@ -339,9 +340,11 @@
       window.dispatchEvent(new CustomEvent("codex:memory-saved", { detail: saveLayer.value }));
     }
   });
+  window.addEventListener("codex:profile-busy", event => { profileBusy = event.detail; loadVersion++; syncBusy(); });
   window.CodexMemory = Object.freeze({
+    apply(payload) { loadVersion++; state = payload.memory; messages = payload.messages || []; render(); },
     load,
     messageActions,
-    setChatBusy(value) { chatBusy = value; syncBusy(); }
+    setChatBusy(value) { chatBusy = value; syncBusy(); window.dispatchEvent(new CustomEvent("codex:chat-busy", { detail: value })); }
   });
 })();

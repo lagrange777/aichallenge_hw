@@ -462,6 +462,7 @@ select:focus-visible {
 .topbar {
   display: flex;
   align-items: center;
+  gap: 8px;
   justify-content: space-between;
   padding: 0 30px;
   border-bottom: 1px solid rgba(205, 208, 202, 0.72);
@@ -1606,4 +1607,35 @@ kbd {
   #memory-dialog { padding: 16px; }
   #memory-dialog .memory-header h2 { font-size: 20px; }
   #memory-dialog .memory-scope { margin: 10px 0; }
+}
+
+/* Personalization profiles share the task workspace layout. */
+#profiles-panel[hidden] { display: none; }
+.profile-indicator { max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--accent-deep); }
+#profiles-controls { border: 0; margin: 0; padding: 0; min-width: 0; }
+#profiles-status { color: var(--accent-deep); }
+.profile-card > div:first-child { min-width: 0; overflow-wrap: anywhere; }
+.profile-card .memory-actions { margin: 0; flex-shrink: 0; align-items: center; }
+.profile-card p { margin: 6px 0 0; }
+.profile-presets { margin: 24px 0; color: var(--muted); font-size: 13px; }
+.profile-form { padding: 24px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; scroll-margin-top: 20px; }
+.profile-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 20px; }
+.profile-snapshot { margin-top: 12px; color: var(--muted); font-size: 12px; }
+.profile-snapshot summary { cursor: pointer; color: var(--accent-deep); overflow-wrap: anywhere; }
+.profile-snapshot p { line-height: 1.5; }
+.profile-snapshot dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 8px 16px; }
+.profile-snapshot dt { font-weight: 600; }
+.profile-snapshot dd { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+@media (max-width: 900px) {
+  .topbar { flex-wrap: wrap; height: auto; padding: 10px 12px; gap: 8px; }
+  .workspace, .workspace:not(.has-messages) { grid-template-rows: auto minmax(0, 1fr) auto; }
+  .workspace.tasks-active { grid-template-rows: auto minmax(0, 1fr); }
+  .workspace-tabs { flex-basis: 100%; }
+  .profile-indicator { max-width: 38vw; font-size: 12px; }
+}
+@media (max-width: 600px) {
+  .profile-card { flex-wrap: wrap; }
+  .profile-fields { grid-template-columns: minmax(0, 1fr); }
+  .profile-form { padding: 18px; }
+  .profile-card .memory-actions { flex-wrap: wrap; }
 }

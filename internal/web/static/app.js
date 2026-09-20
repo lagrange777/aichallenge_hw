@@ -47,35 +47,36 @@
   let transcript = [];
   let sending = false;
   let memoryBusy = false;
-  const sectionTabs = [document.querySelector("#tab-chat"), document.querySelector("#tab-tasks")];
+  let profileBusy = false;
+  const sections = ["chat", "tasks", "profiles"];
+  const sectionTabs = sections.map(name => document.querySelector(`#tab-${name}`));
   const currentThreadButton = document.querySelector(".thread");
   function selectSection(name) {
-    const tasks = name === "tasks";
-    document.querySelector("#chat-panel").hidden = tasks;
-    document.querySelector("#tasks-panel").hidden = !tasks;
-    workspace.classList.toggle("tasks-active", tasks);
-    currentThreadButton.classList.toggle("active", !tasks);
-    currentThreadButton.setAttribute("aria-current", tasks ? "false" : "page");
+    for (const section of sections) document.querySelector(`#${section}-panel`).hidden = section !== name;
+    workspace.classList.toggle("tasks-active", name !== "chat");
+    currentThreadButton.classList.toggle("active", name === "chat");
+    currentThreadButton.setAttribute("aria-current", name === "chat" ? "page" : "false");
     sectionTabs.forEach(tab => {
       const selected = tab.id === `tab-${name}`;
       tab.setAttribute("aria-selected", String(selected));
       tab.tabIndex = selected ? 0 : -1;
     });
-    if (tasks && historyReady) window.CodexMemory.load();
+    if (name === "tasks" && historyReady) window.CodexMemory.load();
   }
   sectionTabs.forEach((tab, index) => {
-    tab.addEventListener("click", () => selectSection(index === 0 ? "chat" : "tasks"));
+    tab.addEventListener("click", () => selectSection(sections[index]));
     tab.addEventListener("keydown", event => {
       if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
       event.preventDefault();
-      const next = event.key === "Home" ? 0 : event.key === "End" ? 1 : 1 - index;
-      selectSection(next === 0 ? "chat" : "tasks");
+      const next = event.key === "Home" ? 0 : event.key === "End" ? sections.length - 1 : (index + (event.key === "ArrowRight" ? 1 : -1) + sections.length) % sections.length;
+      selectSection(sections[next]);
       sectionTabs[next].focus();
     });
   });
   document.querySelector("#tasks-open-chat").addEventListener("click", () => { selectSection("chat"); input.focus(); });
   currentThreadButton.addEventListener("click", () => { selectSection("chat"); input.focus(); });
   window.addEventListener("codex:open-tasks", () => { selectSection("tasks"); sectionTabs[1].focus(); });
+  document.querySelector("#active-profile").addEventListener("click", () => selectSection("profiles"));
   let historyReady = false;
   let toastTimer = 0;
   let contextState = {
@@ -119,11 +120,30 @@
 
   window.addEventListener("codex:memory-busy", event => {
     memoryBusy = event.detail;
-    newChatButton.disabled = sending || memoryBusy;
+    newChatButton.disabled = sending || memoryBusy || profileBusy;
     updateSendButton();
   });
   window.addEventListener("codex:memory-saved", event => {
     showToast(event.detail === "working" ? "Сохранено в рабочую память" : "Сохранено в долговременную память");
+  });
+  window.addEventListener("codex:profile-busy", event => {
+    profileBusy = event.detail;
+    newChatButton.disabled = sending || memoryBusy || profileBusy;
+    updateSendButton();
+  });
+  window.addEventListener("codex:profile-changed", event => {
+    taskDrafts.clear();
+    input.value = "";
+    optionInputs.forEach(field => { field.value = ""; });
+    transcript = (event.detail.messages || []).filter(isHistoryMessage);
+    applyContextState(event.detail.context);
+    contextStrategyInput.value = contextState.strategy.type;
+    contextKeepLastInput.value = String(contextState.strategy.keepLast);
+    setSessionSettingsLocked(transcript.length > 0);
+    const last = transcript.slice().reverse().find(message => message.role === "assistant" && message.model);
+    if (last && Array.from(modelSelect.options).some(option => option.value === last.model)) modelSelect.value = last.model;
+    updateStrategySettings(); renderTranscript(); resizeComposer(); updateSendButton();
+    showToast("Профиль переключён. Его задачи и память восстановлены.");
   });
   const taskDrafts = new Map();
   window.addEventListener("codex:task-changed", event => {
@@ -202,6 +222,7 @@
       updateStrategySettings();
       renderTranscript();
       window.CodexMemory.load();
+      await window.CodexProfiles.load();
     } catch (error) {
       showToast("Не удалось восстановить историю диалога");
     } finally {
@@ -212,7 +233,7 @@
 
   async function sendMessage(rawMessage) {
     const message = rawMessage.trim();
-    if (!message || sending || memoryBusy) {
+    if (!message || sending || memoryBusy || profileBusy) {
       return;
     }
 
@@ -267,7 +288,7 @@
           "Content-Type": "application/json",
           "X-Codex-Chat": "1"
         },
-        body: JSON.stringify({ message, model: modelSelect.value, ...responseOptions })
+        body: JSON.stringify({ message, profileId: window.CodexProfiles.activeID(), model: modelSelect.value, ...responseOptions })
       });
       const payload = await response.json().catch(() => ({}));
       requestWarning = typeof payload.warning === "string" ? payload.warning : "";
@@ -304,7 +325,7 @@
   }
 
   async function resetChat() {
-    if (sending || memoryBusy) {
+    if (sending || memoryBusy || profileBusy) {
       return;
     }
     newChatButton.disabled = true;
@@ -400,6 +421,7 @@
     if (message.role === "assistant" && message.metrics) {
       main.append(createResponseMetrics(message.model, message.metrics));
     }
+    if (message.role === "assistant" && message.profile) main.append(window.CodexProfiles.snapshot(message.profile));
     main.append(window.CodexMemory.messageActions(message));
     article.append(avatar, main);
     return article;
@@ -625,7 +647,7 @@
   }
 
   function updateSendButton() {
-    sendButton.disabled = sending || memoryBusy || !historyReady || !input.value.trim();
+    sendButton.disabled = sending || memoryBusy || profileBusy || !historyReady || !input.value.trim();
   }
 
   function setSessionSettingsLocked(locked) {
@@ -726,7 +748,7 @@
   }
 
   async function createBranches() {
-    if (sending || memoryBusy) {
+    if (sending || memoryBusy || profileBusy) {
       return;
     }
     createBranchesButton.disabled = true;
@@ -751,7 +773,7 @@
   }
 
   async function switchBranch(branchId) {
-    if (sending || memoryBusy || !branchId || branchId === contextState.activeBranchId) {
+    if (sending || memoryBusy || profileBusy || !branchId || branchId === contextState.activeBranchId) {
       return;
     }
     branchSelect.disabled = true;

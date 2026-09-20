@@ -106,6 +106,7 @@
         <nav class="workspace-tabs" role="tablist" aria-label="Разделы приложения">
           <button id="tab-chat" class="workspace-tab" type="button" role="tab" aria-selected="true" aria-controls="chat-panel">Чат</button>
           <button id="tab-tasks" class="workspace-tab" type="button" role="tab" aria-selected="false" aria-controls="tasks-panel" tabindex="-1">Задачи</button>
+          <button id="tab-profiles" class="workspace-tab" type="button" role="tab" aria-selected="false" aria-controls="profiles-panel" tabindex="-1">Профили</button>
         </nav>
         <button id="open-memory" class="memory-button" type="button" disabled>Память <span id="memory-pending-count"></span></button>
         <label class="model-badge" title="Модель OpenAI" for="model-select">
@@ -114,6 +115,7 @@
             <option value="">загрузка…</option>
           </select>
         </label>
+        <button id="active-profile" class="memory-button profile-indicator" type="button" disabled>Профиль…</button>
       </header>
 
       <div id="chat-panel" role="tabpanel" aria-labelledby="tab-chat">
@@ -222,11 +224,36 @@
               </section>
               <form id="new-task-form" class="task-new">
                 <h2>Начать новую задачу</h2>
-                <p>Текущая задача сохранится в списке вместе с перепиской и рабочей памятью. Долговременная память общая для всех задач.</p>
+                <p>Текущая задача сохранится в списке вместе с перепиской и рабочей памятью. Долговременная память общая для задач этого профиля.</p>
                 <label>Название задачи<input id="new-task-name" maxlength="100" required placeholder="Например, авторизация в API"></label>
                 <button type="submit" class="memory-button memory-primary">Начать новую задачу</button>
               </form>
             </div>
+          </fieldset>
+        </div>
+      </section>
+      <section id="profiles-panel" class="tasks-panel profiles-panel" role="tabpanel" aria-labelledby="tab-profiles" hidden>
+        <div class="tasks-content">
+          <header class="tasks-header"><div><p class="eyebrow">Персонализация</p><h1>Профили</h1><p>Настройте ответы под себя. У каждого профиля свои задачи и память.</p></div><button id="new-profile" type="button" class="memory-button">Новый профиль</button></header>
+          <p id="profiles-status" role="status">Загружаем профили…</p>
+          <fieldset id="profiles-controls" disabled>
+            <div id="profiles-list" class="tasks-list"></div>
+            <div class="profile-presets"><span>Начать с примера:</span><div id="profile-presets" class="memory-actions"></div></div>
+            <form id="profile-form" class="profile-form">
+              <h2 id="profile-form-title">Настройки профиля</h2>
+              <p id="profile-form-hint">Настройки применяются автоматически со следующего ответа. Явная просьба в сообщении имеет приоритет.</p>
+              <div class="profile-fields">
+                <label>Имя профиля<input name="name" maxlength="100" required placeholder="Например, Анна — разработчик"></label>
+                <label>Язык ответа<select name="language"><option value="auto">По запросу и памяти</option><option value="ru">Русский</option><option value="en">Английский</option></select></label>
+                <label>Уровень подготовки<select name="level"><option value="auto">По контексту</option><option value="beginner">Новичок</option><option value="intermediate">Уверенный</option><option value="expert">Эксперт</option></select></label>
+                <label>Стиль<select name="style"><option value="neutral">Нейтральный</option><option value="friendly">Дружелюбный</option><option value="business">Деловой</option></select></label>
+                <label>Подробность<select name="detail"><option value="brief">Кратко</option><option value="normal">Обычно</option><option value="detailed">Подробно</option></select></label>
+                <label>Формат<select name="format"><option value="auto">По запросу</option><option value="list">Список</option><option value="steps">Пошаговое объяснение</option></select></label>
+              </div>
+              <label>О пользователе<textarea name="description" maxlength="1000" rows="2" placeholder="Опыт, роль, интересы — только то, что важно для ответов"></textarea></label>
+              <label>Ограничения и предпочтения<textarea name="constraints" maxlength="2000" rows="3" placeholder="Например: без эмодзи; примеры на Go; расшифровывай термины"></textarea></label>
+              <div class="memory-actions"><button id="save-profile" type="submit" class="memory-button memory-primary">Сохранить профиль</button><button id="cancel-profile" type="button" class="memory-button">Отменить правки</button></div>
+            </form>
           </fieldset>
         </div>
       </section>
@@ -293,6 +320,7 @@
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <script src="/markdown.js" defer></script>
   <script src="/memory.js" defer></script>
+  <script src="/profiles.js" defer></script>
   <script src="/app.js" defer></script>
 </body>
 </html>

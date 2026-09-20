@@ -11,6 +11,7 @@ services:
       WEB_ADDR: 0.0.0.0:8080
       HISTORY_PATH: /data/history.json
       MEMORY_PATH: /data/memory
+      PROFILE_PATH: /data/profiles
       CONTEXT_KEEP_LAST: ${CONTEXT_KEEP_LAST:-10}
       CONTEXT_STRATEGY: ${CONTEXT_STRATEGY:-sliding_window}
     ports:
