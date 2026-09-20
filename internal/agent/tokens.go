@@ -15,6 +15,7 @@ type TokenCounts struct {
 
 // TokenMetrics explains token usage for one turn and the whole conversation.
 type TokenMetrics struct {
+	ProposalTokens          int      `json:"proposalTokens"`
 	ContextStrategy         string   `json:"contextStrategy,omitempty"`
 	WindowMessages          int      `json:"windowMessages"`
 	FactsCount              int      `json:"factsCount"`

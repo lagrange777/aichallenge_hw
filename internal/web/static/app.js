@@ -14,6 +14,7 @@
   const temperatureInput = document.querySelector("#temperature");
   const contextStrategyInput = document.querySelector("#context-strategy");
   const contextKeepLastInput = document.querySelector("#context-keep-last");
+  const contextKeepLastField = document.querySelector("#context-keep-last-field");
   const strategyDescription = document.querySelector("#strategy-description");
   const optionInputs = [responseFormatInput, lengthLimitInput, completionConditionInput, temperatureInput];
   const sendButton = document.querySelector("#send-button");
@@ -45,6 +46,36 @@
 
   let transcript = [];
   let sending = false;
+  let memoryBusy = false;
+  const sectionTabs = [document.querySelector("#tab-chat"), document.querySelector("#tab-tasks")];
+  const currentThreadButton = document.querySelector(".thread");
+  function selectSection(name) {
+    const tasks = name === "tasks";
+    document.querySelector("#chat-panel").hidden = tasks;
+    document.querySelector("#tasks-panel").hidden = !tasks;
+    workspace.classList.toggle("tasks-active", tasks);
+    currentThreadButton.classList.toggle("active", !tasks);
+    currentThreadButton.setAttribute("aria-current", tasks ? "false" : "page");
+    sectionTabs.forEach(tab => {
+      const selected = tab.id === `tab-${name}`;
+      tab.setAttribute("aria-selected", String(selected));
+      tab.tabIndex = selected ? 0 : -1;
+    });
+    if (tasks && historyReady) window.CodexMemory.load();
+  }
+  sectionTabs.forEach((tab, index) => {
+    tab.addEventListener("click", () => selectSection(index === 0 ? "chat" : "tasks"));
+    tab.addEventListener("keydown", event => {
+      if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+      event.preventDefault();
+      const next = event.key === "Home" ? 0 : event.key === "End" ? 1 : 1 - index;
+      selectSection(next === 0 ? "chat" : "tasks");
+      sectionTabs[next].focus();
+    });
+  });
+  document.querySelector("#tasks-open-chat").addEventListener("click", () => { selectSection("chat"); input.focus(); });
+  currentThreadButton.addEventListener("click", () => { selectSection("chat"); input.focus(); });
+  window.addEventListener("codex:open-tasks", () => { selectSection("tasks"); sectionTabs[1].focus(); });
   let historyReady = false;
   let toastTimer = 0;
   let contextState = {
@@ -85,6 +116,32 @@
   contextStrategyInput.addEventListener("change", updateStrategySettings);
   createBranchesButton.addEventListener("click", createBranches);
   branchSelect.addEventListener("change", () => switchBranch(branchSelect.value));
+
+  window.addEventListener("codex:memory-busy", event => {
+    memoryBusy = event.detail;
+    newChatButton.disabled = sending || memoryBusy;
+    updateSendButton();
+  });
+  window.addEventListener("codex:memory-saved", event => {
+    showToast(event.detail === "working" ? "Сохранено в рабочую память" : "Сохранено в долговременную память");
+  });
+  const taskDrafts = new Map();
+  window.addEventListener("codex:task-changed", event => {
+    taskDrafts.set(event.detail.previousTaskId, input.value);
+    transcript = (event.detail.messages || []).filter(isHistoryMessage);
+    input.value = taskDrafts.get(event.detail.memory.task.id) || "";
+    applyContextState(event.detail.context);
+    contextStrategyInput.value = contextState.strategy.type;
+    contextKeepLastInput.value = String(contextState.strategy.keepLast);
+    setSessionSettingsLocked(transcript.length > 0);
+    const lastReply = transcript.slice().reverse().find(message => message.role === "assistant" && message.model);
+    if (lastReply && Array.from(modelSelect.options).some(option => option.value === lastReply.model)) modelSelect.value = lastReply.model;
+    updateStrategySettings();
+    renderTranscript();
+    resizeComposer();
+    updateSendButton();
+    showToast(event.detail.created ? "Новая задача создана. Предыдущая сохранена." : "Диалог и память задачи восстановлены.");
+  });
 
   async function loadStatus() {
     try {
@@ -144,6 +201,7 @@
       setSessionSettingsLocked(transcript.length > 0);
       updateStrategySettings();
       renderTranscript();
+      window.CodexMemory.load();
     } catch (error) {
       showToast("Не удалось восстановить историю диалога");
     } finally {
@@ -154,7 +212,7 @@
 
   async function sendMessage(rawMessage) {
     const message = rawMessage.trim();
-    if (!message || sending) {
+    if (!message || sending || memoryBusy) {
       return;
     }
 
@@ -163,14 +221,16 @@
       lengthLimit: lengthLimitInput.value.trim(),
       completionCondition: completionConditionInput.value.trim()
     };
-    const contextKeepLast = Number(contextKeepLastInput.value);
-    if (!Number.isInteger(contextKeepLast) || contextKeepLast < 1 || contextKeepLast > 1000) {
-      showToast("Укажите от 1 до 1000 последних сообщений");
-      contextKeepLastInput.focus();
-      return;
+    if (strategyUsesWindow()) {
+      const contextKeepLast = Number(contextKeepLastInput.value);
+      if (!Number.isInteger(contextKeepLast) || contextKeepLast < 1 || contextKeepLast > 1000) {
+        showToast("Укажите от 1 до 1000 последних сообщений");
+        contextKeepLastInput.focus();
+        return;
+      }
+      responseOptions.contextKeepLast = contextKeepLast;
     }
     responseOptions.contextStrategy = contextStrategyInput.value;
-    responseOptions.contextKeepLast = contextKeepLast;
     const temperature = temperatureInput.value.trim();
     if (temperature !== "") {
       const parsedTemperature = Number(temperature);
@@ -183,6 +243,7 @@
     }
 
     sending = true;
+    window.CodexMemory.setChatBusy(true);
     input.value = "";
     optionInputs.forEach((field) => { field.disabled = true; });
     modelSelect.disabled = true;
@@ -218,13 +279,8 @@
       if (payload.context) {
         applyContextState(payload.context);
       }
-      addMessage({
-        role: "assistant",
-        text: payload.answer,
-        time: Date.now(),
-        model: payload.model || modelSelect.value,
-        metrics: payload.metrics
-      });
+      transcript = Array.isArray(payload.messages) ? payload.messages.filter(isHistoryMessage) : transcript;
+      renderTranscript();
     } catch (error) {
       pending.remove();
       const messageText = error instanceof Error ? error.message : "Не удалось получить ответ";
@@ -235,6 +291,8 @@
       showToast("Запрос не выполнен. Проверьте сервер и API-ключ.");
     } finally {
       sending = false;
+      window.CodexMemory.setChatBusy(false);
+      window.CodexMemory.load();
       optionInputs.forEach((field) => { field.disabled = false; });
       modelSelect.disabled = modelSelect.value === "";
       newChatButton.disabled = false;
@@ -246,10 +304,12 @@
   }
 
   async function resetChat() {
-    if (sending) {
+    if (sending || memoryBusy) {
       return;
     }
     newChatButton.disabled = true;
+    sending = true;
+    window.CodexMemory.setChatBusy(true);
     try {
       const response = await fetch("/api/reset", {
         method: "POST",
@@ -273,9 +333,14 @@
       updateSendButton();
       input.focus();
       showToast("Новый диалог начат");
+      selectSection("chat");
+      window.CodexMemory.load();
     } catch (error) {
       showToast("Не удалось начать новый диалог");
     } finally {
+      sending = false;
+      window.CodexMemory.setChatBusy(false);
+      updateSendButton();
       newChatButton.disabled = false;
     }
   }
@@ -335,6 +400,7 @@
     if (message.role === "assistant" && message.metrics) {
       main.append(createResponseMetrics(message.model, message.metrics));
     }
+    main.append(window.CodexMemory.messageActions(message));
     article.append(avatar, main);
     return article;
   }
@@ -370,7 +436,10 @@
     if (Number(metrics.reasoningTokens) > 0) {
       tokenTitle.push(`Рассуждение: ${formatNumber(metrics.reasoningTokens)}`);
     }
-    node.append(metricItem("ответ", `${formatNumber(metrics.outputTokens)} ток.`));
+    node.append(metricItem("выход", `${formatNumber(metrics.outputTokens)} ток.`));
+    if (Number(metrics.proposalTokens) > 0) {
+      node.append(metricItem("предложения памяти", `${formatNumber(metrics.proposalTokens)} ток.`, "Включены в токены и стоимость хода"));
+    }
     node.append(metricItem("ход", `${formatNumber(totalTokens)} ток.`, tokenTitle.join(" · ")));
 
     if (Number(metrics.memoryUpdates) > 0 && metrics.contextStrategy === "sticky_facts") {
@@ -556,22 +625,33 @@
   }
 
   function updateSendButton() {
-    sendButton.disabled = sending || !historyReady || !input.value.trim();
+    sendButton.disabled = sending || memoryBusy || !historyReady || !input.value.trim();
   }
 
   function setSessionSettingsLocked(locked) {
     contextStrategyInput.disabled = locked;
-    contextKeepLastInput.disabled = locked || contextStrategyInput.value === "branching";
+    updateContextKeepLastField();
+  }
+
+  function strategyUsesWindow() {
+    return ["sliding_window", "sticky_facts"].includes(contextStrategyInput.value);
+  }
+
+  function updateContextKeepLastField() {
+    const usesWindow = strategyUsesWindow();
+    contextKeepLastField.hidden = !usesWindow;
+    contextKeepLastInput.disabled = contextStrategyInput.disabled || !usesWindow;
   }
 
   function updateStrategySettings() {
     const descriptions = {
+      none: "Вся история диалога без сокращения",
       sliding_window: "Последние N сообщений, остальное отбрасывается",
       sticky_facts: "Facts key-value + последние N сообщений",
       branching: "Две независимые ветки из одного checkpoint"
     };
     strategyDescription.textContent = descriptions[contextStrategyInput.value] || descriptions.sliding_window;
-    contextKeepLastInput.disabled = contextStrategyInput.disabled || contextStrategyInput.value === "branching";
+    updateContextKeepLastField();
     if (transcript.length === 0) {
       contextState.strategy = {
         type: contextStrategyInput.value,
@@ -583,6 +663,7 @@
 
   function strategyLabel(strategy) {
     return {
+      none: "Без стратегии",
       sliding_window: "Sliding Window",
       sticky_facts: "Sticky Facts",
       branching: "Branching"
@@ -645,7 +726,7 @@
   }
 
   async function createBranches() {
-    if (sending) {
+    if (sending || memoryBusy) {
       return;
     }
     createBranchesButton.disabled = true;
@@ -670,7 +751,7 @@
   }
 
   async function switchBranch(branchId) {
-    if (sending || !branchId || branchId === contextState.activeBranchId) {
+    if (sending || memoryBusy || !branchId || branchId === contextState.activeBranchId) {
       return;
     }
     branchSelect.disabled = true;
@@ -691,6 +772,7 @@
       applyContextState(payload.context);
       renderTranscript();
       showToast("Ветка переключена");
+      window.CodexMemory.load();
     } catch (error) {
       renderStrategyPanels();
       showToast(error instanceof Error ? error.message : "Не удалось переключить ветку");

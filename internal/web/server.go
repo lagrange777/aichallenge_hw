@@ -28,7 +28,7 @@ const (
 	maxSessions     = 256
 )
 
-//go:embed static/index.html static/app.css static/app.js static/markdown.js static/favicon.svg
+//go:embed static/index.html static/app.css static/app.js static/memory.js static/markdown.js static/favicon.svg
 var staticFiles embed.FS
 
 type sessionEntry struct {
@@ -60,6 +60,7 @@ type chatRequest struct {
 }
 
 type apiResponse struct {
+	Memory   *agent.MemoryView       `json:"memory,omitempty"`
 	Answer   string                  `json:"answer,omitempty"`
 	Error    string                  `json:"error,omitempty"`
 	Warning  string                  `json:"warning,omitempty"`
@@ -115,6 +116,9 @@ func NewHandler(llm agent.LLM, model string, history agent.History, agentOptions
 	mux.HandleFunc("/", app.handleIndex)
 	mux.HandleFunc("/app.css", app.handleCSS)
 	mux.HandleFunc("/app.js", app.handleJS)
+	mux.HandleFunc("/memory.js", func(w http.ResponseWriter, r *http.Request) {
+		app.serveStatic(w, r, "memory.js", "text/javascript; charset=utf-8")
+	})
 	mux.HandleFunc("/markdown.js", app.handleMarkdownJS)
 	mux.HandleFunc("/favicon.svg", app.handleFavicon)
 	mux.HandleFunc("/api/chat", app.handleChat)
@@ -124,6 +128,13 @@ func NewHandler(llm agent.LLM, model string, history agent.History, agentOptions
 	mux.HandleFunc("/api/branches/switch", app.handleSwitchBranch)
 	mux.HandleFunc("/api/status", app.handleStatus)
 	mux.HandleFunc("/healthz", app.handleHealth)
+	mux.HandleFunc("/api/memory", app.handleMemory)
+	mux.HandleFunc("/api/memory/review", app.handleMemoryMutation)
+	mux.HandleFunc("/api/memory/from-message", app.handleMemoryMutation)
+	mux.HandleFunc("/api/memory/edit", app.handleMemoryMutation)
+	mux.HandleFunc("/api/memory/delete", app.handleMemoryMutation)
+	mux.HandleFunc("/api/tasks/new", app.handleMemoryMutation)
+	mux.HandleFunc("/api/tasks/switch", app.handleMemoryMutation)
 	return securityHeaders(mux)
 }
 
@@ -225,7 +236,7 @@ func (s *server) handleChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	request.ContextStrategy = strings.TrimSpace(request.ContextStrategy)
-	if request.ContextStrategy != "" && request.ContextStrategy != string(agent.StrategySlidingWindow) && request.ContextStrategy != string(agent.StrategyStickyFacts) && request.ContextStrategy != string(agent.StrategyBranching) {
+	if request.ContextStrategy != "" && request.ContextStrategy != string(agent.StrategyNone) && request.ContextStrategy != string(agent.StrategySlidingWindow) && request.ContextStrategy != string(agent.StrategyStickyFacts) && request.ContextStrategy != string(agent.StrategyBranching) {
 		writeJSON(w, http.StatusBadRequest, apiResponse{Error: "Выберите стратегию управления контекстом из списка"})
 		return
 	}
@@ -261,11 +272,12 @@ func (s *server) handleChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, apiResponse{
-		Answer:  result.Text,
-		Warning: result.TokenMetrics.ContextWarning,
-		Model:   result.Model,
-		Metrics: metricsFromResponse(result),
-		Context: snapshotPointer(chatAgent.Snapshot()),
+		Answer:   result.Text,
+		Messages: chatAgent.Messages(),
+		Warning:  result.TokenMetrics.ContextWarning,
+		Model:    result.Model,
+		Metrics:  metricsFromResponse(result),
+		Context:  snapshotPointer(chatAgent.Snapshot()),
 	})
 }
 

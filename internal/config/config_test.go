@@ -101,6 +101,21 @@ func TestLoadRejectsInvalidWebAddress(t *testing.T) {
 	}
 }
 
+func TestLoadWithoutContextStrategy(t *testing.T) {
+	t.Setenv("OPENAI_API_KEY", "test-key")
+	t.Setenv("CONTEXT_STRATEGY", "none")
+	t.Setenv("CONTEXT_KEEP_LAST", "")
+	t.Setenv("WEB_ADDR", "")
+	t.Setenv("OPENAI_TIMEOUT", "")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.ContextStrategy != "none" {
+		t.Fatalf("ContextStrategy = %q, want none", cfg.ContextStrategy)
+	}
+}
+
 func TestLoadRejectsInvalidContextSettings(t *testing.T) {
 	t.Setenv("OPENAI_API_KEY", "test-key")
 	for _, test := range []struct {

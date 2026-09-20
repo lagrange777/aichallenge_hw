@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"codex-chat-cli/internal/memory"
 	"codex-chat-cli/internal/models"
 )
 
@@ -99,6 +100,7 @@ type MessageMetrics struct {
 
 // Message is one durable item in a conversation transcript.
 type Message struct {
+	ID      string          `json:"id"`
 	Role    string          `json:"role"`
 	Text    string          `json:"text"`
 	Time    int64           `json:"time"`
@@ -108,6 +110,7 @@ type Message struct {
 
 // ConversationState is the complete state needed to restore an Agent.
 type ConversationState struct {
+	MemoryTaskID       string                 `json:"memoryTaskId,omitempty"`
 	PreviousResponseID string                 `json:"previousResponseId,omitempty"`
 	ActiveModel        string                 `json:"activeModel,omitempty"`
 	Messages           []Message              `json:"messages"`
@@ -134,6 +137,7 @@ type History interface {
 
 // Agent owns one conversation and encapsulates its LLM request/response flow.
 type Agent struct {
+	memoryStore  *memory.Store
 	llm          LLM
 	tokenCounter TokenCounter
 	defaultModel string
@@ -153,6 +157,7 @@ type Agent struct {
 	checkpoint         *Checkpoint
 	history            History
 	conversationID     string
+	taskID             string
 }
 
 // New creates an independent agent conversation.
@@ -181,23 +186,64 @@ func New(llm LLM, defaultModel string, options ...Option) *Agent {
 // NewPersistent creates an agent and restores its conversation when it exists.
 func NewPersistent(llm LLM, defaultModel, conversationID string, history History, options ...Option) (*Agent, error) {
 	conversationID = strings.TrimSpace(conversationID)
-	if history == nil {
-		return New(llm, defaultModel, options...), nil
-	}
-	if conversationID == "" {
+	if conversationID == "" && history != nil {
 		return nil, errors.New("conversation ID is required for persistent history")
 	}
 
 	a := New(llm, defaultModel, options...)
 	a.history = history
 	a.conversationID = conversationID
-	state, err := history.Load(conversationID)
+	if a.memoryStore != nil {
+		layers, err := a.memoryStore.Get(conversationID)
+		if err != nil {
+			return nil, err
+		}
+		a.taskID = layers.Task.ID
+	}
+	state, err := a.loadTaskHistory(a.taskID)
+	if err != nil {
+		return nil, err
+	}
+	a.restoreConversationLocked(state)
+	return a, nil
+}
+
+func (a *Agent) historyKey(taskID string) string {
+	if taskID == "" {
+		return a.conversationID
+	}
+	return a.conversationID + "/" + taskID
+}
+
+func (a *Agent) loadTaskHistory(taskID string) (ConversationState, error) {
+	if a.history == nil {
+		return ConversationState{}, nil
+	}
+	state, err := a.history.Load(a.historyKey(taskID))
+	if errors.Is(err, ErrHistoryNotFound) && taskID != "" {
+		// Read the pre-task-switching history only when it belongs to this task.
+		state, err = a.history.Load(a.conversationID)
+		if err == nil {
+			oldTask := state.MemoryTaskID
+			if oldTask == "" {
+				oldTask = a.conversationID
+			}
+			if oldTask != taskID {
+				return ConversationState{}, nil
+			}
+		}
+	}
 	if errors.Is(err, ErrHistoryNotFound) {
-		return a, nil
+		return ConversationState{}, nil
 	}
 	if err != nil {
-		return nil, fmt.Errorf("load conversation history: %w", err)
+		return ConversationState{}, fmt.Errorf("load conversation history: %w", err)
 	}
+	return state, nil
+}
+
+func (a *Agent) restoreConversationLocked(state ConversationState) {
+	a.clearConversationLocked()
 	a.previousResponseID = strings.TrimSpace(state.PreviousResponseID)
 	a.activeModel = strings.TrimSpace(state.ActiveModel)
 	a.messages = cloneMessages(state.Messages)
@@ -228,7 +274,6 @@ func NewPersistent(llm LLM, defaultModel, conversationID string, history History
 	if !a.compression.Enabled && a.summary.MessageCount > 0 {
 		a.previousResponseID = ""
 	}
-	return a, nil
 }
 
 // Ask normalizes a user request, calls the LLM and prepares the final response.
@@ -268,6 +313,8 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 	var replayHistory []ContextMessage
 	var metricSummary *ConversationSummary
 	switch a.strategy.Type {
+	case StrategyNone:
+		replayHistory = contextMessages(a.messages)
 	case StrategySummary:
 		prepared = a.prepareCompression(ctx, request.Model)
 		metricSummary = &prepared.Summary
@@ -301,6 +348,20 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 		LengthLimit:         request.LengthLimit,
 		CompletionCondition: request.CompletionCondition,
 		Temperature:         request.Temperature,
+	}
+	var layers memory.State
+	if a.memoryStore != nil {
+		var err error
+		layers, err = a.memoryStore.Get(a.conversationID)
+		if err != nil {
+			return Response{}, fmt.Errorf("load memory: %w", err)
+		}
+		// Replay explicitly so edits/deletions cannot survive in a hidden API chain.
+		if completionRequest.PreviousResponseID != "" {
+			completionRequest.History = contextMessages(a.messages)
+			completionRequest.PreviousResponseID = ""
+		}
+		completionRequest.History = append([]ContextMessage{memoryContext(layers)}, completionRequest.History...)
 	}
 	response := Response{
 		Model:        request.Model,
@@ -346,6 +407,25 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 	response.Duration = time.Since(started)
 	if cost, ok := models.EstimateCost(request.Model, completion.Usage.InputTokens, completion.Usage.CachedInputTokens, completion.Usage.CacheWriteTokens, completion.Usage.OutputTokens); ok {
 		response.CostUSD = &cost
+	}
+	var proposals []memory.Proposal
+	if a.memoryStore != nil {
+		var usage Usage
+		var cost *float64
+		var warning string
+		proposals, usage, cost, warning = a.proposeMemories(ctx, request.Model, request.Message, response.Text, layers)
+		response.TokenMetrics.ProposalTokens = usage.TotalTokens
+		response.Usage.InputTokens += usage.InputTokens
+		response.Usage.CachedInputTokens += usage.CachedInputTokens
+		response.Usage.CacheWriteTokens += usage.CacheWriteTokens
+		response.Usage.OutputTokens += usage.OutputTokens
+		response.Usage.ReasoningTokens += usage.ReasoningTokens
+		response.Usage.TotalTokens += usage.TotalTokens
+		if usage.TotalTokens > 0 {
+			response.CostUSD = addKnownCosts(response.CostUSD, cost)
+		}
+		response.TokenMetrics.ContextWarning = strings.TrimSpace(response.TokenMetrics.ContextWarning + " " + warning)
+		response.Duration = time.Since(started)
 	}
 	response.TokenMetrics = a.completeTokenMetrics(response.TokenMetrics, response.Usage, response.CostUSD)
 	if preparedMemory.TotalTokens > a.memory.TotalTokens {
@@ -397,6 +477,7 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 	}
 	if a.history != nil {
 		state := ConversationState{
+			MemoryTaskID:       layers.Task.ID,
 			PreviousResponseID: completion.ResponseID,
 			ActiveModel:        request.Model,
 			Messages:           nextMessages,
@@ -410,7 +491,7 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 			Checkpoint:         cloneCheckpoint(a.checkpoint),
 			UpdatedAt:          time.Now().UTC(),
 		}
-		if err := a.history.Save(a.conversationID, state); err != nil {
+		if err := a.history.Save(a.historyKey(a.taskID), state); err != nil {
 			return Response{}, fmt.Errorf("save conversation history: %w", err)
 		}
 	}
@@ -421,6 +502,12 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 	a.facts = preparedFacts
 	a.memory = preparedMemory
 	a.branches = nextBranches
+	if a.memoryStore != nil && len(proposals) > 0 {
+		source := memorySource(request.Message, response.Text)
+		if _, err := a.memoryStore.Propose(a.conversationID, layers.Task.ID, source, proposals); err != nil {
+			response.TokenMetrics.ContextWarning = strings.TrimSpace(response.TokenMetrics.ContextWarning + " Не удалось сохранить предложения памяти; ответ сохранён.")
+		}
+	}
 	return response, nil
 }
 
@@ -452,10 +539,22 @@ func (a *Agent) Reset() error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	if a.history != nil {
-		if err := a.history.Delete(a.conversationID); err != nil {
-			return fmt.Errorf("delete conversation history: %w", err)
+		var err error
+		if a.taskID != "" {
+			// An empty task record also prevents legacy history from reappearing.
+			err = a.history.Save(a.historyKey(a.taskID), ConversationState{MemoryTaskID: a.taskID})
+		} else {
+			err = a.history.Delete(a.conversationID)
+		}
+		if err != nil {
+			return fmt.Errorf("clear conversation history: %w", err)
 		}
 	}
+	a.clearConversationLocked()
+	return nil
+}
+
+func (a *Agent) clearConversationLocked() {
 	a.previousResponseID = ""
 	a.activeModel = ""
 	a.messages = nil
@@ -466,7 +565,6 @@ func (a *Agent) Reset() error {
 	a.branches = make(map[string]BranchState)
 	a.activeBranchID = ""
 	a.checkpoint = nil
-	return nil
 }
 
 // Messages returns a snapshot of the conversation transcript.
@@ -483,6 +581,7 @@ func cloneMessages(messages []Message) []Message {
 	cloned := make([]Message, len(messages))
 	for index, message := range messages {
 		cloned[index] = message
+		cloned[index].ID = messageID(message)
 		if message.Metrics != nil {
 			metrics := *message.Metrics
 			if message.Metrics.CostUSD != nil {

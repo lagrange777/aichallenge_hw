@@ -103,14 +103,11 @@
 
     <main class="workspace">
       <header class="topbar">
-        <div class="mobile-brand">
-          <span class="brand-mark" aria-hidden="true">&gt;_</span>
-          <span>Codex Chat</span>
-        </div>
-        <div class="workspace-title">
-          <span class="eyebrow">Рабочая область</span>
-          <strong>Новый диалог</strong>
-        </div>
+        <nav class="workspace-tabs" role="tablist" aria-label="Разделы приложения">
+          <button id="tab-chat" class="workspace-tab" type="button" role="tab" aria-selected="true" aria-controls="chat-panel">Чат</button>
+          <button id="tab-tasks" class="workspace-tab" type="button" role="tab" aria-selected="false" aria-controls="tasks-panel" tabindex="-1">Задачи</button>
+        </nav>
+        <button id="open-memory" class="memory-button" type="button" disabled>Память <span id="memory-pending-count"></span></button>
         <label class="model-badge" title="Модель OpenAI" for="model-select">
           <span class="model-pulse"></span>
           <select id="model-select" aria-label="Модель OpenAI" disabled>
@@ -119,6 +116,7 @@
         </label>
       </header>
 
+      <div id="chat-panel" role="tabpanel" aria-labelledby="tab-chat">
       <section class="chat" id="chat" aria-label="Диалог">
         <div class="empty-state" id="empty-state">
           <div class="hero-mark" aria-hidden="true">&gt;_</div>
@@ -139,12 +137,13 @@
                 <small id="strategy-description">Последние N сообщений, остальное отбрасывается</small>
               </span>
               <select id="context-strategy">
-                <option value="sliding_window">Sliding Window</option>
+                <option value="none">Без стратегии</option>
+                <option value="sliding_window" selected>Sliding Window</option>
                 <option value="sticky_facts">Sticky Facts</option>
                 <option value="branching">Branching</option>
               </select>
             </label>
-            <label class="session-number" for="context-keep-last">
+            <label id="context-keep-last-field" class="session-number" for="context-keep-last">
               <span>
                 <strong>Последние N сообщений</strong>
                 <small>Сообщение пользователя и ответ считаются отдельно</small>
@@ -196,11 +195,104 @@
         </form>
         <p class="disclaimer">Ответы модели могут содержать ошибки. Проверяйте важный код.</p>
       </footer>
+      </div>
+      <section id="tasks-panel" class="tasks-panel" role="tabpanel" aria-labelledby="tab-tasks" hidden>
+        <div class="tasks-content">
+          <header class="tasks-header">
+            <div><p class="eyebrow">Управление задачами</p><h1>Задачи</h1><p>Возвращайтесь к задачам с сохранённой перепиской и рабочей памятью.</p></div>
+            <button id="tasks-open-chat" type="button" class="memory-button">Перейти в чат</button>
+          </header>
+          <p id="tasks-status" role="status"></p>
+          <fieldset id="tasks-controls" disabled>
+            <section class="task-saved" aria-labelledby="tasks-list-title">
+              <h2 id="tasks-list-title">Сохранённые задачи</h2>
+              <div id="tasks-list" class="tasks-list"></div>
+            </section>
+            <section class="task-current" aria-labelledby="tasks-current-name">
+              <span class="task-badge">Текущая задача</span>
+              <h2 id="tasks-current-name">Загрузка…</h2>
+              <p id="tasks-summary"></p>
+              <p>«Новый чат» очищает переписку, но сохраняет задачу и её рабочую память.</p>
+            </section>
+            <div class="tasks-columns">
+              <section class="task-working" aria-labelledby="tasks-working-title">
+                <h2 id="tasks-working-title">Рабочая память задачи</h2>
+                <p>Цель, ограничения, решения и текущий прогресс. Добавляйте записи кнопкой «В рабочую память» под сообщением.</p>
+                <div id="working-memory-list"></div>
+              </section>
+              <form id="new-task-form" class="task-new">
+                <h2>Начать новую задачу</h2>
+                <p>Текущая задача сохранится в списке вместе с перепиской и рабочей памятью. Долговременная память общая для всех задач.</p>
+                <label>Название задачи<input id="new-task-name" maxlength="100" required placeholder="Например, авторизация в API"></label>
+                <button type="submit" class="memory-button memory-primary">Начать новую задачу</button>
+              </form>
+            </div>
+          </fieldset>
+        </div>
+      </section>
     </main>
   </div>
 
+  <dialog id="memory-dialog" aria-labelledby="memory-title">
+    <header class="memory-header">
+      <div><h2 id="memory-title">Память агента</h2><p>Агент предлагает — вы решаете, что и куда сохранить.</p></div>
+      <button id="close-memory" class="memory-button" type="button" aria-label="Закрыть память">Закрыть</button>
+    </header>
+    <p id="memory-scope" class="memory-scope"></p>
+    <div class="memory-tabs" role="tablist" aria-label="Разделы памяти">
+      <button id="memory-tab-short" class="memory-tab" type="button" role="tab" aria-selected="true" aria-controls="memory-panel-short">Диалог <span id="memory-count-short" class="memory-count">0</span></button>
+      <button id="memory-tab-working" class="memory-tab" type="button" role="tab" aria-selected="false" aria-controls="memory-panel-working" tabindex="-1">Рабочая <span id="memory-count-working" class="memory-count">0</span></button>
+      <button id="memory-tab-long" class="memory-tab" type="button" role="tab" aria-selected="false" aria-controls="memory-panel-long" tabindex="-1">Долговременная <span id="memory-count-long" class="memory-count">0</span></button>
+      <button id="memory-tab-proposals" class="memory-tab" type="button" role="tab" aria-selected="false" aria-controls="memory-panel-proposals" tabindex="-1">Предложения <span id="memory-count-proposals" class="memory-count">0</span></button>
+      <button id="memory-tab-journal" class="memory-tab" type="button" role="tab" aria-selected="false" aria-controls="memory-panel-journal" tabindex="-1">История <span id="memory-count-journal" class="memory-count">0</span></button>
+    </div>
+    <label class="memory-search-label" for="memory-search">Поиск в выбранной вкладке
+      <input id="memory-search" type="search" placeholder="Название или текст записи" autocomplete="off">
+    </label>
+    <div class="memory-body">
+      <fieldset id="memory-controls">
+        <section id="memory-panel-short" class="memory-panel" role="tabpanel" aria-labelledby="memory-tab-short" tabindex="0">
+          <div class="memory-panel-intro"><h3>Краткосрочная память</h3><p>Переписка текущего диалога. Стратегия определяет, какие сообщения попадут в контекст ответа.</p><strong id="short-memory-count"></strong><p>«Новый чат» очищает переписку. Рабочая и долговременная память сохраняются.</p></div>
+          <div id="short-memory-list" class="memory-records"></div>
+        </section>
+        <section id="memory-panel-working" class="memory-panel" role="tabpanel" aria-labelledby="memory-tab-working" tabindex="0" hidden>
+          <div class="memory-panel-intro"><h3>Рабочая память</h3><p>Цель, ограничения, решения и прогресс текущей задачи. Эти записи используются только в ней.</p><button id="memory-open-tasks" type="button" class="memory-button">Управление задачами</button></div>
+          <div id="memory-working-list" class="memory-records"></div>
+        </section>
+        <section id="memory-panel-long" class="memory-panel" role="tabpanel" aria-labelledby="memory-tab-long" tabindex="0" hidden>
+          <div class="memory-panel-intro"><h3>Долговременная память</h3><p>Профиль, предпочтения и знания. Подтверждённые записи доступны во всех задачах этого браузерного профиля.</p></div>
+          <div id="long-memory-list" class="memory-records"></div>
+        </section>
+        <section id="memory-panel-proposals" class="memory-panel" role="tabpanel" aria-labelledby="memory-tab-proposals" tabindex="0" hidden>
+          <div class="memory-panel-intro"><h3>Предложения агента</h3><p>Пока не используются как память. Проверьте текст и слой, затем подтвердите или отклоните. Совпадающий ключ заменит сохранённую запись в выбранном слое.</p></div>
+          <div id="memory-proposals-list" class="memory-records"></div>
+        </section>
+        <section id="memory-panel-journal" class="memory-panel" role="tabpanel" aria-labelledby="memory-tab-journal" tabindex="0" hidden>
+          <div class="memory-panel-intro"><h3>История решений</h3><p>Подтверждённые и отклонённые предложения в текущей задаче. Актуальные записи смотрите во вкладках рабочей и долговременной памяти.</p></div>
+          <div id="memory-journal-list" class="memory-records"></div>
+        </section>
+      </fieldset>
+      <p id="memory-search-empty" class="memory-empty" hidden>Ничего не найдено. Попробуйте другое слово или очистите поиск.</p>
+    </div>
+    <p id="memory-status" role="status"></p>
+  </dialog>
+  <dialog id="save-message-dialog" aria-labelledby="save-message-title">
+    <form id="save-message-form">
+      <header class="memory-header">
+        <h2 id="save-message-title">Сохранить сообщение</h2>
+        <button id="cancel-message-memory" type="button" class="memory-button" aria-label="Закрыть сохранение сообщения">Закрыть</button>
+      </header>
+      <p id="save-message-hint">Выберите важный фрагмент и при необходимости отредактируйте его.</p>
+      <label>Слой памяти<select id="save-message-layer"><option value="working">Рабочая — текущая задача</option><option value="long_term">Долговременная — профиль и знания</option></select></label>
+      <label>Название записи<input id="save-message-key" maxlength="100" required></label>
+      <label>Что запомнить<textarea id="save-message-value" rows="7" required></textarea></label>
+      <p id="save-message-status" role="status"></p>
+      <div class="memory-actions"><button id="save-message-submit" type="submit" class="memory-button memory-primary">Сохранить в память</button></div>
+    </form>
+  </dialog>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <script src="/markdown.js" defer></script>
+  <script src="/memory.js" defer></script>
   <script src="/app.js" defer></script>
 </body>
 </html>

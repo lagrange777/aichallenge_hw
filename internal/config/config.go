@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -27,6 +28,7 @@ type Config struct {
 	Timeout         time.Duration
 	WebAddr         string
 	HistoryPath     string
+	MemoryPath      string
 	ContextKeepLast int
 	ContextStrategy string
 }
@@ -47,8 +49,8 @@ func Load() (Config, error) {
 		return Config{}, err
 	}
 	contextStrategy := valueOrDefault("CONTEXT_STRATEGY", defaultStrategy)
-	if contextStrategy != "sliding_window" && contextStrategy != "sticky_facts" && contextStrategy != "branching" {
-		return Config{}, fmt.Errorf("CONTEXT_STRATEGY должен быть sliding_window, sticky_facts или branching")
+	if contextStrategy != "none" && contextStrategy != "sliding_window" && contextStrategy != "sticky_facts" && contextStrategy != "branching" {
+		return Config{}, fmt.Errorf("CONTEXT_STRATEGY должен быть none, sliding_window, sticky_facts или branching")
 	}
 	if _, port, err := net.SplitHostPort(webAddr); err != nil || port == "" {
 		return Config{}, fmt.Errorf("WEB_ADDR должен иметь формат host:port, например 127.0.0.1:8080")
@@ -70,6 +72,7 @@ func Load() (Config, error) {
 		Timeout:         timeout,
 		WebAddr:         webAddr,
 		HistoryPath:     historyPath,
+		MemoryPath:      valueOrDefault("MEMORY_PATH", filepath.Join(filepath.Dir(historyPath), "memory")),
 		ContextKeepLast: contextKeepLast,
 		ContextStrategy: contextStrategy,
 	}, nil

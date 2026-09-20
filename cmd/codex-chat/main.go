@@ -15,6 +15,7 @@ import (
 	"codex-chat-cli/internal/agent"
 	"codex-chat-cli/internal/config"
 	"codex-chat-cli/internal/history"
+	"codex-chat-cli/internal/memory"
 	"codex-chat-cli/internal/openai"
 	chatweb "codex-chat-cli/internal/web"
 )
@@ -48,16 +49,20 @@ func run(logger *log.Logger) error {
 	if err != nil {
 		return fmt.Errorf("инициализация истории: %w", err)
 	}
+	memoryStore, err := memory.NewStore(cfg.MemoryPath)
+	if err != nil {
+		return fmt.Errorf("инициализация памяти: %w", err)
+	}
 
 	server := &http.Server{
 		Addr: cfg.WebAddr,
 		Handler: chatweb.NewHandler(apiClient, cfg.Model, historyStore, agent.WithContextStrategy(agent.StrategyConfig{
 			Type:     agent.ContextStrategy(cfg.ContextStrategy),
 			KeepLast: cfg.ContextKeepLast,
-		})),
+		}), agent.WithMemory(memoryStore)),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
-		WriteTimeout:      cfg.Timeout + 10*time.Second,
+		WriteTimeout:      3*cfg.Timeout + 40*time.Second,
 		IdleTimeout:       60 * time.Second,
 	}
 

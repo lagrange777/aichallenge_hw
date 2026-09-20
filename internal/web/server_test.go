@@ -205,6 +205,33 @@ func TestContextStrategyIsChosenBeforeSessionAndThenLocked(t *testing.T) {
 	}
 }
 
+func TestNoStrategyAPIWithoutWindowParameter(t *testing.T) {
+	llm := &fakeLLM{}
+	handler := NewHandler(llm, "test-model", nil, agent.WithContextStrategy(agent.StrategyConfig{Type: agent.StrategySlidingWindow, KeepLast: 1}))
+	first := performChatBody(handler, nil, `{"message":"first","contextStrategy":"none"}`)
+	if first.Code != http.StatusOK {
+		t.Fatalf("first status = %d, body = %s", first.Code, first.Body.String())
+	}
+	cookie := sessionCookieFrom(t, first)
+	second := performChatBody(handler, cookie, `{"message":"second","contextStrategy":"none"}`)
+	if second.Code != http.StatusOK {
+		t.Fatalf("second status = %d, body = %s", second.Code, second.Body.String())
+	}
+	var payload apiResponse
+	if err := json.Unmarshal(second.Body.Bytes(), &payload); err != nil {
+		t.Fatal(err)
+	}
+	if payload.Context == nil || payload.Context.Strategy.Type != agent.StrategyNone {
+		t.Fatalf("context = %#v", payload.Context)
+	}
+	llm.mu.Lock()
+	defer llm.mu.Unlock()
+	want := []agent.ContextMessage{{Role: "user", Content: "first"}, {Role: "assistant", Content: "reply to first"}}
+	if len(llm.requests) != 2 || !reflect.DeepEqual(llm.requests[1].History, want) {
+		t.Fatalf("requests = %#v", llm.requests)
+	}
+}
+
 func TestBranchingAPIKeepsBranchesIndependent(t *testing.T) {
 	llm := &fakeLLM{}
 	handler := NewHandler(llm, "test-model", nil)
