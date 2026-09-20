@@ -1513,3 +1513,22 @@ kbd {
   #memory-dialog { padding: 16px; }
   #open-memory { font-size: 12px; padding: 8px; }
 }
+
+.message-memory-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.message-memory-action { font-size: 12px; padding: 6px 10px; color: var(--muted); background: transparent; }
+.message-memory-action.saved { color: var(--accent-deep); border-color: var(--accent); background: var(--accent-soft); }
+#save-message-dialog {
+  width: min(600px, calc(100vw - 24px)); max-height: calc(100dvh - 32px); overflow-y: auto;
+  border: 1px solid var(--line); border-radius: 16px; padding: 24px; color: var(--ink); background: var(--surface);
+}
+#save-message-dialog::backdrop { background: rgb(0 0 0 / 45%); }
+#save-message-dialog h2 { font-size: 19px; }
+#save-message-dialog p { font-size: 13px; line-height: 1.5; color: var(--muted); }
+#save-message-dialog label { display: grid; gap: 6px; margin: 16px 0; font-size: 13px; }
+#save-message-dialog input, #save-message-dialog select, #save-message-dialog textarea {
+  width: 100%; min-width: 0; font: inherit; padding: 10px; border: 1px solid var(--line); border-radius: 8px;
+  color: var(--ink); background: var(--surface-soft);
+}
+#save-message-dialog textarea { resize: vertical; line-height: 1.5; }
+.memory-primary { color: white; background: var(--accent); border-color: var(--accent); }
+.memory-primary:hover { background: var(--accent-deep); }

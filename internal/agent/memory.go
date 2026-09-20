@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -23,6 +24,40 @@ Suggest at most 5 concise entries, in the user's language. Return {"proposals":[
 Use the same key to propose updating an existing fact; never claim that a proposal is already saved.`
 
 func WithMemory(store *memory.Store) Option { return func(a *Agent) { a.memoryStore = store } }
+
+// Stable references also work for histories saved before message IDs existed.
+func messageID(message Message) string {
+	if message.ID != "" {
+		return message.ID
+	}
+	data, _ := json.Marshal([]any{message.Role, message.Time, message.Text})
+	return fmt.Sprintf("%x", sha256.Sum256(data))
+}
+
+func (a *Agent) SaveMessageMemory(taskID, id string, layer memory.Layer, key, value string) (MemoryView, error) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.memoryStore == nil {
+		return MemoryView{}, fmt.Errorf("memory is disabled")
+	}
+	for _, message := range a.messages {
+		if messageID(message) != id {
+			continue
+		}
+		role := "Пользователь"
+		if message.Role == "assistant" {
+			role = "Ассистент"
+		}
+		text := []rune(message.Text)
+		if len(text) > 400 {
+			text = append(text[:400], '…')
+		}
+		source := role + ": " + string(text)
+		state, err := a.memoryStore.SaveMessage(a.conversationID, taskID, id, layer, key, value, source)
+		return a.memoryViewLocked(state), err
+	}
+	return MemoryView{}, memory.ErrConflict
+}
 
 func memorySource(user, answer string) string {
 	short := func(text string) string {

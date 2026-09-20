@@ -26,12 +26,49 @@ var ErrInvalid = errors.New("invalid memory operation")
 var ErrConflict = errors.New("memory has changed; refresh and try again")
 
 type Entry struct {
+	MessageID string    `json:"messageId,omitempty"`
 	ID        string    `json:"id"`
 	Key       string    `json:"key"`
 	Value     string    `json:"value"`
 	Source    string    `json:"source"`
 	UpdatedAt time.Time `json:"updatedAt"`
 }
+
+// SaveMessage records an explicit user action, without an extraction/model call.
+// Existing keys are never silently overwritten by this shortcut.
+func (s *Store) SaveMessage(owner, taskID, messageID string, layer Layer, key, value, source string) (State, error) {
+	return s.update(owner, func(state *State) error {
+		if taskID != state.Task.ID {
+			return ErrConflict
+		}
+		key, value = strings.TrimSpace(key), strings.TrimSpace(value)
+		if messageID == "" || !validEntry(layer, key, value) {
+			return ErrInvalid
+		}
+		entries := &state.Working
+		if layer == LongTerm {
+			entries = &state.LongTerm
+		}
+		for _, entry := range *entries {
+			if entry.MessageID == messageID && entry.Key == key && entry.Value == value {
+				return nil
+			}
+			if entry.Key == key || entry.MessageID == messageID {
+				return ErrConflict
+			}
+		}
+		if len(*entries) >= 100 {
+			return ErrInvalid
+		}
+		id, err := newID()
+		if err != nil {
+			return err
+		}
+		*entries = append(*entries, Entry{ID: id, MessageID: messageID, Key: key, Value: value, Source: source, UpdatedAt: time.Now().UTC()})
+		return nil
+	})
+}
+
 type Proposal struct {
 	ID         string     `json:"id"`
 	TaskID     string     `json:"taskId"`

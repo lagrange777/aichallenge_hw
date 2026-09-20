@@ -213,3 +213,71 @@ func TestNewTaskCannotRestoreOldChatWhenHistoryDeletionFails(t *testing.T) {
 		t.Fatal("new task transcript was not restored")
 	}
 }
+
+func TestSaveMessagesDirectlyToMemory(t *testing.T) {
+	store, err := memory.NewStore(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	hist := &memoryHistory{}
+	llm := &layeredLLM{}
+	a, err := NewPersistent(llm, "gpt-5.3-codex", profileID, hist, WithMemory(store))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = a.Ask(context.Background(), Request{Message: "original user message"}); err != nil {
+		t.Fatal(err)
+	}
+	messages := a.Messages()
+	view, err := a.Memories()
+	if err != nil {
+		t.Fatal(err)
+	}
+	calls := len(llm.requests)
+	if messages[0].ID == "" || messages[1].ID == "" || messages[0].ID == messages[1].ID {
+		t.Fatal("missing stable message references")
+	}
+	state, err := a.SaveMessageMemory(view.Task.ID, messages[0].ID, memory.Working, "goal", "Go API")
+	if err != nil {
+		t.Fatal(err)
+	}
+	state, err = a.SaveMessageMemory(view.Task.ID, messages[1].ID, memory.LongTerm, "language", "Russian")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(llm.requests) != calls {
+		t.Fatal("manual memory save made an LLM call")
+	}
+	if len(state.Working) != 1 || state.Working[0].MessageID != messages[0].ID || !strings.Contains(state.Working[0].Source, "original user message") {
+		t.Fatalf("working memory = %#v", state.Working)
+	}
+	if len(state.LongTerm) != 1 || !strings.HasPrefix(state.LongTerm[0].Source, "Ассистент:") {
+		t.Fatalf("long-term memory = %#v", state.LongTerm)
+	}
+	if _, err = a.SaveMessageMemory(view.Task.ID, messages[0].ID, memory.Working, "goal", "Go API"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = a.SaveMessageMemory(view.Task.ID, "not-a-message", memory.LongTerm, "forged", "value"); !errors.Is(err, memory.ErrConflict) {
+		t.Fatalf("unknown message accepted: %v", err)
+	}
+	restored, err := NewPersistent(llm, "gpt-5.3-codex", profileID, hist, WithMemory(store))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if restored.Messages()[0].ID != messages[0].ID {
+		t.Fatal("message reference changed after restart")
+	}
+	result, err := restored.Ask(context.Background(), Request{Message: "check saved memory"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Text != "Отвечаю по-русски; задача: Go API" {
+		t.Fatalf("manually saved facts not used: %s", result.Text)
+	}
+	if err = restored.Reset(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = restored.SaveMessageMemory(view.Task.ID, messages[0].ID, memory.Working, "stale", "value"); !errors.Is(err, memory.ErrConflict) {
+		t.Fatalf("deleted conversation source accepted: %v", err)
+	}
+}

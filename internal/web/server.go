@@ -130,6 +130,7 @@ func NewHandler(llm agent.LLM, model string, history agent.History, agentOptions
 	mux.HandleFunc("/healthz", app.handleHealth)
 	mux.HandleFunc("/api/memory", app.handleMemory)
 	mux.HandleFunc("/api/memory/review", app.handleMemoryMutation)
+	mux.HandleFunc("/api/memory/from-message", app.handleMemoryMutation)
 	mux.HandleFunc("/api/memory/edit", app.handleMemoryMutation)
 	mux.HandleFunc("/api/memory/delete", app.handleMemoryMutation)
 	mux.HandleFunc("/api/tasks/new", app.handleMemoryMutation)
@@ -270,11 +271,12 @@ func (s *server) handleChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, apiResponse{
-		Answer:  result.Text,
-		Warning: result.TokenMetrics.ContextWarning,
-		Model:   result.Model,
-		Metrics: metricsFromResponse(result),
-		Context: snapshotPointer(chatAgent.Snapshot()),
+		Answer:   result.Text,
+		Messages: chatAgent.Messages(),
+		Warning:  result.TokenMetrics.ContextWarning,
+		Model:    result.Model,
+		Metrics:  metricsFromResponse(result),
+		Context:  snapshotPointer(chatAgent.Snapshot()),
 	})
 }
 

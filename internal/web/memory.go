@@ -30,13 +30,14 @@ func (s *server) handleMemory(w http.ResponseWriter, r *http.Request) {
 }
 
 type memoryRequest struct {
-	ID     string       `json:"id"`
-	TaskID string       `json:"taskId"`
-	Action string       `json:"action"`
-	Layer  memory.Layer `json:"layer"`
-	Key    string       `json:"key"`
-	Value  string       `json:"value"`
-	Name   string       `json:"name"`
+	MessageID string       `json:"messageId"`
+	ID        string       `json:"id"`
+	TaskID    string       `json:"taskId"`
+	Action    string       `json:"action"`
+	Layer     memory.Layer `json:"layer"`
+	Key       string       `json:"key"`
+	Value     string       `json:"value"`
+	Name      string       `json:"name"`
 }
 
 func (s *server) handleMemoryMutation(w http.ResponseWriter, r *http.Request) {
@@ -66,6 +67,8 @@ func (s *server) handleMemoryMutation(w http.ResponseWriter, r *http.Request) {
 	}
 	var state agent.MemoryView
 	switch r.URL.Path {
+	case "/api/memory/from-message":
+		state, err = a.SaveMessageMemory(request.TaskID, request.MessageID, request.Layer, request.Key, request.Value)
 	case "/api/memory/review":
 		state, err = a.ReviewMemory(request.ID, request.TaskID, request.Action, request.Layer, request.Key, request.Value)
 	case "/api/memory/edit":
@@ -81,7 +84,7 @@ func (s *server) handleMemoryMutation(w http.ResponseWriter, r *http.Request) {
 			status, message = 400, "Проверьте слой, ключ и текст записи. Ключ — до 100 символов, текст — до 2000 символов; не более 100 записей в слое."
 		}
 		if errors.Is(err, memory.ErrConflict) {
-			status, message = 409, "Задача или предложение уже изменились. Обновите память и повторите действие."
+			status, message = 409, "Сообщение, задача или запись уже изменились, либо такое название занято. Обновите память или выберите другое название."
 		}
 		writeJSON(w, status, apiResponse{Error: message})
 		return

@@ -4,6 +4,14 @@
   const open = document.querySelector("#open-memory");
   const controls = document.querySelector("#memory-controls");
   const status = document.querySelector("#memory-status");
+  const saveDialog = document.querySelector("#save-message-dialog");
+  const saveForm = document.querySelector("#save-message-form");
+  const saveLayer = document.querySelector("#save-message-layer");
+  const saveKey = document.querySelector("#save-message-key");
+  const saveValue = document.querySelector("#save-message-value");
+  const saveStatus = document.querySelector("#save-message-status");
+  let selectedMessage = null;
+  let selectedTask = "";
   let state = null;
   let busy = false;
   let chatBusy = false;
@@ -29,6 +37,17 @@
   }
   function syncBusy() {
     controls.disabled = !state || busy || chatBusy;
+    saveForm.querySelectorAll("input, textarea, select, button").forEach(element => { element.disabled = busy || chatBusy; });
+    document.querySelectorAll(".message-memory-action").forEach(element => {
+      const entries = state ? (element.dataset.layer === "working" ? state.working : state.longTerm) : [];
+      const saved = (entries || []).some(entry => entry.messageId === element.dataset.messageId);
+      element.textContent = element.dataset.layer === "working"
+        ? (saved ? "✓ В рабочей памяти" : "В рабочую память")
+        : (saved ? "✓ В долговременной памяти" : "В долговременную память");
+      element.classList.toggle("saved", saved);
+      element.disabled = !state || busy || chatBusy || !element.dataset.messageId;
+      element.title = !element.dataset.messageId ? "Доступно после успешного ответа" : saved ? "Открыть сохранённую запись" : "Выбрать, что запомнить из сообщения";
+    });
     if (chatBusy) status.textContent = "Агент отвечает. Изменение памяти будет доступно после ответа.";
   }
   async function load() {
@@ -68,13 +87,55 @@
         document.querySelector("#new-task-name").value = "";
         window.dispatchEvent(new CustomEvent("codex:new-task", { detail: payload }));
       }
+      return payload;
     } catch (error) {
       status.textContent = error.message;
+      if (saveDialog.open) saveStatus.textContent = error.message;
+      return null;
     } finally {
       busy = false;
       syncBusy();
       window.dispatchEvent(new CustomEvent("codex:memory-busy", { detail: false }));
     }
+  }
+  function savedMessageEntry() {
+    if (!selectedMessage || !state) return null;
+    const entries = saveLayer.value === "working" ? state.working : state.longTerm;
+    return (entries || []).find(entry => entry.messageId === selectedMessage.id);
+  }
+  function fillMessageForm() {
+    const existing = savedMessageEntry();
+    saveKey.value = existing ? existing.key : Array.from(selectedMessage.text.trim().split("\n")[0]).slice(0, 70).join("");
+    saveValue.value = existing ? existing.value : selectedMessage.text;
+    document.querySelector("#save-message-submit").textContent = existing ? "Сохранить изменения" : "Сохранить в память";
+    document.querySelector("#save-message-title").textContent = existing ? "Запись из сообщения" : "Запомнить из сообщения";
+    updateMessageLength();
+  }
+  function updateMessageLength() {
+    const length = Array.from(saveValue.value).length;
+    saveStatus.textContent = length > 2000 ? `${length} символов. Выберите важный фрагмент — до 2000 символов.` : `${length} / 2000 символов`;
+  }
+  function openFromMessage(message, layer) {
+    if (!state || busy || chatBusy || !message.id) return;
+    selectedMessage = message;
+    selectedTask = state.task.id;
+    saveLayer.value = layer;
+    fillMessageForm();
+    saveDialog.showModal();
+    saveValue.focus();
+  }
+  function messageActions(message) {
+    const actions = node("div", undefined, "message-memory-actions");
+    actions.setAttribute("aria-label", "Сохранение сообщения в память");
+    for (const layer of ["working", "long_term"]) {
+      const action = button(layer === "working" ? "В рабочую память" : "В долговременную память", () => openFromMessage(message, layer));
+      action.classList.add("message-memory-action");
+      action.dataset.messageId = message.id || "";
+      action.dataset.layer = layer;
+      action.disabled = !state || busy || chatBusy || !message.id;
+      actions.append(action);
+    }
+    return actions;
   }
   function editor(item, layer, proposal) {
     const card = node("article", undefined, "memory-entry");
@@ -146,8 +207,34 @@
     event.preventDefault();
     mutate("/api/tasks/new", { name: document.querySelector("#new-task-name").value });
   });
+  document.querySelector("#cancel-message-memory").addEventListener("click", () => saveDialog.close());
+  saveDialog.addEventListener("cancel", event => { if (busy) event.preventDefault(); });
+  saveLayer.addEventListener("change", () => {
+    if (savedMessageEntry()) { fillMessageForm(); return; }
+    document.querySelector("#save-message-submit").textContent = "Сохранить в память";
+    document.querySelector("#save-message-title").textContent = "Запомнить из сообщения";
+  });
+  saveValue.addEventListener("input", updateMessageLength);
+  saveForm.addEventListener("submit", async event => {
+    event.preventDefault();
+    if (!selectedMessage || busy || chatBusy) return;
+    if (!saveKey.value.trim() || !saveValue.value.trim() || Array.from(saveValue.value.trim()).length > 2000) {
+      saveStatus.textContent = "Укажите название и текст записи (до 2000 символов).";
+      return;
+    }
+    const existing = savedMessageEntry();
+    const payload = await mutate(existing ? "/api/memory/edit" : "/api/memory/from-message", {
+      taskId: selectedTask, messageId: selectedMessage.id, id: existing ? existing.id : "",
+      layer: saveLayer.value, key: saveKey.value, value: saveValue.value
+    });
+    if (payload) {
+      saveDialog.close();
+      window.dispatchEvent(new CustomEvent("codex:memory-saved", { detail: saveLayer.value }));
+    }
+  });
   window.CodexMemory = Object.freeze({
     load,
+    messageActions,
     setChatBusy(value) { chatBusy = value; syncBusy(); }
   });
 })();

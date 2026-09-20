@@ -93,6 +93,9 @@
     newChatButton.disabled = sending || memoryBusy;
     updateSendButton();
   });
+  window.addEventListener("codex:memory-saved", event => {
+    showToast(event.detail === "working" ? "Сохранено в рабочую память" : "Сохранено в долговременную память");
+  });
   window.addEventListener("codex:new-task", event => {
     transcript = [];
     input.value = "";
@@ -243,13 +246,8 @@
       if (payload.context) {
         applyContextState(payload.context);
       }
-      addMessage({
-        role: "assistant",
-        text: payload.answer,
-        time: Date.now(),
-        model: payload.model || modelSelect.value,
-        metrics: payload.metrics
-      });
+      transcript = Array.isArray(payload.messages) ? payload.messages.filter(isHistoryMessage) : transcript;
+      renderTranscript();
     } catch (error) {
       pending.remove();
       const messageText = error instanceof Error ? error.message : "Не удалось получить ответ";
@@ -368,6 +366,7 @@
     if (message.role === "assistant" && message.metrics) {
       main.append(createResponseMetrics(message.model, message.metrics));
     }
+    main.append(window.CodexMemory.messageActions(message));
     article.append(avatar, main);
     return article;
   }

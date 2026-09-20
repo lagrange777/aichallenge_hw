@@ -100,6 +100,7 @@ type MessageMetrics struct {
 
 // Message is one durable item in a conversation transcript.
 type Message struct {
+	ID      string          `json:"id"`
 	Role    string          `json:"role"`
 	Text    string          `json:"text"`
 	Time    int64           `json:"time"`
@@ -545,6 +546,7 @@ func cloneMessages(messages []Message) []Message {
 	cloned := make([]Message, len(messages))
 	for index, message := range messages {
 		cloned[index] = message
+		cloned[index].ID = messageID(message)
 		if message.Metrics != nil {
 			metrics := *message.Metrics
 			if message.Metrics.CostUSD != nil {

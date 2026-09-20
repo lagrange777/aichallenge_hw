@@ -241,6 +241,20 @@
       </form>
     </fieldset>
   </dialog>
+  <dialog id="save-message-dialog" aria-labelledby="save-message-title">
+    <form id="save-message-form">
+      <header class="memory-header">
+        <h2 id="save-message-title">Сохранить сообщение</h2>
+        <button id="cancel-message-memory" type="button" class="memory-button" aria-label="Закрыть сохранение сообщения">Закрыть</button>
+      </header>
+      <p id="save-message-hint">Выберите важный фрагмент и при необходимости отредактируйте его.</p>
+      <label>Слой памяти<select id="save-message-layer"><option value="working">Рабочая — текущая задача</option><option value="long_term">Долговременная — профиль и знания</option></select></label>
+      <label>Название записи<input id="save-message-key" maxlength="100" required></label>
+      <label>Что запомнить<textarea id="save-message-value" rows="7" required></textarea></label>
+      <p id="save-message-status" role="status"></p>
+      <div class="memory-actions"><button id="save-message-submit" type="submit" class="memory-button memory-primary">Сохранить в память</button></div>
+    </form>
+  </dialog>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <script src="/markdown.js" defer></script>
   <script src="/memory.js" defer></script>

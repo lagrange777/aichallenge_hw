@@ -88,3 +88,71 @@ func TestMemoryAPIReviewIsolationAndTaskReset(t *testing.T) {
 		t.Fatal("restart lost memory")
 	}
 }
+
+func TestSaveMessageMemoryAPI(t *testing.T) {
+	store, err := memory.NewStore(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	llm := &fakeLLM{respond: func(r agent.CompletionRequest) string {
+		if strings.Contains(r.Instructions, "You suggest memories") {
+			return `{"proposals":[]}`
+		}
+		return "assistant answer"
+	}}
+	handler := NewHandler(llm, "test-model", nil, agent.WithMemory(store))
+	chat := performChatBody(handler, nil, `{"message":"user text"}`)
+	if chat.Code != 200 {
+		t.Fatalf("chat: %s", chat.Body.String())
+	}
+	cookie := sessionCookieFrom(t, chat)
+	var result apiResponse
+	if err = json.Unmarshal(chat.Body.Bytes(), &result); err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Messages) != 2 || result.Messages[0].ID == "" {
+		t.Fatal("chat response lacks persistent message references")
+	}
+	state, err := store.Get(cookie.Value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	save := func(layer string, identity *http.Cookie, origin string) (int, apiResponse) {
+		t.Helper()
+		data, _ := json.Marshal(map[string]string{"taskId": state.Task.ID, "messageId": result.Messages[0].ID, "layer": layer, "key": "User choice", "value": "Edited excerpt"})
+		request := httptest.NewRequest("POST", "/api/memory/from-message", strings.NewReader(string(data)))
+		request.Header.Set("Content-Type", "application/json")
+		request.Header.Set("X-Codex-Chat", "1")
+		if identity != nil {
+			request.AddCookie(identity)
+		}
+		if origin != "" {
+			request.Header.Set("Origin", origin)
+		}
+		response := httptest.NewRecorder()
+		handler.ServeHTTP(response, request)
+		var payload apiResponse
+		if err := json.Unmarshal(response.Body.Bytes(), &payload); err != nil {
+			t.Fatal(err)
+		}
+		return response.Code, payload
+	}
+	if code, _ := save("working", cookie, "https://evil.example"); code != 403 {
+		t.Fatalf("foreign origin = %d", code)
+	}
+	if code, _ := save("working", nil, ""); code != 409 {
+		t.Fatalf("foreign session = %d", code)
+	}
+	if code, _ := save("short_term", cookie, ""); code != 400 {
+		t.Fatalf("invalid layer = %d", code)
+	}
+	if code, payload := save("working", cookie, ""); code != 200 || len(payload.Memory.Working) != 1 || payload.Memory.Working[0].Value != "Edited excerpt" {
+		t.Fatalf("manual save = %d %#v", code, payload)
+	}
+	if code, payload := save("long_term", cookie, ""); code != 200 || len(payload.Memory.LongTerm) != 1 {
+		t.Fatalf("second layer save = %d %#v", code, payload)
+	}
+	if llm.calls != 2 {
+		t.Fatalf("saving triggered model calls: %d", llm.calls)
+	}
+}
