@@ -82,8 +82,9 @@ type Proposal struct {
 	ReviewedAt *time.Time `json:"reviewedAt,omitempty"`
 }
 type Task struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+	ID       string   `json:"id"`
+	Name     string   `json:"name"`
+	Workflow Workflow `json:"workflow"`
 }
 
 // TaskMemory contains only task-scoped layers. Profile memory stays shared.
@@ -165,7 +166,7 @@ func (s *Store) read(owner string) (State, string, error) {
 	var revision string
 	err := readJSON(filepath.Join(dir, "CURRENT.json"), &revision)
 	if errors.Is(err, os.ErrNotExist) {
-		return State{Task: Task{ID: owner, Name: "Текущая задача"}, Working: []Entry{}, LongTerm: []Entry{}, Proposals: []Proposal{}}, "", nil
+		return State{Task: Task{ID: owner, Name: "Текущая задача", Workflow: initialWorkflow("Текущая задача")}, Working: []Entry{}, LongTerm: []Entry{}, Proposals: []Proposal{}}, "", nil
 	}
 	if err != nil {
 		return State{}, "", err
@@ -183,6 +184,10 @@ func (s *Store) read(owner string) (State, string, error) {
 	// Older revisions contain a single task and have no archive yet.
 	if err = readJSON(filepath.Join(dir, "tasks.json"), &state.Archived); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return State{}, "", err
+	}
+	normalizeTask(&state.Task)
+	for i := range state.Archived {
+		normalizeTask(&state.Archived[i].Task)
 	}
 	return state, revision, nil
 }
@@ -393,7 +398,7 @@ func (s *Store) NewTask(owner, taskID, name string) (State, error) {
 			return err
 		}
 		state.Archived = append(state.Archived, TaskMemory{state.Task, state.Working, state.Proposals})
-		state.Task = Task{ID: id, Name: name}
+		state.Task = Task{ID: id, Name: name, Workflow: initialWorkflow(name)}
 		state.Working = []Entry{}
 		// The previous task's suggestions remain in its archive.
 		state.Proposals = []Proposal{}

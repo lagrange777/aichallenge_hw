@@ -245,12 +245,14 @@
   }
   function render() {
     if (!state) return;
+    window.CodexTaskState.render(state, mutate);
     const tasksList = document.querySelector("#tasks-list");
     tasksList.replaceChildren();
     for (const task of state.tasks || [state.task]) {
       const current = task.id === state.task.id;
       const item = node("div", undefined, "task-list-item");
       item.append(node("span", task.name, "task-list-name"));
+      item.append(node("span", `${window.CodexTaskState.stages[task.workflow.stage]}${task.workflow.paused ? " · Пауза" : ""}`, "task-badge"));
       if (current) {
         item.classList.add("is-current");
         item.append(node("span", "Текущая", "task-badge"));
