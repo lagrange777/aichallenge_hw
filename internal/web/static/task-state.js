@@ -101,7 +101,7 @@
     if (!w.events?.length) journal.append(node("p", "Здесь появятся переходы, паузы и подтверждения."));
     root.append(journal);
     const banner = document.querySelector("#chat-task-state");
-    banner.replaceChildren(node("span", `${current.name} · ${stages[w.stage]}${w.paused ? " · На паузе" : ""}${w.proposal ? " · Есть предложение" : ""}`), button("Открыть задачу", () => window.dispatchEvent(new CustomEvent("codex:open-tasks"))));
+    banner.replaceChildren(node("span", `${current.name} · ${stages[w.stage]}${w.paused ? " · На паузе" : ""}${w.proposal ? " · Есть предложение" : ""}`), button("Состояние задачи", () => window.dispatchEvent(new CustomEvent("codex:open-tasks"))));
     banner.title = `${w.currentStep}. ${w.expectedActor === "agent" ? "Агент" : "Вы"}: ${w.expectedAction}`;
     window.dispatchEvent(new CustomEvent("codex:task-state", { detail: current }));
   }
