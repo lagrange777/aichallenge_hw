@@ -334,6 +334,46 @@ func TestSlidingWindowAlwaysSendsOnlyLastNMessages(t *testing.T) {
 	}
 }
 
+func TestNoStrategyKeepsFullHistoryAcrossRestartAndModelChange(t *testing.T) {
+	llm := &fakeLLM{}
+	history := &memoryHistory{}
+	a, err := NewPersistent(llm, "model-a", "conversation", history, WithContextStrategy(StrategyConfig{Type: StrategyNone, KeepLast: 1}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, message := range []string{"first", "second", "third"} {
+		if _, err := a.Ask(context.Background(), Request{Message: message}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	restarted, err := NewPersistent(llm, "model-a", "conversation", history)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantHistory := contextMessages(a.Messages())
+	result, err := restarted.Ask(context.Background(), Request{Message: "fourth", Model: "model-b"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(llm.requests) != 4 {
+		t.Fatalf("got %d calls, want one call per message", len(llm.requests))
+	}
+	for index, request := range llm.requests {
+		if request.PreviousResponseID != "" || len(request.History) != index*2 {
+			t.Fatalf("request %d does not replay full history: %#v", index, request)
+		}
+	}
+	if !reflect.DeepEqual(llm.requests[3].History, wantHistory) || llm.requests[3].Model != "model-b" {
+		t.Fatalf("restored request = %#v", llm.requests[3])
+	}
+	if result.TokenMetrics.ContextStrategy != "none" || result.TokenMetrics.WindowMessages != 6 || restarted.Snapshot().Strategy.Type != StrategyNone {
+		t.Fatalf("restored strategy metrics = %#v", result.TokenMetrics)
+	}
+	if _, err := restarted.CreateBranches(); !errors.Is(err, ErrBranchingRequired) {
+		t.Fatalf("CreateBranches() error = %v, want ErrBranchingRequired", err)
+	}
+}
+
 func TestStickyFactsUpdatesMemoryAfterEveryUserMessage(t *testing.T) {
 	llm := &factsLLM{}
 	history := &memoryHistory{}

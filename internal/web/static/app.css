@@ -682,6 +682,10 @@ select:focus-visible {
   border-top: 1px solid var(--line-soft);
 }
 
+.session-number[hidden] {
+  display: none;
+}
+
 .session-number input {
   width: 76px;
   min-height: 38px;
@@ -1456,4 +1460,56 @@ kbd {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* Reviewed memory layers are accessible from the top bar on all screen sizes. */
+.memory-button {
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  cursor: pointer;
+  font-size: 13px;
+}
+.memory-button:hover { background: var(--accent-soft); }
+.memory-button:disabled { opacity: .5; cursor: default; }
+#open-memory { margin-left: auto; white-space: nowrap; }
+#memory-dialog {
+  width: min(1120px, calc(100vw - 24px));
+  max-height: calc(100dvh - 32px);
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--paper);
+  color: var(--ink);
+  overflow-y: auto;
+}
+#memory-dialog::backdrop { background: rgb(0 0 0 / 45%); }
+.memory-header { display: flex; align-items: start; justify-content: space-between; gap: 16px; }
+.memory-header h2 { margin: 0; }
+#memory-dialog p { font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+#memory-dialog h3 { font-size: 16px; margin: 0 0 12px; }
+#memory-controls { border: 0; padding: 0; margin: 0; min-width: 0; }
+.memory-layers { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.memory-layer, .memory-proposals, .memory-new-task, .memory-journal {
+  padding: 18px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface);
+}
+.memory-proposals, .memory-new-task, .memory-journal { margin-top: 16px; }
+#memory-proposals-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.memory-entry { padding: 12px; margin-top: 10px; background: var(--surface-soft); border: 1px solid var(--line-soft); border-radius: 8px; min-width: 0; }
+#memory-dialog label { display: grid; gap: 6px; margin: 10px 0; font-size: 12px; font-weight: 600; }
+#memory-dialog input, #memory-dialog textarea, #memory-dialog select {
+  width: 100%; min-width: 0; padding: 9px; font: inherit; font-size: 13px;
+  color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 6px;
+}
+#memory-dialog textarea { resize: vertical; }
+#memory-dialog summary { cursor: pointer; font-size: 12px; }
+.memory-entry details p { white-space: pre-wrap; }
+.memory-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.memory-empty, .memory-reason { color: var(--muted); }
+#memory-status { min-height: 22px; color: var(--accent-deep); }
+@media (max-width: 760px) {
+  .memory-layers, #memory-proposals-list { grid-template-columns: minmax(0, 1fr); }
+  #memory-dialog { padding: 16px; }
+  #open-memory { font-size: 12px; padding: 8px; }
 }

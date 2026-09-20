@@ -17,6 +17,7 @@ import (
 type ContextStrategy string
 
 const (
+	StrategyNone          ContextStrategy = "none"
 	StrategySlidingWindow ContextStrategy = "sliding_window"
 	StrategyStickyFacts   ContextStrategy = "sticky_facts"
 	StrategyBranching     ContextStrategy = "branching"
@@ -109,7 +110,7 @@ func normalizeStrategyConfig(config StrategyConfig) StrategyConfig {
 
 func validStrategy(strategy ContextStrategy) bool {
 	switch strategy {
-	case StrategySlidingWindow, StrategyStickyFacts, StrategyBranching, StrategySummary:
+	case StrategyNone, StrategySlidingWindow, StrategyStickyFacts, StrategyBranching, StrategySummary:
 		return true
 	default:
 		return false
@@ -435,6 +436,13 @@ func (a *Agent) saveStateLocked(
 		ActiveBranchID:     activeBranchID,
 		Checkpoint:         cloneCheckpoint(checkpoint),
 		UpdatedAt:          time.Now().UTC(),
+	}
+	if a.memoryStore != nil {
+		layers, err := a.memoryStore.Get(a.conversationID)
+		if err != nil {
+			return err
+		}
+		state.MemoryTaskID = layers.Task.ID
 	}
 	if err := a.history.Save(a.conversationID, state); err != nil {
 		return fmt.Errorf("save conversation history: %w", err)

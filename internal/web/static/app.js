@@ -14,6 +14,7 @@
   const temperatureInput = document.querySelector("#temperature");
   const contextStrategyInput = document.querySelector("#context-strategy");
   const contextKeepLastInput = document.querySelector("#context-keep-last");
+  const contextKeepLastField = document.querySelector("#context-keep-last-field");
   const strategyDescription = document.querySelector("#strategy-description");
   const optionInputs = [responseFormatInput, lengthLimitInput, completionConditionInput, temperatureInput];
   const sendButton = document.querySelector("#send-button");
@@ -45,6 +46,7 @@
 
   let transcript = [];
   let sending = false;
+  let memoryBusy = false;
   let historyReady = false;
   let toastTimer = 0;
   let contextState = {
@@ -85,6 +87,25 @@
   contextStrategyInput.addEventListener("change", updateStrategySettings);
   createBranchesButton.addEventListener("click", createBranches);
   branchSelect.addEventListener("change", () => switchBranch(branchSelect.value));
+
+  window.addEventListener("codex:memory-busy", event => {
+    memoryBusy = event.detail;
+    newChatButton.disabled = sending || memoryBusy;
+    updateSendButton();
+  });
+  window.addEventListener("codex:new-task", event => {
+    transcript = [];
+    input.value = "";
+    applyContextState(event.detail.context);
+    contextStrategyInput.value = contextState.strategy.type;
+    contextKeepLastInput.value = String(contextState.strategy.keepLast);
+    setSessionSettingsLocked(false);
+    updateStrategySettings();
+    renderTranscript();
+    resizeComposer();
+    updateSendButton();
+    showToast("Новая задача начата. Профиль сохранён.");
+  });
 
   async function loadStatus() {
     try {
@@ -144,6 +165,7 @@
       setSessionSettingsLocked(transcript.length > 0);
       updateStrategySettings();
       renderTranscript();
+      window.CodexMemory.load();
     } catch (error) {
       showToast("Не удалось восстановить историю диалога");
     } finally {
@@ -154,7 +176,7 @@
 
   async function sendMessage(rawMessage) {
     const message = rawMessage.trim();
-    if (!message || sending) {
+    if (!message || sending || memoryBusy) {
       return;
     }
 
@@ -163,14 +185,16 @@
       lengthLimit: lengthLimitInput.value.trim(),
       completionCondition: completionConditionInput.value.trim()
     };
-    const contextKeepLast = Number(contextKeepLastInput.value);
-    if (!Number.isInteger(contextKeepLast) || contextKeepLast < 1 || contextKeepLast > 1000) {
-      showToast("Укажите от 1 до 1000 последних сообщений");
-      contextKeepLastInput.focus();
-      return;
+    if (strategyUsesWindow()) {
+      const contextKeepLast = Number(contextKeepLastInput.value);
+      if (!Number.isInteger(contextKeepLast) || contextKeepLast < 1 || contextKeepLast > 1000) {
+        showToast("Укажите от 1 до 1000 последних сообщений");
+        contextKeepLastInput.focus();
+        return;
+      }
+      responseOptions.contextKeepLast = contextKeepLast;
     }
     responseOptions.contextStrategy = contextStrategyInput.value;
-    responseOptions.contextKeepLast = contextKeepLast;
     const temperature = temperatureInput.value.trim();
     if (temperature !== "") {
       const parsedTemperature = Number(temperature);
@@ -183,6 +207,7 @@
     }
 
     sending = true;
+    window.CodexMemory.setChatBusy(true);
     input.value = "";
     optionInputs.forEach((field) => { field.disabled = true; });
     modelSelect.disabled = true;
@@ -235,6 +260,8 @@
       showToast("Запрос не выполнен. Проверьте сервер и API-ключ.");
     } finally {
       sending = false;
+      window.CodexMemory.setChatBusy(false);
+      window.CodexMemory.load();
       optionInputs.forEach((field) => { field.disabled = false; });
       modelSelect.disabled = modelSelect.value === "";
       newChatButton.disabled = false;
@@ -246,10 +273,12 @@
   }
 
   async function resetChat() {
-    if (sending) {
+    if (sending || memoryBusy) {
       return;
     }
     newChatButton.disabled = true;
+    sending = true;
+    window.CodexMemory.setChatBusy(true);
     try {
       const response = await fetch("/api/reset", {
         method: "POST",
@@ -273,9 +302,13 @@
       updateSendButton();
       input.focus();
       showToast("Новый диалог начат");
+      window.CodexMemory.load();
     } catch (error) {
       showToast("Не удалось начать новый диалог");
     } finally {
+      sending = false;
+      window.CodexMemory.setChatBusy(false);
+      updateSendButton();
       newChatButton.disabled = false;
     }
   }
@@ -370,7 +403,10 @@
     if (Number(metrics.reasoningTokens) > 0) {
       tokenTitle.push(`Рассуждение: ${formatNumber(metrics.reasoningTokens)}`);
     }
-    node.append(metricItem("ответ", `${formatNumber(metrics.outputTokens)} ток.`));
+    node.append(metricItem("выход", `${formatNumber(metrics.outputTokens)} ток.`));
+    if (Number(metrics.proposalTokens) > 0) {
+      node.append(metricItem("предложения памяти", `${formatNumber(metrics.proposalTokens)} ток.`, "Включены в токены и стоимость хода"));
+    }
     node.append(metricItem("ход", `${formatNumber(totalTokens)} ток.`, tokenTitle.join(" · ")));
 
     if (Number(metrics.memoryUpdates) > 0 && metrics.contextStrategy === "sticky_facts") {
@@ -556,22 +592,33 @@
   }
 
   function updateSendButton() {
-    sendButton.disabled = sending || !historyReady || !input.value.trim();
+    sendButton.disabled = sending || memoryBusy || !historyReady || !input.value.trim();
   }
 
   function setSessionSettingsLocked(locked) {
     contextStrategyInput.disabled = locked;
-    contextKeepLastInput.disabled = locked || contextStrategyInput.value === "branching";
+    updateContextKeepLastField();
+  }
+
+  function strategyUsesWindow() {
+    return ["sliding_window", "sticky_facts"].includes(contextStrategyInput.value);
+  }
+
+  function updateContextKeepLastField() {
+    const usesWindow = strategyUsesWindow();
+    contextKeepLastField.hidden = !usesWindow;
+    contextKeepLastInput.disabled = contextStrategyInput.disabled || !usesWindow;
   }
 
   function updateStrategySettings() {
     const descriptions = {
+      none: "Вся история диалога без сокращения",
       sliding_window: "Последние N сообщений, остальное отбрасывается",
       sticky_facts: "Facts key-value + последние N сообщений",
       branching: "Две независимые ветки из одного checkpoint"
     };
     strategyDescription.textContent = descriptions[contextStrategyInput.value] || descriptions.sliding_window;
-    contextKeepLastInput.disabled = contextStrategyInput.disabled || contextStrategyInput.value === "branching";
+    updateContextKeepLastField();
     if (transcript.length === 0) {
       contextState.strategy = {
         type: contextStrategyInput.value,
@@ -583,6 +630,7 @@
 
   function strategyLabel(strategy) {
     return {
+      none: "Без стратегии",
       sliding_window: "Sliding Window",
       sticky_facts: "Sticky Facts",
       branching: "Branching"
@@ -645,7 +693,7 @@
   }
 
   async function createBranches() {
-    if (sending) {
+    if (sending || memoryBusy) {
       return;
     }
     createBranchesButton.disabled = true;
@@ -670,7 +718,7 @@
   }
 
   async function switchBranch(branchId) {
-    if (sending || !branchId || branchId === contextState.activeBranchId) {
+    if (sending || memoryBusy || !branchId || branchId === contextState.activeBranchId) {
       return;
     }
     branchSelect.disabled = true;
@@ -691,6 +739,7 @@
       applyContextState(payload.context);
       renderTranscript();
       showToast("Ветка переключена");
+      window.CodexMemory.load();
     } catch (error) {
       renderStrategyPanels();
       showToast(error instanceof Error ? error.message : "Не удалось переключить ветку");

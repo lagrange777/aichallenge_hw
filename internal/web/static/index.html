@@ -111,6 +111,7 @@
           <span class="eyebrow">Рабочая область</span>
           <strong>Новый диалог</strong>
         </div>
+        <button id="open-memory" class="memory-button" type="button" disabled>Память <span id="memory-pending-count"></span></button>
         <label class="model-badge" title="Модель OpenAI" for="model-select">
           <span class="model-pulse"></span>
           <select id="model-select" aria-label="Модель OpenAI" disabled>
@@ -139,12 +140,13 @@
                 <small id="strategy-description">Последние N сообщений, остальное отбрасывается</small>
               </span>
               <select id="context-strategy">
-                <option value="sliding_window">Sliding Window</option>
+                <option value="none">Без стратегии</option>
+                <option value="sliding_window" selected>Sliding Window</option>
                 <option value="sticky_facts">Sticky Facts</option>
                 <option value="branching">Branching</option>
               </select>
             </label>
-            <label class="session-number" for="context-keep-last">
+            <label id="context-keep-last-field" class="session-number" for="context-keep-last">
               <span>
                 <strong>Последние N сообщений</strong>
                 <small>Сообщение пользователя и ответ считаются отдельно</small>
@@ -199,8 +201,49 @@
     </main>
   </div>
 
+  <dialog id="memory-dialog" aria-labelledby="memory-title">
+    <header class="memory-header">
+      <div><h2 id="memory-title">Память агента</h2><p>Агент предлагает — вы решаете, что и куда сохранить.</p></div>
+      <button id="close-memory" class="memory-button" type="button" aria-label="Закрыть память">Закрыть</button>
+    </header>
+    <p id="memory-status" role="status"></p>
+    <fieldset id="memory-controls">
+      <div class="memory-layers">
+        <section class="memory-layer" aria-labelledby="short-memory-title">
+          <h3 id="short-memory-title">Краткосрочная</h3>
+          <p>Переписка текущего диалога. В контекст попадает история согласно выбранной стратегии.</p>
+          <strong id="short-memory-count"></strong>
+          <p>«Новый чат» очищает этот слой. Задача и профиль сохраняются.</p>
+        </section>
+        <section class="memory-layer" aria-labelledby="working-memory-title">
+          <h3 id="working-memory-title">Рабочая</h3>
+          <p id="memory-task-name"></p>
+          <p>Цель, ограничения, план и состояние текущей задачи.</p>
+          <div id="working-memory-list"></div>
+        </section>
+        <section class="memory-layer" aria-labelledby="long-memory-title">
+          <h3 id="long-memory-title">Долговременная</h3>
+          <p>Профиль, устойчивые предпочтения, подтверждённые решения и знания. Сохраняется между задачами в этом браузере.</p>
+          <div id="long-memory-list"></div>
+        </section>
+      </div>
+      <section class="memory-proposals" aria-labelledby="proposals-title">
+        <h3 id="proposals-title">Предложения на подтверждение</h3>
+        <p>Проверьте текст и слой. Запись с таким же ключом в выбранном слое будет заменена. До подтверждения предложения не используются как память.</p>
+        <div id="memory-proposals-list"></div>
+      </section>
+      <details class="memory-journal"><summary>История решений</summary><div id="memory-journal-list"></div></details>
+      <form id="new-task-form" class="memory-new-task">
+        <h3>Новая задача</h3>
+        <p>Очистит текущую переписку, рабочую память и предложения. Долговременная память останется.</p>
+        <label>Название задачи<input id="new-task-name" maxlength="100" required placeholder="Например, авторизация в API"></label>
+        <button type="submit" class="memory-button">Начать новую задачу</button>
+      </form>
+    </fieldset>
+  </dialog>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <script src="/markdown.js" defer></script>
+  <script src="/memory.js" defer></script>
   <script src="/app.js" defer></script>
 </body>
 </html>

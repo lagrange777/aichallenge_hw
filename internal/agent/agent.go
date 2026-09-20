@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"codex-chat-cli/internal/memory"
 	"codex-chat-cli/internal/models"
 )
 
@@ -108,6 +109,7 @@ type Message struct {
 
 // ConversationState is the complete state needed to restore an Agent.
 type ConversationState struct {
+	MemoryTaskID       string                 `json:"memoryTaskId,omitempty"`
 	PreviousResponseID string                 `json:"previousResponseId,omitempty"`
 	ActiveModel        string                 `json:"activeModel,omitempty"`
 	Messages           []Message              `json:"messages"`
@@ -134,6 +136,7 @@ type History interface {
 
 // Agent owns one conversation and encapsulates its LLM request/response flow.
 type Agent struct {
+	memoryStore  *memory.Store
 	llm          LLM
 	tokenCounter TokenCounter
 	defaultModel string
@@ -181,22 +184,35 @@ func New(llm LLM, defaultModel string, options ...Option) *Agent {
 // NewPersistent creates an agent and restores its conversation when it exists.
 func NewPersistent(llm LLM, defaultModel, conversationID string, history History, options ...Option) (*Agent, error) {
 	conversationID = strings.TrimSpace(conversationID)
-	if history == nil {
-		return New(llm, defaultModel, options...), nil
-	}
-	if conversationID == "" {
+	if conversationID == "" && history != nil {
 		return nil, errors.New("conversation ID is required for persistent history")
 	}
 
 	a := New(llm, defaultModel, options...)
 	a.history = history
 	a.conversationID = conversationID
+	if history == nil {
+		return a, nil
+	}
 	state, err := history.Load(conversationID)
 	if errors.Is(err, ErrHistoryNotFound) {
 		return a, nil
 	}
 	if err != nil {
 		return nil, fmt.Errorf("load conversation history: %w", err)
+	}
+	if a.memoryStore != nil {
+		layers, err := a.memoryStore.Get(conversationID)
+		if err != nil {
+			return nil, err
+		}
+		oldTask := state.MemoryTaskID
+		if oldTask == "" {
+			oldTask = conversationID
+		}
+		if oldTask != layers.Task.ID {
+			return a, nil
+		}
 	}
 	a.previousResponseID = strings.TrimSpace(state.PreviousResponseID)
 	a.activeModel = strings.TrimSpace(state.ActiveModel)
@@ -268,6 +284,8 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 	var replayHistory []ContextMessage
 	var metricSummary *ConversationSummary
 	switch a.strategy.Type {
+	case StrategyNone:
+		replayHistory = contextMessages(a.messages)
 	case StrategySummary:
 		prepared = a.prepareCompression(ctx, request.Model)
 		metricSummary = &prepared.Summary
@@ -301,6 +319,20 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 		LengthLimit:         request.LengthLimit,
 		CompletionCondition: request.CompletionCondition,
 		Temperature:         request.Temperature,
+	}
+	var layers memory.State
+	if a.memoryStore != nil {
+		var err error
+		layers, err = a.memoryStore.Get(a.conversationID)
+		if err != nil {
+			return Response{}, fmt.Errorf("load memory: %w", err)
+		}
+		// Replay explicitly so edits/deletions cannot survive in a hidden API chain.
+		if completionRequest.PreviousResponseID != "" {
+			completionRequest.History = contextMessages(a.messages)
+			completionRequest.PreviousResponseID = ""
+		}
+		completionRequest.History = append([]ContextMessage{memoryContext(layers)}, completionRequest.History...)
 	}
 	response := Response{
 		Model:        request.Model,
@@ -346,6 +378,25 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 	response.Duration = time.Since(started)
 	if cost, ok := models.EstimateCost(request.Model, completion.Usage.InputTokens, completion.Usage.CachedInputTokens, completion.Usage.CacheWriteTokens, completion.Usage.OutputTokens); ok {
 		response.CostUSD = &cost
+	}
+	var proposals []memory.Proposal
+	if a.memoryStore != nil {
+		var usage Usage
+		var cost *float64
+		var warning string
+		proposals, usage, cost, warning = a.proposeMemories(ctx, request.Model, request.Message, response.Text, layers)
+		response.TokenMetrics.ProposalTokens = usage.TotalTokens
+		response.Usage.InputTokens += usage.InputTokens
+		response.Usage.CachedInputTokens += usage.CachedInputTokens
+		response.Usage.CacheWriteTokens += usage.CacheWriteTokens
+		response.Usage.OutputTokens += usage.OutputTokens
+		response.Usage.ReasoningTokens += usage.ReasoningTokens
+		response.Usage.TotalTokens += usage.TotalTokens
+		if usage.TotalTokens > 0 {
+			response.CostUSD = addKnownCosts(response.CostUSD, cost)
+		}
+		response.TokenMetrics.ContextWarning = strings.TrimSpace(response.TokenMetrics.ContextWarning + " " + warning)
+		response.Duration = time.Since(started)
 	}
 	response.TokenMetrics = a.completeTokenMetrics(response.TokenMetrics, response.Usage, response.CostUSD)
 	if preparedMemory.TotalTokens > a.memory.TotalTokens {
@@ -397,6 +448,7 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 	}
 	if a.history != nil {
 		state := ConversationState{
+			MemoryTaskID:       layers.Task.ID,
 			PreviousResponseID: completion.ResponseID,
 			ActiveModel:        request.Model,
 			Messages:           nextMessages,
@@ -421,6 +473,12 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 	a.facts = preparedFacts
 	a.memory = preparedMemory
 	a.branches = nextBranches
+	if a.memoryStore != nil && len(proposals) > 0 {
+		source := memorySource(request.Message, response.Text)
+		if _, err := a.memoryStore.Propose(a.conversationID, layers.Task.ID, source, proposals); err != nil {
+			response.TokenMetrics.ContextWarning = strings.TrimSpace(response.TokenMetrics.ContextWarning + " Не удалось сохранить предложения памяти; ответ сохранён.")
+		}
+	}
 	return response, nil
 }
 
@@ -456,6 +514,11 @@ func (a *Agent) Reset() error {
 			return fmt.Errorf("delete conversation history: %w", err)
 		}
 	}
+	a.clearConversationLocked()
+	return nil
+}
+
+func (a *Agent) clearConversationLocked() {
 	a.previousResponseID = ""
 	a.activeModel = ""
 	a.messages = nil
@@ -466,7 +529,6 @@ func (a *Agent) Reset() error {
 	a.branches = make(map[string]BranchState)
 	a.activeBranchID = ""
 	a.checkpoint = nil
-	return nil
 }
 
 // Messages returns a snapshot of the conversation transcript.
