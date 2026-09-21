@@ -17,6 +17,9 @@ type workflowLLM struct {
 }
 
 func (f *workflowLLM) Complete(_ context.Context, r CompletionRequest) (CompletionResponse, error) {
+	if r.Instructions == invariantCheckInstructions {
+		return allowLifecycleCheck(r), nil
+	}
 	f.requests = append(f.requests, r)
 	if r.Internal {
 		if f.invalid {
@@ -105,12 +108,13 @@ func TestTaskCheckpointSurvivesResetRestartAndControlsRequests(t *testing.T) {
 	if !strings.Contains(state.Task.Workflow.LastTurn.User, "ошибке") || state.Task.Workflow.Proposal != nil {
 		t.Fatal("extraction failure lost recovery context")
 	}
-	for _, stage := range []string{"execution", "validation", "done"} {
+	for _, action := range []string{"approve_plan", "submit_result", "record_validation", "complete"} {
 		p := state.Task.Workflow.Progress
-		p.Stage = stage
+		p.Stage = map[string]string{"approve_plan": "execution", "submit_result": "validation", "record_validation": "validation", "complete": "done"}[action]
+		p.Plan = "Проверить хеш и подготовить результат"
 		p.Result = "Result"
 		p.Validation = "User verified"
-		state, err = a.UpdateWorkflow(memory.WorkflowCommand{TaskID: state.Task.ID, Version: state.Task.Workflow.Version, Action: "save", Progress: p})
+		state, err = a.UpdateWorkflow(memory.WorkflowCommand{TaskID: state.Task.ID, Version: state.Task.Workflow.Version, Action: action, Progress: p, ValidationStatus: "passed", ValidationBasis: "user_report"})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -155,4 +159,19 @@ func TestWorkflowIsIsolatedByProfile(t *testing.T) {
 	if !view.Memory.Task.Workflow.Paused || view.Memory.Task.Workflow.Version != original.Task.Workflow.Version {
 		t.Fatal("profile switch lost pause")
 	}
+}
+
+// Legacy memory/profile tests model successful lifecycle checks independently
+// from their own extraction fixtures. Guard-specific tests use invariantLLM.
+func allowLifecycleCheck(r CompletionRequest) CompletionResponse {
+	var input struct {
+		Rules []memory.Invariant `json:"rules"`
+	}
+	_ = json.Unmarshal([]byte(r.Input), &input)
+	ids := []string{}
+	for _, rule := range input.Rules {
+		ids = append(ids, rule.ID)
+	}
+	data, _ := json.Marshal(invariantVerdict{Verdict: "allow", CheckedIDs: ids, ConflictingIDs: []string{}, Explanation: "Ответ соответствует текущему этапу."})
+	return CompletionResponse{Output: string(data)}
 }

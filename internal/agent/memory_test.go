@@ -18,6 +18,9 @@ type layeredLLM struct {
 }
 
 func (f *layeredLLM) Complete(_ context.Context, r CompletionRequest) (CompletionResponse, error) {
+	if r.Instructions == invariantCheckInstructions {
+		return allowLifecycleCheck(r), nil
+	}
 	f.requests = append(f.requests, r)
 	if r.Instructions == proposalInstructions {
 		if f.extractionFails {
@@ -84,7 +87,7 @@ func TestMemoryLayersAffectAnswersOnlyAfterReview(t *testing.T) {
 		t.Fatalf("after review = %q", result.Text)
 	}
 	last := llm.requests[len(llm.requests)-2]
-	if len(last.History) != 2 || last.History[0].Role != "developer" || last.PreviousResponseID != "" {
+	if len(last.History) != 4 || last.History[0].Role != "developer" || last.PreviousResponseID != "" {
 		t.Fatalf("context = %#v", last)
 	}
 	if err = a.Reset(); err != nil {

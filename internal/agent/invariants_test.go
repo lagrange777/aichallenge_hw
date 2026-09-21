@@ -191,7 +191,13 @@ func TestInvariantConflictStatusesAndPersistence(t *testing.T) {
 			}
 			for _, r := range f.requests[count:] {
 				if r.Instructions == invariantCheckInstructions {
-					t.Fatal("invariants leaked to other task")
+					var check struct {
+						Rules []memory.Invariant `json:"rules"`
+					}
+					_ = json.Unmarshal([]byte(r.Input), &check)
+					if len(check.Rules) != 1 || check.Rules[0].ID != "task-lifecycle" {
+						t.Fatal("invariants leaked to other task")
+					}
 				}
 			}
 			if _, err = a.SwitchTask(other.Task.ID, state.Task.ID); err != nil {
@@ -207,7 +213,8 @@ func TestManualWorkflowCannotBypassInvariants(t *testing.T) {
 	p := state.Task.Workflow.Progress
 	p.Stage = "execution"
 	p.CurrentStep = "Подключить Gin"
-	if _, err := a.UpdateWorkflow(memory.WorkflowCommand{TaskID: state.Task.ID, Version: state.Task.Workflow.Version, Action: "save", Progress: p}); !errors.Is(err, ErrInvariant) {
+	p.Plan = "Подключить Gin"
+	if _, err := a.UpdateWorkflow(memory.WorkflowCommand{TaskID: state.Task.ID, Version: state.Task.Workflow.Version, Action: "approve_plan", Progress: p}); !errors.Is(err, ErrInvariant) {
 		t.Fatal("violating step accepted")
 	}
 	after, _ := a.Memories()

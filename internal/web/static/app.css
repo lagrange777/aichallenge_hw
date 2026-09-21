@@ -1655,7 +1655,7 @@ kbd {
 .task-state-hint { font-size: 12px; color: var(--muted); }
 .task-state-editor { border-top: 1px solid var(--line); padding-top: 16px; margin-top: 20px; }
 .task-state-editor > summary { color: var(--accent-deep); cursor: pointer; }
-.task-state-editor form { display: grid; gap: 14px; margin-top: 20px; }
+.task-state-editor form, form.task-state-editor { display: grid; gap: 14px; margin-top: 20px; }
 .task-state-editor p { white-space: pre-wrap; overflow-wrap: anywhere; }
 @media (max-width: 600px) {
   .task-stepper { grid-template-columns: repeat(2, 1fr); }

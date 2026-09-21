@@ -127,7 +127,10 @@
         body: JSON.stringify({ taskId: state.task.id, ...body })
       });
       const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error || "Не удалось сохранить память");
+      if (!response.ok) {
+        if (path === "/api/tasks/state" && payload.memory) { state = payload.memory; render(); }
+        throw new Error(payload.error || "Не удалось сохранить память");
+      }
       state = payload.memory;
       messages = payload.messages || [];
       render();

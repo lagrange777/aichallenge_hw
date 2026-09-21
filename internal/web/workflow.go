@@ -48,7 +48,11 @@ func (s *server) handleWorkflow(w http.ResponseWriter, r *http.Request) {
 		if errors.Is(err, memory.ErrConflict) || errors.Is(err, profile.ErrConflict) {
 			status, message = 409, "Состояние задачи изменилось или действие недоступно. Обновите страницу."
 		}
-		writeJSON(w, status, apiResponse{Error: message})
+		payload := apiResponse{Error: message}
+		if state.Task.ID != "" {
+			payload.Memory = &state
+		}
+		writeJSON(w, status, payload)
 		return
 	}
 	writeJSON(w, 200, apiResponse{Memory: &state, Messages: a.Messages()})

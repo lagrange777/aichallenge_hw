@@ -40,28 +40,28 @@ func (a *Agent) UpdateWorkflowContext(ctx context.Context, cmd memory.WorkflowCo
 	if state.Task.ID != cmd.TaskID || state.Task.Workflow.Version != cmd.Version {
 		return MemoryView{}, memory.ErrConflict
 	}
-	if cmd.Action == "save" || cmd.Action == "accept" {
-		if state.Task.Workflow.Paused || state.Task.Workflow.Stage == "done" {
-			return MemoryView{}, memory.ErrConflict
-		}
-		p := cmd.Progress
-		if cmd.Action == "accept" {
-			if state.Task.Workflow.Proposal == nil {
-				return MemoryView{}, memory.ErrConflict
-			}
-			p = state.Task.Workflow.Proposal.Progress
-		}
-		if err = memory.ValidateProgress(state.Task.Workflow.Stage, p); err != nil {
-			return MemoryView{}, err
-		}
+	next, previewErr := memory.PreviewWorkflow(state.Task.Workflow, cmd)
+	if previewErr != nil {
+		updated, err := a.memoryStore.UpdateWorkflow(a.conversationID, cmd)
+		return a.memoryViewLocked(updated), err
+	}
+	if cmd.Action != "pause" && cmd.Action != "resume" && cmd.Action != "reject" {
 		model := a.activeModel
 		if model == "" {
 			model = a.defaultModel
 		}
-		if _, err = a.validateWorkflowInvariants(ctx, model, state, p); err != nil {
-			return MemoryView{}, err
+		if _, err = a.validateWorkflowInvariants(ctx, model, state, next.Progress); err != nil {
+			if auditErr := a.memoryStore.RecordWorkflowRejection(a.conversationID, cmd, err); auditErr != nil {
+				return MemoryView{}, auditErr
+			}
+			updated, loadErr := a.memoryStore.Get(a.conversationID)
+			if loadErr != nil {
+				return MemoryView{}, loadErr
+			}
+			return a.memoryViewLocked(updated), err
 		}
 	}
+
 	state, err = a.memoryStore.UpdateWorkflow(a.conversationID, cmd)
 	return a.memoryViewLocked(state), err
 }

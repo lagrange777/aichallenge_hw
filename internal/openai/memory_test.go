@@ -27,6 +27,7 @@ func TestFirstRequestIncludesSavedPreferences(t *testing.T) {
 					return
 				}
 				var payload struct {
+					Instructions       string          `json:"instructions"`
 					Input              json.RawMessage `json:"input"`
 					PreviousResponseID string          `json:"previous_response_id"`
 				}
@@ -34,7 +35,20 @@ func TestFirstRequestIncludesSavedPreferences(t *testing.T) {
 					t.Error(err)
 				}
 				output := `{"proposals":[]}`
-				if len(payload.Input) > 0 && payload.Input[0] == '[' {
+				if strings.Contains(payload.Instructions, "You are an independent invariant checker") {
+					var text string
+					_ = json.Unmarshal(payload.Input, &text)
+					var check struct {
+						Rules []memory.Invariant `json:"rules"`
+					}
+					_ = json.Unmarshal([]byte(text), &check)
+					ids := []string{}
+					for _, rule := range check.Rules {
+						ids = append(ids, rule.ID)
+					}
+					verdict, _ := json.Marshal(map[string]any{"verdict": "allow", "checkedIds": ids, "conflictingIds": []string{}, "explanation": "Соответствует этапу"})
+					output = string(verdict)
+				} else if len(payload.Input) > 0 && payload.Input[0] == '[' {
 					var messages []inputMessage
 					if err := json.Unmarshal(payload.Input, &messages); err != nil {
 						t.Error(err)
@@ -106,7 +120,7 @@ func TestFirstRequestIncludesSavedPreferences(t *testing.T) {
 				}
 				select {
 				case messages := <-requests:
-					if len(messages) != 2 || messages[0].Role != "developer" || messages[1].Role != "user" {
+					if len(messages) != 4 || messages[0].Role != "developer" || messages[3].Role != "user" {
 						t.Fatalf("%s: expected memory and first user message, got %#v", phase, messages)
 					}
 					content := messages[0].Content
