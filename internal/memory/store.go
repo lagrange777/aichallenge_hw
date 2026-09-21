@@ -94,11 +94,13 @@ type TaskMemory struct {
 	Proposals []Proposal `json:"proposals"`
 }
 type State struct {
-	Task      Task         `json:"task"`
-	Working   []Entry      `json:"working"`
-	LongTerm  []Entry      `json:"longTerm"`
-	Proposals []Proposal   `json:"proposals"`
-	Archived  []TaskMemory `json:"-"`
+	Invariants    InvariantSet            `json:"invariants"`
+	InvariantSets map[string]InvariantSet `json:"-"`
+	Task          Task                    `json:"task"`
+	Working       []Entry                 `json:"working"`
+	LongTerm      []Entry                 `json:"longTerm"`
+	Proposals     []Proposal              `json:"proposals"`
+	Archived      []TaskMemory            `json:"-"`
 }
 
 // Store is single-process. Each revision contains independent layer files; an
@@ -166,7 +168,7 @@ func (s *Store) read(owner string) (State, string, error) {
 	var revision string
 	err := readJSON(filepath.Join(dir, "CURRENT.json"), &revision)
 	if errors.Is(err, os.ErrNotExist) {
-		return State{Task: Task{ID: owner, Name: "Текущая задача", Workflow: initialWorkflow("Текущая задача")}, Working: []Entry{}, LongTerm: []Entry{}, Proposals: []Proposal{}}, "", nil
+		return State{Task: Task{ID: owner, Name: "Текущая задача", Workflow: initialWorkflow("Текущая задача")}, Invariants: emptyInvariants(), Working: []Entry{}, LongTerm: []Entry{}, Proposals: []Proposal{}}, "", nil
 	}
 	if err != nil {
 		return State{}, "", err
@@ -184,6 +186,13 @@ func (s *Store) read(owner string) (State, string, error) {
 	// Older revisions contain a single task and have no archive yet.
 	if err = readJSON(filepath.Join(dir, "tasks.json"), &state.Archived); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return State{}, "", err
+	}
+	if err = readJSON(filepath.Join(dir, "invariants.json"), &state.InvariantSets); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return State{}, "", err
+	}
+	state.Invariants = state.InvariantSets[state.Task.ID]
+	if state.Invariants.Version == 0 {
+		state.Invariants = emptyInvariants()
 	}
 	normalizeTask(&state.Task)
 	for i := range state.Archived {
@@ -214,6 +223,10 @@ func writeJSON(path string, value any) error {
 	return f.Sync()
 }
 func (s *Store) write(owner string, state State, previous string) error {
+	if state.InvariantSets == nil {
+		state.InvariantSets = map[string]InvariantSet{}
+	}
+	state.InvariantSets[state.Task.ID] = state.Invariants
 	revision, err := newID()
 	if err != nil {
 		return err
@@ -229,7 +242,7 @@ func (s *Store) write(owner string, state State, previous string) error {
 			_ = os.RemoveAll(next)
 		}
 	}()
-	for name, value := range map[string]any{"task.json": state.Task, "working.json": state.Working, "long_term.json": state.LongTerm, "proposals.json": state.Proposals, "tasks.json": state.Archived} {
+	for name, value := range map[string]any{"task.json": state.Task, "working.json": state.Working, "long_term.json": state.LongTerm, "proposals.json": state.Proposals, "tasks.json": state.Archived, "invariants.json": state.InvariantSets} {
 		if err = writeJSON(filepath.Join(next, name), value); err != nil {
 			return err
 		}
@@ -398,6 +411,11 @@ func (s *Store) NewTask(owner, taskID, name string) (State, error) {
 			return err
 		}
 		state.Archived = append(state.Archived, TaskMemory{state.Task, state.Working, state.Proposals})
+		if state.InvariantSets == nil {
+			state.InvariantSets = map[string]InvariantSet{}
+		}
+		state.InvariantSets[state.Task.ID] = state.Invariants
+		state.Invariants = emptyInvariants()
 		state.Task = Task{ID: id, Name: name, Workflow: initialWorkflow(name)}
 		state.Working = []Entry{}
 		// The previous task's suggestions remain in its archive.
@@ -417,6 +435,14 @@ func (s *Store) SwitchTask(owner, currentID, targetID string) (State, error) {
 		for i, target := range state.Archived {
 			if target.Task.ID != targetID {
 				continue
+			}
+			if state.InvariantSets == nil {
+				state.InvariantSets = map[string]InvariantSet{}
+			}
+			state.InvariantSets[state.Task.ID] = state.Invariants
+			state.Invariants = state.InvariantSets[targetID]
+			if state.Invariants.Version == 0 {
+				state.Invariants = emptyInvariants()
 			}
 			state.Archived[i] = TaskMemory{state.Task, state.Working, state.Proposals}
 			state.Task, state.Working, state.Proposals = target.Task, target.Working, target.Proposals

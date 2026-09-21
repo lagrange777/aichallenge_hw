@@ -222,6 +222,12 @@
               <p id="tasks-summary"></p>
               <div id="task-workflow" role="region" aria-label="Состояние задачи"></div>
             </section>
+            <section class="task-current" aria-labelledby="invariants-title">
+              <h2 id="invariants-title">Инварианты задачи</h2>
+              <p>Обязательные ограничения этой задачи. Сообщение в чате не отменяет их. Изменять и отключать правила можно здесь.</p>
+              <div id="invariants-list"></div>
+              <details id="invariant-create"><summary>Добавить инвариант</summary><div id="invariant-create-form"></div></details>
+            </section>
             <div class="tasks-columns">
               <section class="task-working" aria-labelledby="tasks-working-title">
                 <h2 id="tasks-working-title">Рабочая память задачи</h2>
@@ -335,6 +341,7 @@
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <script src="/markdown.js" defer></script>
   <script src="/task-state.js" defer></script>
+  <script src="/invariants.js" defer></script>
   <script src="/memory.js" defer></script>
   <script src="/profiles.js" defer></script>
   <script src="/app.js" defer></script>

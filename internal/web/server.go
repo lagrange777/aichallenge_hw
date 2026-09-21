@@ -30,7 +30,7 @@ const (
 	maxSessions     = 256
 )
 
-//go:embed static/index.html static/app.css static/app.js static/memory.js static/task-state.js static/profiles.js static/markdown.js static/favicon.svg
+//go:embed static/index.html static/app.css static/app.js static/memory.js static/task-state.js static/invariants.js static/profiles.js static/markdown.js static/favicon.svg
 var staticFiles embed.FS
 
 type sessionEntry struct {
@@ -145,6 +145,10 @@ func NewHandler(llm agent.LLM, model string, history agent.History, agentOptions
 	mux.HandleFunc("/api/tasks/new", app.handleMemoryMutation)
 	mux.HandleFunc("/api/tasks/switch", app.handleMemoryMutation)
 	mux.HandleFunc("/api/tasks/state", app.handleWorkflow)
+	mux.HandleFunc("/api/tasks/invariants", app.handleInvariants)
+	mux.HandleFunc("/invariants.js", func(w http.ResponseWriter, r *http.Request) {
+		app.serveStatic(w, r, "invariants.js", "text/javascript; charset=utf-8")
+	})
 	mux.HandleFunc("/profiles.js", func(w http.ResponseWriter, r *http.Request) {
 		app.serveStatic(w, r, "profiles.js", "text/javascript; charset=utf-8")
 	})

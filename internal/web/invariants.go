@@ -11,7 +11,7 @@ import (
 	"codex-chat-cli/internal/profile"
 )
 
-func (s *server) handleWorkflow(w http.ResponseWriter, r *http.Request) {
+func (s *server) handleInvariants(w http.ResponseWriter, r *http.Request) {
 	if !allowAPIRequest(w, r, http.MethodPost) {
 		return
 	}
@@ -22,9 +22,9 @@ func (s *server) handleWorkflow(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, 128<<10)
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()
-	var cmd memory.WorkflowCommand
+	var cmd memory.InvariantCommand
 	if err := decoder.Decode(&cmd); err != nil {
-		writeJSON(w, 400, apiResponse{Error: "Некорректное состояние задачи"})
+		writeJSON(w, 400, apiResponse{Error: "Некорректный запрос инвариантов"})
 		return
 	}
 	if err := decoder.Decode(&struct{}{}); err != io.EOF {
@@ -36,9 +36,9 @@ func (s *server) handleWorkflow(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 500, apiResponse{Error: "Не удалось загрузить сессию"})
 		return
 	}
-	state, err := a.UpdateWorkflowContext(r.Context(), cmd)
+	state, err := a.UpdateInvariants(cmd)
 	if err != nil {
-		status, message := 500, "Не удалось сохранить состояние задачи"
+		status, message := 500, "Не удалось сохранить инварианты задачи"
 		if errors.Is(err, agent.ErrInvariant) {
 			status, message = 409, err.Error()
 		}
