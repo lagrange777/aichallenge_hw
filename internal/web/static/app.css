@@ -1679,3 +1679,10 @@ kbd {
   .composer-bar { gap: 8px; flex-wrap: wrap; }
   .composer-actions { margin-left: auto; }
 }
+
+.invariant-form { display: grid; gap: 12px; margin: 16px 0; }
+.invariant-form label { display: grid; gap: 6px; font-size: 13px; }
+.invariant-form label[hidden] { display: none; }
+.invariant-card { margin-bottom: 12px; }
+.invariant-card p, .invariant-snapshot p { white-space: pre-wrap; overflow-wrap: anywhere; }
+#invariant-create > summary { cursor: pointer; color: var(--accent-deep); margin-top: 16px; }

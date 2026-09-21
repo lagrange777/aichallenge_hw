@@ -250,6 +250,7 @@
   function render() {
     if (!state) return;
     window.CodexTaskState.render(state, mutate);
+    window.CodexInvariants.render(state, mutate);
     const tasksList = document.querySelector("#tasks-list");
     tasksList.replaceChildren();
     for (const task of state.tasks || [state.task]) {

@@ -106,13 +106,14 @@ type MessageMetrics struct {
 
 // Message is one durable item in a conversation transcript.
 type Message struct {
-	Profile *profile.Profile `json:"profile,omitempty"`
-	ID      string           `json:"id"`
-	Role    string           `json:"role"`
-	Text    string           `json:"text"`
-	Time    int64            `json:"time"`
-	Model   string           `json:"model,omitempty"`
-	Metrics *MessageMetrics  `json:"metrics,omitempty"`
+	InvariantCheck *InvariantCheck  `json:"invariantCheck,omitempty"`
+	Profile        *profile.Profile `json:"profile,omitempty"`
+	ID             string           `json:"id"`
+	Role           string           `json:"role"`
+	Text           string           `json:"text"`
+	Time           int64            `json:"time"`
+	Model          string           `json:"model,omitempty"`
+	Metrics        *MessageMetrics  `json:"metrics,omitempty"`
 }
 
 // ConversationState is the complete state needed to restore an Agent.
@@ -411,6 +412,7 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 		}
 		completionRequest.History = append([]ContextMessage{memoryContext(layers)}, completionRequest.History...)
 	}
+	guard := a.prepareInvariants(ctx, &completionRequest, layers)
 	response := Response{
 		Model:        request.Model,
 		TokenMetrics: a.measureTokens(ctx, completionRequest, metricSummary),
@@ -436,7 +438,7 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 			response.TokenMetrics.ContextWarning += " " + combinedWarning
 		}
 	}
-	completion, err := a.llm.Complete(ctx, completionRequest)
+	completion, invariantCheck, err := a.completeWithInvariants(ctx, completionRequest, guard)
 	if err != nil {
 		response.Duration = time.Since(started)
 		return response, err
@@ -458,11 +460,12 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 	}
 	var proposals []memory.Proposal
 	var taskProposal *memory.TaskProposal
-	if a.memoryStore != nil {
+	var invariantProposals []memory.Invariant
+	if a.memoryStore != nil && (invariantCheck == nil || invariantCheck.Status == "allow" || invariantCheck.Status == "partial") {
 		var usage Usage
 		var cost *float64
 		var warning string
-		proposals, taskProposal, usage, cost, warning = a.proposeMemories(ctx, request.Model, request.Message, response.Text, layers)
+		proposals, taskProposal, invariantProposals, usage, cost, warning = a.proposeMemories(ctx, request.Model, request.Message, response.Text, layers)
 		response.TokenMetrics.ProposalTokens = usage.TotalTokens
 		response.Usage.InputTokens += usage.InputTokens
 		response.Usage.CachedInputTokens += usage.CachedInputTokens
@@ -476,6 +479,18 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 		response.TokenMetrics.ContextWarning = strings.TrimSpace(response.TokenMetrics.ContextWarning + " " + warning)
 		response.Duration = time.Since(started)
 	}
+	if taskProposal != nil && len(guard.Rules) > 0 {
+		u, err := a.validateWorkflowInvariants(ctx, request.Model, layers, taskProposal.Progress)
+		response.Usage = sumUsage(response.Usage, u)
+		if cost, ok := models.EstimateCost(request.Model, u.InputTokens, u.CachedInputTokens, u.CacheWriteTokens, u.OutputTokens); ok {
+			response.CostUSD = addKnownCosts(response.CostUSD, &cost)
+		}
+		if err != nil {
+			taskProposal = nil
+			response.TokenMetrics.ContextWarning = strings.TrimSpace(response.TokenMetrics.ContextWarning + " Предложение шага не прошло проверку инвариантов и не сохранено.")
+		}
+	}
+	response.Duration = time.Since(started)
 	response.TokenMetrics = a.completeTokenMetrics(response.TokenMetrics, response.Usage, response.CostUSD)
 	if preparedMemory.TotalTokens > a.memory.TotalTokens {
 		deltaTotal := preparedMemory.TotalTokens - a.memory.TotalTokens
@@ -498,11 +513,12 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 	nextMessages := append(cloneMessages(a.messages),
 		Message{Role: "user", Text: request.Message, Time: started.UnixMilli()},
 		Message{
-			Role:    "assistant",
-			Profile: a.activeProfile,
-			Text:    response.Text,
-			Time:    time.Now().UnixMilli(),
-			Model:   response.Model,
+			Role:           "assistant",
+			Profile:        a.activeProfile,
+			InvariantCheck: invariantCheck,
+			Text:           response.Text,
+			Time:           time.Now().UnixMilli(),
+			Model:          response.Model,
 			Metrics: &MessageMetrics{
 				DurationMS:        durationMS,
 				InputTokens:       response.Usage.InputTokens,
@@ -561,6 +577,11 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 	if a.memoryStore != nil {
 		if _, err := a.memoryStore.RecordTaskTurn(a.conversationID, layers.Task.ID, layers.Task.Workflow.Version, request.Message, response.Text, taskProposal); err != nil {
 			response.TokenMetrics.ContextWarning = strings.TrimSpace(response.TokenMetrics.ContextWarning + " Не удалось сохранить точку продолжения задачи; ответ сохранён в диалоге.")
+		}
+	}
+	if a.memoryStore != nil && len(invariantProposals) > 0 {
+		if _, err := a.memoryStore.ProposeInvariants(a.conversationID, layers.Task.ID, invariantProposals); err != nil {
+			response.TokenMetrics.ContextWarning = strings.TrimSpace(response.TokenMetrics.ContextWarning + " Не удалось сохранить предложения инвариантов.")
 		}
 	}
 	return response, nil
@@ -637,6 +658,12 @@ func cloneMessages(messages []Message) []Message {
 	for index, message := range messages {
 		cloned[index] = message
 		cloned[index].ID = messageID(message)
+		if message.InvariantCheck != nil {
+			check := *message.InvariantCheck
+			check.Rules = append([]memory.Invariant(nil), check.Rules...)
+			check.ConflictingIDs = append([]string(nil), check.ConflictingIDs...)
+			cloned[index].InvariantCheck = &check
+		}
 		if message.Profile != nil {
 			p := *message.Profile
 			cloned[index].Profile = &p

@@ -434,6 +434,7 @@
       main.append(createResponseMetrics(message.model, message.metrics));
     }
     if (message.role === "assistant" && message.profile) main.append(window.CodexProfiles.snapshot(message.profile));
+    if (message.role === "assistant" && message.invariantCheck) main.append(window.CodexInvariants.snapshot(message.invariantCheck));
     main.append(window.CodexMemory.messageActions(message));
     article.append(avatar, main);
     return article;
