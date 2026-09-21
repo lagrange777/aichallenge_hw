@@ -15,6 +15,7 @@
   let change = null;
   let busy = true;
   let pendingTransition = null;
+  let showTransitionField = () => {};
   const nextButton = document.querySelector("#composer-task-next");
   const pauseButton = document.querySelector("#composer-task-pause");
   const transitionDialog = document.querySelector("#task-transition-dialog");
@@ -54,6 +55,10 @@
     if (busy || blockedReason(w, target)) return;
     const proposed = w.proposal?.progress.stage === target;
     const progress = { ...w, ...(proposed ? w.proposal.progress : {}), stage: target };
+    // A plan awaiting approval may still be proposed in the planning stage.
+    // Prefill the draft without applying the proposal or approving it yet.
+    const proposedPlan = w.stage === "planning" && target === "execution" && w.proposal?.progress.plan?.trim();
+    if (proposedPlan) progress.plan = w.proposal.progress.plan;
     if (w.stage !== "planning" && target !== "planning") { progress.plan = w.plan; progress.goal = w.goal; }
     if (w.stage === "validation") progress.result = w.result;
     // Completion confirms the already recorded verification, never a draft.
@@ -71,28 +76,61 @@
     }
     pendingTransition = { taskId: current.id, profileId: window.CodexProfiles.activeID(), version: w.version, target, action };
     document.querySelector("#task-transition-title").textContent = `${stages[w.stage]} → ${stages[target]}`;
-    document.querySelector("#task-transition-reason").textContent = proposed ? w.proposal.reason : "Проверьте точку продолжения перед переходом. Сохранённые результаты будут переданы агенту.";
+    document.querySelector("#task-transition-reason").textContent = proposedPlan ? "План, предложенный ассистентом, подставлен автоматически. Проверьте его, при необходимости отредактируйте и утвердите." : proposed ? w.proposal.reason : "Проверьте точку продолжения перед переходом. Сохранённые результаты будут переданы агенту.";
     document.querySelector("#task-transition-status").textContent = "";
     const fieldsRoot = document.querySelector("#task-transition-fields");
     fieldsRoot.replaceChildren();
-    const actorLabel = node("label", "Кто должен действовать");
-    const actor = node("select"); actor.name = "expectedActor";
+    const tabList = node("div", undefined, "task-transition-tabs");
+    tabList.setAttribute("role", "tablist"); tabList.setAttribute("aria-label", "Поля состояния задачи");
+    const panels = node("div", undefined, "task-transition-panels");
+    fieldsRoot.append(tabList, panels);
+    const tabs = [];
+    const shortLabels = { expectedActor: "Исполнитель", goal: "Цель", plan: "План", currentStep: "Текущий шаг", expectedAction: "Ожидаемое действие", completed: "Выполнено", result: "Результат", openQuestions: "Вопросы", validation: "Проверка" };
+    showTransitionField = (key, focusTab = false) => {
+      for (const entry of tabs) {
+        const active = entry.key === key;
+        entry.tab.setAttribute("aria-selected", String(active)); entry.tab.tabIndex = active ? 0 : -1;
+        entry.panel.hidden = !active;
+        if (active && focusTab) entry.tab.focus();
+      }
+    };
+    const addField = (key, label, input) => {
+      input.id = `transition-input-${key}`;
+      const tab = button(shortLabels[key], () => showTransitionField(key));
+      tab.id = `transition-tab-${key}`; tab.setAttribute("role", "tab"); tab.setAttribute("aria-controls", `transition-panel-${key}`);
+      const panel = node("section", undefined, "task-transition-panel"); panel.id = `transition-panel-${key}`;
+      panel.setAttribute("role", "tabpanel"); panel.setAttribute("aria-labelledby", tab.id);
+      const wrapper = node("label", label + (input.required ? " *" : "")); wrapper.htmlFor = input.id;
+      const hint = node("p", input.readOnly ? "Подтверждённое значение. Для изменения вернитесь к соответствующему этапу." : input.required ? "Обязательное поле" : "Необязательное поле", "task-state-hint");
+      panel.append(wrapper, hint, input);
+      tab.addEventListener("keydown", event => {
+        const index = tabs.findIndex(entry => entry.key === key);
+        const next = event.key === "ArrowRight" ? (index + 1) % tabs.length : event.key === "ArrowLeft" ? (index + tabs.length - 1) % tabs.length : event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : -1;
+        if (next >= 0) { event.preventDefault(); showTransitionField(tabs[next].key, true); }
+      });
+      tabs.push({ key, tab, panel }); tabList.append(tab); panels.append(panel);
+    };
+    const actor = node("select"); actor.name = "expectedActor"; actor.required = true;
     for (const [key, text] of [["agent", "Агент"], ["user", "Вы"]]) { const option = node("option", text); option.value = key; actor.append(option); }
-    actor.value = progress.expectedActor; actorLabel.append(actor); fieldsRoot.append(actorLabel);
+    actor.value = progress.expectedActor; addField("expectedActor", "Кто должен действовать", actor);
     for (const [key, label, max] of fields) {
-      const wrapper = node("label", label);
-      const input = node("textarea"); input.name = key; input.value = progress[key] || ""; input.rows = 2; input.maxLength = max;
+      const input = node("textarea"); input.name = key; input.value = progress[key] || ""; input.rows = 12; input.maxLength = max;
       input.required = ["goal", "currentStep", "expectedAction"].includes(key) || key === "plan" && target === "execution" || key === "result" && ["validation", "done"].includes(target) || key === "validation" && target === "done";
       if (["plan", "goal"].includes(key) && w.stage !== "planning" && target !== "planning" || key === "result" && target === "done" || key === "validation" && target === "done") input.readOnly = true;
       if (key === "validation" && action === "request_changes") input.required = true;
-      wrapper.append(input); fieldsRoot.append(wrapper);
+      addField(key, label, input);
     }
+    showTransitionField({ approve_plan: "plan", submit_result: "result", request_changes: "validation", complete: "validation", replan: "plan" }[action] || "currentStep");
     document.querySelector("#task-transition-confirm").textContent = actionNames[action];
     syncControls(); transitionDialog.showModal();
   }
+  // Reveal the invalid field before native validation tries to focus it.
+  transitionForm.noValidate = true;
   transitionForm.addEventListener("submit", async event => {
     event.preventDefault();
     if (busy || !pendingTransition) return;
+    const invalid = [...transitionForm.elements].find(input => input.willValidate && !input.validity.valid);
+    if (invalid) { showTransitionField(invalid.name); invalid.focus(); invalid.reportValidity(); return; }
     const { target, action, ...identity } = pendingTransition;
     const progress = { ...Object.fromEntries(new FormData(transitionForm)), stage: target };
     const payload = await change("/api/tasks/state", { ...identity, action, progress });
