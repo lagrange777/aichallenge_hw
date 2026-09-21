@@ -8,16 +8,14 @@ import (
 )
 
 type Invariant struct {
-	ID         string    `json:"id"`
-	Category   string    `json:"category"`
-	Title      string    `json:"title"`
-	Rule       string    `json:"rule"`
-	Reason     string    `json:"reason"`
-	Kind       string    `json:"kind"` // semantic or forbidden_go_import
-	ImportPath string    `json:"importPath,omitempty"`
-	Status     string    `json:"status"` // active, disabled, proposed, rejected
-	Version    int       `json:"version"`
-	UpdatedAt  time.Time `json:"updatedAt"`
+	ID        string    `json:"id"`
+	Category  string    `json:"category"`
+	Title     string    `json:"title"`
+	Rule      string    `json:"rule"`
+	Reason    string    `json:"reason"`
+	Status    string    `json:"status"` // active, disabled, proposed, rejected
+	Version   int       `json:"version"`
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 type InvariantEvent struct {
 	Action string    `json:"action"`
@@ -53,20 +51,8 @@ func validInvariant(r *Invariant) error {
 	r.Title = strings.TrimSpace(r.Title)
 	r.Rule = strings.TrimSpace(r.Rule)
 	r.Reason = strings.TrimSpace(r.Reason)
-	r.ImportPath = strings.TrimSpace(r.ImportPath)
-	if r.Category != "architecture" && r.Category != "decision" && r.Category != "stack" && r.Category != "business" {
+	if r.Category != "architecture" && r.Category != "decision" && r.Category != "stack" && r.Category != "business" && r.Category != "other" {
 		return fmt.Errorf("%w: выберите категорию", ErrInvalid)
-	}
-	if r.Kind != "semantic" && r.Kind != "forbidden_go_import" {
-		return fmt.Errorf("%w: неизвестный вид проверки", ErrInvalid)
-	}
-	if r.Kind == "forbidden_go_import" {
-		if r.ImportPath == "" || len(r.ImportPath) > 200 || strings.ContainsAny(r.ImportPath, " \t\n\r\"`\\") || strings.HasSuffix(r.ImportPath, "/") {
-			return fmt.Errorf("%w: укажите путь Go-пакета", ErrInvalid)
-		}
-		r.Rule = "Не подключать Go-пакет " + r.ImportPath + " и его подпакеты."
-	} else {
-		r.ImportPath = ""
 	}
 	if r.Title == "" || r.Rule == "" || utf8.RuneCountInString(r.Title) > 100 || utf8.RuneCountInString(r.Rule) > 2000 || utf8.RuneCountInString(r.Reason) > 1000 {
 		return fmt.Errorf("%w: название до 100, правило до 2000, обоснование до 1000 символов", ErrInvalid)

@@ -30,7 +30,7 @@ func TestInvariantAPIIsolationVersionAndExplicitMutation(t *testing.T) {
 	}
 	cookie := sessionCookieFrom(t, chat)
 	state, _ := store.Get(cookie.Value)
-	cmd := memory.InvariantCommand{TaskID: state.Task.ID, ProfileID: cookie.Value, Version: state.Invariants.Version, Action: "create", Rule: memory.Invariant{Category: "architecture", Kind: "semantic", Title: "Монолит", Rule: "Один сервис"}}
+	cmd := memory.InvariantCommand{TaskID: state.Task.ID, ProfileID: cookie.Value, Version: state.Invariants.Version, Action: "create", Rule: memory.Invariant{Category: "architecture", Title: "Монолит", Rule: "Один сервис"}}
 	call := func(identity *http.Cookie, origin string, cmd memory.InvariantCommand) (int, apiResponse) {
 		t.Helper()
 		body, _ := json.Marshal(cmd)
@@ -58,12 +58,13 @@ func TestInvariantAPIIsolationVersionAndExplicitMutation(t *testing.T) {
 		t.Fatal("foreign session accepted")
 	}
 	invalid := cmd
-	invalid.Rule.Category = "other"
+	invalid.Rule.Category = "unknown"
 	if code, _ := call(cookie, "", invalid); code != 400 {
 		t.Fatal("invalid rule accepted")
 	}
+	cmd.Rule.Category = "other"
 	code, p := call(cookie, "", cmd)
-	if code != 200 || len(p.Memory.Invariants.Active()) != 1 {
+	if code != 200 || len(p.Memory.Invariants.Active()) != 1 || p.Memory.Invariants.Items[0].Category != "other" {
 		t.Fatalf("create: %d %+v", code, p)
 	}
 	if code, _ = call(cookie, "", cmd); code != 409 {

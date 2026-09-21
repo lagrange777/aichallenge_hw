@@ -1,5 +1,5 @@
 (() => {
-  const categories = { architecture: "Архитектура", decision: "Техническое решение", stack: "Стек", business: "Бизнес-правило" };
+  const categories = { architecture: "Архитектура", decision: "Техническое решение", stack: "Стек", business: "Бизнес-правило", other: "Другое" };
   const statuses = { active: "Активен", disabled: "Отключён", proposed: "На подтверждении", rejected: "Отклонён" };
   function node(tag, text, cls) { const el = document.createElement(tag); if (text !== undefined) el.textContent = text; if (cls) el.className = cls; return el; }
   function button(text, action) { const el = node("button", text, "memory-button"); el.type = "button"; el.addEventListener("click", action); return el; }
@@ -12,12 +12,8 @@
     };
     field("category", "Категория", "select", rule.category || "stack", categories);
     const title = field("title", "Название", "input", rule.title); title.required = true; title.maxLength = 100;
-    const kind = field("kind", "Проверка", "select", rule.kind || "semantic", { semantic: "Смысловое правило", forbidden_go_import: "Запрещённый Go-импорт" });
-    const path = field("importPath", "Путь запрещённого Go-пакета", "input", rule.importPath); path.maxLength = 200; path.placeholder = "github.com/gin-gonic/gin";
-    const text = field("rule", "Правило", "textarea", rule.rule); text.maxLength = 2000; text.rows = 3;
+    const text = field("rule", "Правило", "textarea", rule.rule); text.required = true; text.maxLength = 2000; text.rows = 3;
     const reason = field("reason", "Обоснование", "textarea", rule.reason); reason.maxLength = 1000; reason.rows = 2;
-    const syncKind = () => { const exact = kind.value === "forbidden_go_import"; path.parentElement.hidden = !exact; path.required = exact; text.parentElement.hidden = exact; text.required = !exact; };
-    kind.addEventListener("change", syncKind); syncKind();
     const submit = node("button", rule.id ? "Сохранить изменения" : "Добавить активный инвариант", "memory-button memory-primary"); submit.type = "submit"; form.append(submit);
     form.addEventListener("submit", event => { event.preventDefault(); save({ ...rule, ...Object.fromEntries(new FormData(form)) }); });
     return form;

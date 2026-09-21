@@ -5,9 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"go/parser"
-	"go/token"
-	"strconv"
 	"strings"
 	"time"
 
@@ -134,48 +131,6 @@ func invariantFallback(rules []memory.Invariant) string {
 	return "Не удалось подтвердить соответствие решения инвариантам задачи: " + strings.Join(names, ", ") + ". Непроверенное решение не показано. Повторите запрос или уточните ограничения во вкладке «Задачи»."
 }
 
-// ForbiddenGoImports checks imports in Go code blocks, not mentions in prose.
-// Semantic checking still handles unfenced code and whether a block is endorsed.
-func ForbiddenGoImports(text string, rules []memory.Invariant) []string {
-	found := map[string]bool{}
-	parts := strings.Split(text, "```")
-	for i := 1; i < len(parts); i += 2 {
-		block := parts[i]
-		line, code, ok := strings.Cut(block, "\n")
-		if !ok {
-			continue
-		}
-		lang := strings.ToLower(strings.TrimSpace(line))
-		if lang != "go" && lang != "golang" && lang != "" {
-			continue
-		}
-		if !strings.Contains(code, "package ") {
-			code = "package example\n" + code
-		}
-		file, err := parser.ParseFile(token.NewFileSet(), "answer.go", code, parser.ImportsOnly)
-		if err != nil {
-			continue
-		}
-		for _, imp := range file.Imports {
-			path, err := strconv.Unquote(imp.Path.Value)
-			if err != nil {
-				continue
-			}
-			for _, r := range rules {
-				if r.Kind == "forbidden_go_import" && (path == r.ImportPath || strings.HasPrefix(path, r.ImportPath+"/")) {
-					found[r.ID] = true
-				}
-			}
-		}
-	}
-	result := []string{}
-	for _, r := range rules {
-		if found[r.ID] {
-			result = append(result, r.ID)
-		}
-	}
-	return result
-}
 func (a *Agent) completeWithInvariants(ctx context.Context, request CompletionRequest, plan invariantPlan) (CompletionResponse, *InvariantCheck, error) {
 	if len(plan.Rules) == 0 {
 		c, e := a.llm.Complete(ctx, request)
@@ -199,14 +154,6 @@ func (a *Agent) completeWithInvariants(ctx context.Context, request CompletionRe
 		usage = sumUsage(usage, u)
 		if err != nil {
 			return fallback()
-		}
-		// Exact import checks are deliberately conservative even in quoted code;
-		// compliant comparisons can refer to the package in prose.
-		ids := ForbiddenGoImports(c.Output, plan.Rules)
-		if len(ids) > 0 {
-			v.Verdict = "violation"
-			v.ConflictingIDs = ids
-			v.Explanation = "В Go-коде найден запрещённый импорт. Опишите его словами вместо включения в решение."
 		}
 		if v.Verdict == "allow" {
 			report.Status = plan.Verdict.Verdict

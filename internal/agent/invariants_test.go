@@ -11,6 +11,7 @@ import (
 )
 
 type invariantLLM struct {
+	answer          string
 	taskProposal    *memory.TaskProposal
 	requests        []CompletionRequest
 	pre             string
@@ -27,8 +28,9 @@ func (f *invariantLLM) Complete(_ context.Context, r CompletionRequest) (Complet
 	output := ""
 	if r.Instructions == invariantCheckInstructions {
 		var input struct {
-			Phase string             `json:"phase"`
-			Rules []memory.Invariant `json:"rules"`
+			Phase     string             `json:"phase"`
+			Candidate string             `json:"candidate"`
+			Rules     []memory.Invariant `json:"rules"`
 		}
 		_ = json.Unmarshal([]byte(r.Input), &input)
 		if input.Phase == f.failPhase {
@@ -46,6 +48,9 @@ func (f *invariantLLM) Complete(_ context.Context, r CompletionRequest) (Complet
 		if input.Phase == "workflow" && f.workflowBlocked {
 			verdict = "violation"
 		}
+		if input.Phase == "answer" && strings.Contains(input.Candidate, "SECRET_BAD_DRAFT") {
+			verdict = "violation"
+		}
 		if verdict != "allow" {
 			conflicts = ids
 		}
@@ -55,7 +60,7 @@ func (f *invariantLLM) Complete(_ context.Context, r CompletionRequest) (Complet
 		b, _ := json.Marshal(invariantVerdict{Verdict: verdict, CheckedIDs: ids, ConflictingIDs: conflicts, Explanation: "Правило запрещает подключать Gin; допустим net/http."})
 		output = string(b)
 	} else if r.Instructions == proposalInstructions {
-		output = `{"proposals":[],"invariantProposals":[{"category":"business","title":"Неотрицательная цена","rule":"Цена не может быть отрицательной","kind":"semantic","reason":"Пользователь установил правило"}]}`
+		output = `{"proposals":[],"invariantProposals":[{"category":"business","title":"Неотрицательная цена","rule":"Цена не может быть отрицательной","reason":"Пользователь установил правило"}]}`
 		if f.taskProposal != nil {
 			b, _ := json.Marshal(map[string]any{"proposals": []memory.Proposal{}, "taskProposal": f.taskProposal})
 			output = string(b)
@@ -64,6 +69,8 @@ func (f *invariantLLM) Complete(_ context.Context, r CompletionRequest) (Complet
 		f.generation++
 		if f.alwaysBad || f.badDraft && f.generation == 1 {
 			output = "SECRET_BAD_DRAFT\n```go\npackage main\nimport g \"github.com/gin-gonic/gin\"\n```"
+		} else if f.answer != "" {
+			output = f.answer
 		} else {
 			output = "Gin противоречит правилу «Без Gin». Используем net/http."
 		}
@@ -82,7 +89,7 @@ func invariantAgent(t *testing.T, f *invariantLLM) (*Agent, *memory.Store, *memo
 		t.Fatal(err)
 	}
 	state, _ := a.Memories()
-	_, err = a.UpdateInvariants(memory.InvariantCommand{TaskID: state.Task.ID, Version: state.Invariants.Version, Action: "create", Rule: memory.Invariant{Title: "Без Gin", Category: "stack", Kind: "forbidden_go_import", ImportPath: "github.com/gin-gonic/gin"}})
+	_, err = a.UpdateInvariants(memory.InvariantCommand{TaskID: state.Task.ID, Version: state.Invariants.Version, Action: "create", Rule: memory.Invariant{Title: "Без Gin", Category: "stack", Rule: "Не подключать Go-пакет github.com/gin-gonic/gin и его подпакеты."}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -208,15 +215,17 @@ func TestManualWorkflowCannotBypassInvariants(t *testing.T) {
 		t.Fatal("rejected mutation changed state")
 	}
 }
-func TestExactGoImportCheckDoesNotMatchProse(t *testing.T) {
-	rules := []memory.Invariant{{ID: "rule", Kind: "forbidden_go_import", ImportPath: "github.com/gin-gonic/gin"}}
-	for _, code := range []string{"```go\nimport \"github.com/gin-gonic/gin\"\n```", "```golang\npackage p\nimport (\n _ \"github.com/gin-gonic/gin/binding\"\n)\n```"} {
-		if len(ForbiddenGoImports(code, rules)) != 1 {
-			t.Fatal("missed forbidden import")
-		}
+func TestInvariantAnswerUsesOnlySemanticVerdict(t *testing.T) {
+	// A quoted import used for diagnosis may be allowed by the semantic checker.
+	// It must not be overridden by a separate code parser.
+	f := &invariantLLM{answer: "Удалите запрещённый импорт из существующего кода:\n```go\nimport \"github.com/gin-gonic/gin\"\n```"}
+	a, _, _ := invariantAgent(t, f)
+	result, err := a.Ask(context.Background(), Request{Message: "Объясни, что удалить"})
+	if err != nil {
+		t.Fatal(err)
 	}
-	if len(ForbiddenGoImports("Почему Gin не подходит? Путь github.com/gin-gonic/gin.", rules)) != 0 {
-		t.Fatal("prose blocked")
+	if result.Text != f.answer || f.generation != 1 {
+		t.Fatal("semantic approval was overridden")
 	}
 }
 
