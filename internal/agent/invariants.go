@@ -107,12 +107,15 @@ func (a *Agent) checkInvariants(ctx context.Context, model, phase string, rules 
 }
 func (a *Agent) prepareInvariants(ctx context.Context, request *CompletionRequest, layers memory.State) invariantPlan {
 	rules := layers.Invariants.Active()
+	if a.memoryStore != nil {
+		rules = append(rules, lifecycleRule(layers.Task.Workflow))
+	}
 	p := invariantPlan{Rules: rules}
 	if len(rules) == 0 {
 		return p
 	}
 	data, _ := json.Marshal(rules)
-	request.History = append([]ContextMessage{{Role: "developer", Content: invariantContextInstructions + string(data)}}, request.History...)
+	request.History = append(request.History, ContextMessage{Role: "developer", Content: invariantContextInstructions + string(data)})
 	v, u, err := a.checkInvariants(ctx, request.Model, "request", rules, *request, "")
 	p.Verdict = v
 	p.Usage = u

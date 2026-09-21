@@ -98,3 +98,81 @@ func TestWorkflowAPIIsolationConflictsAndPause(t *testing.T) {
 		t.Fatal("wrong profile accepted")
 	}
 }
+
+func TestControlledLifecycleAPI(t *testing.T) {
+	store, _ := memory.NewStore(t.TempDir())
+	handler := NewHandler(&fakeLLM{}, "test", nil, agent.WithMemory(store))
+	chat := performChatBody(handler, nil, `{"message":"Начать"}`)
+	cookie := sessionCookieFrom(t, chat)
+	state, _ := store.Get(cookie.Value)
+	call := func(cmd memory.WorkflowCommand) (int, apiResponse) {
+		t.Helper()
+		data, _ := json.Marshal(cmd)
+		req := httptest.NewRequest("POST", "/api/tasks/state", strings.NewReader(string(data)))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("X-Codex-Chat", "1")
+		req.AddCookie(cookie)
+		res := httptest.NewRecorder()
+		handler.ServeHTTP(res, req)
+		var payload apiResponse
+		if err := json.Unmarshal(res.Body.Bytes(), &payload); err != nil {
+			t.Fatal(err)
+		}
+		return res.Code, payload
+	}
+	command := func(action string, p memory.Progress) memory.WorkflowCommand {
+		return memory.WorkflowCommand{TaskID: state.Task.ID, Version: state.Task.Workflow.Version, Action: action, Progress: p}
+	}
+	p := state.Task.Workflow.Progress
+	p.Stage = "done"
+	p.Result = "Result"
+	p.Validation = "Все отлично"
+	code, payload := call(command("complete", p))
+	if code != 400 || payload.Memory == nil || !strings.Contains(payload.Error, "validation") {
+		t.Fatalf("skip response: %d %+v", code, payload)
+	}
+	if !payload.Memory.Task.Workflow.Events[0].Rejected || payload.Memory.Task.Workflow.Stage != "planning" {
+		t.Fatal("rejection missing")
+	}
+	p = state.Task.Workflow.Progress
+	p.Stage = "execution"
+	if code, _ = call(command("approve_plan", p)); code != 400 {
+		t.Fatal("empty plan approved")
+	}
+	p.Plan = "Реализовать, затем проверить"
+	code, payload = call(command("approve_plan", p))
+	if code != 200 {
+		t.Fatal(payload.Error)
+	}
+	state = payload.Memory.State
+	p = state.Task.Workflow.Progress
+	p.Stage = "validation"
+	p.Result = "Result"
+	code, payload = call(command("submit_result", p))
+	if code != 200 {
+		t.Fatal(payload.Error)
+	}
+	state = payload.Memory.State
+	p = state.Task.Workflow.Progress
+	p.Stage = "done"
+	p.Validation = "Строка вместо проверки"
+	if code, _ = call(command("complete", p)); code != 400 {
+		t.Fatal("text bypassed validation")
+	}
+	p = state.Task.Workflow.Progress
+	p.Validation = "Проверены критерии готовности"
+	cmd := command("record_validation", p)
+	cmd.ValidationStatus = "passed"
+	cmd.ValidationBasis = "user_report"
+	code, payload = call(cmd)
+	if code != 200 {
+		t.Fatal(payload.Error)
+	}
+	state = payload.Memory.State
+	p = state.Task.Workflow.Progress
+	p.Stage = "done"
+	code, payload = call(command("complete", p))
+	if code != 200 || payload.Memory.Task.Workflow.Stage != "done" {
+		t.Fatal("completion failed")
+	}
+}

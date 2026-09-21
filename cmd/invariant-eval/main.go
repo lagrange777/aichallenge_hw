@@ -116,11 +116,12 @@ func run(out string) error {
 		}
 		p := view.Task.Workflow.Progress
 		p.Stage = "execution"
+		p.Plan = "Подготовить ответ по цели с учётом ограничений задачи."
 		p.Goal = c.Question
 		p.CurrentStep = "Ответить на текущий запрос в рамках ограничений"
 		p.ExpectedActor = "agent"
 		p.ExpectedAction = "Предложить решение или объяснить конкретный конфликт"
-		view, err = a.UpdateWorkflow(memory.WorkflowCommand{TaskID: view.Task.ID, Version: view.Task.Workflow.Version, Action: "save", Progress: p})
+		view, err = a.UpdateWorkflow(memory.WorkflowCommand{TaskID: view.Task.ID, Version: view.Task.Workflow.Version, Action: "approve_plan", Progress: p})
 		if err != nil {
 			return err
 		}

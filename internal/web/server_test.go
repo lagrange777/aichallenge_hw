@@ -35,6 +35,20 @@ func (f *countingLLM) CountTokens(_ context.Context, _ agent.CompletionRequest) 
 func (f *fakeLLM) Complete(_ context.Context, request agent.CompletionRequest) (agent.CompletionResponse, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if strings.Contains(request.Instructions, "You are an independent invariant checker") {
+		var input struct {
+			Rules []struct {
+				ID string `json:"id"`
+			} `json:"rules"`
+		}
+		_ = json.Unmarshal([]byte(request.Input), &input)
+		ids := []string{}
+		for _, r := range input.Rules {
+			ids = append(ids, r.ID)
+		}
+		data, _ := json.Marshal(map[string]any{"verdict": "allow", "checkedIds": ids, "conflictingIds": []string{}, "explanation": "Соответствует этапу"})
+		return agent.CompletionResponse{Output: string(data)}, nil
+	}
 	f.requests = append(f.requests, request)
 	if f.err != nil {
 		return agent.CompletionResponse{}, f.err

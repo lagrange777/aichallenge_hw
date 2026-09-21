@@ -34,7 +34,7 @@
       if (rule.status !== "rejected") { const details = node("details", undefined, "memory-edit"); details.append(node("summary", "Редактировать"), editor(rule, updated => command("edit", updated))); card.append(details); }
       list.append(card);
     }
-    if (!set.items?.length) list.append(node("p", "Правил пока нет. Добавьте ограничения или подтвердите предложение агента. Без активных инвариантов дополнительные проверки модели не выполняются."));
+    if (!set.items?.length) list.append(node("p", "Правил пока нет. Добавьте ограничения или подтвердите предложение агента. Контроль текущего этапа задачи работает независимо от этого списка."));
     const log = node("details", undefined, "memory-edit"); log.append(node("summary", `История изменений (${set.events?.length || 0})`));
     const names = { create: "Добавлен", edit: "Изменён", activate: "Активирован", disable: "Отключён", reject: "Отклонён" };
     for (const event of [...(set.events || [])].reverse()) log.append(node("p", `${new Date(event.at).toLocaleString("ru-RU")} · ${names[event.action]} · ${event.rule.title} v${event.rule.version}: ${event.rule.rule}`));
