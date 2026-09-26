@@ -107,6 +107,7 @@
           <button id="tab-chat" class="workspace-tab" type="button" role="tab" aria-selected="true" aria-controls="chat-panel">Чат</button>
           <button id="tab-tasks" class="workspace-tab" type="button" role="tab" aria-selected="false" aria-controls="tasks-panel" tabindex="-1">Задачи</button>
           <button id="tab-profiles" class="workspace-tab" type="button" role="tab" aria-selected="false" aria-controls="profiles-panel" tabindex="-1">Профили</button>
+          <button id="tab-mcp" class="workspace-tab" type="button" role="tab" aria-selected="false" aria-controls="mcp-panel" tabindex="-1">MCP</button>
         </nav>
         <button id="open-memory" class="memory-button" type="button" disabled>Память <span id="memory-pending-count"></span></button>
         <label class="model-badge" title="Модель OpenAI" for="model-select">
@@ -269,6 +270,42 @@
           </fieldset>
         </div>
       </section>
+      <section id="mcp-panel" class="tasks-panel" role="tabpanel" aria-labelledby="tab-mcp" hidden>
+        <div class="tasks-content">
+          <header class="tasks-header"><div><p class="eyebrow">Интеграции проекта</p><h1>MCP-серверы</h1><p>Подключите сервер и посмотрите доступные инструменты. Настройки общие для всех профилей этого приложения.</p></div></header>
+          <p class="mcp-notice">Проверка устанавливает соединение и получает список инструментов. Использование инструментов в чате пока не подключено.</p>
+          <p id="mcp-status" role="status" aria-live="polite">Добавьте сервер или выберите сохранённое подключение.</p>
+          <fieldset id="mcp-controls">
+            <div class="mcp-navigation">
+              <div id="mcp-server-tabs" class="mcp-server-tabs" role="tablist" aria-label="MCP-серверы"></div>
+              <button id="mcp-refresh" type="button" class="memory-button">Обновить список</button>
+            </div>
+            <div id="mcp-server-panel" role="tabpanel" tabindex="0">
+            <div id="mcp-presets" class="memory-actions"><button id="mcp-neurly" type="button" class="memory-button">Добавить Neurly</button><button id="mcp-custom" type="button" class="memory-button">Другой MCP-сервер</button></div>
+            <form id="mcp-form" class="profile-form">
+              <h2 id="mcp-form-title">Новое подключение</h2>
+              <div class="profile-fields">
+                <label>Название<input name="name" maxlength="100" required placeholder="Neurly"></label>
+                <label>URL MCP-сервера<input name="url" type="url" maxlength="2048" required placeholder="https://neurly.ru/v1/mcp"></label>
+              </div>
+              <label>API-ключ (Bearer)<input name="token" type="password" maxlength="8192" autocomplete="new-password" placeholder="Для серверов без авторизации оставьте пустым"></label>
+              <p id="mcp-key-hint">Ключ сохраняется на сервере и не возвращается в браузер. При смене URL введите ключ заново.</p>
+              <label class="mcp-checkbox"><input name="clearToken" type="checkbox">Удалить сохранённый ключ</label>
+              <p>В Neurly сначала включите нужную интеграцию в <a href="https://neurly.ru/dashboard/integrations" target="_blank" rel="noopener noreferrer">личном кабинете</a>. Для подключения используйте API-ключ Neurly и адрес <code>https://neurly.ru/v1/mcp</code>.</p>
+              <div class="memory-actions"><button type="submit" class="memory-button memory-primary">Сохранить подключение</button><button id="mcp-cancel" type="button" class="memory-button">Сбросить правки</button></div>
+              <div id="mcp-server-actions" class="memory-actions" hidden><button id="mcp-check" type="button" class="memory-button">Проверить и получить инструменты</button><button id="mcp-delete" type="button" class="memory-button">Удалить сервер</button></div>
+              <p id="mcp-save-hint" hidden>Сохраните изменения перед проверкой подключения.</p>
+            </form>
+          <section id="mcp-result" class="task-current" hidden aria-labelledby="mcp-result-title">
+            <h2 id="mcp-result-title">Доступные инструменты</h2>
+            <p id="mcp-server-info"></p>
+            <label>Найти инструмент<input id="mcp-search" type="search" placeholder="Название или описание"></label>
+            <div id="mcp-tools"></div>
+          </section>
+            </div>
+          </fieldset>
+        </div>
+      </section>
     </main>
   </div>
 
@@ -344,6 +381,7 @@
   <script src="/invariants.js" defer></script>
   <script src="/memory.js" defer></script>
   <script src="/profiles.js" defer></script>
+  <script src="/mcp.js" defer></script>
   <script src="/app.js" defer></script>
 </body>
 </html>

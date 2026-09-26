@@ -15,6 +15,7 @@ import (
 	"codex-chat-cli/internal/agent"
 	"codex-chat-cli/internal/config"
 	"codex-chat-cli/internal/history"
+	"codex-chat-cli/internal/mcpclient"
 	"codex-chat-cli/internal/memory"
 	"codex-chat-cli/internal/openai"
 	"codex-chat-cli/internal/profile"
@@ -60,9 +61,13 @@ func run(logger *log.Logger) error {
 		return fmt.Errorf("инициализация профилей: %w", err)
 	}
 
+	mcpStore, err := mcpclient.NewStore(cfg.MCPPath)
+	if err != nil {
+		return fmt.Errorf("инициализация MCP: %w", err)
+	}
 	server := &http.Server{
 		Addr: cfg.WebAddr,
-		Handler: chatweb.NewHandler(apiClient, cfg.Model, historyStore, agent.WithContextStrategy(agent.StrategyConfig{
+		Handler: chatweb.NewHandlerWithMCP(apiClient, cfg.Model, historyStore, mcpStore, agent.WithContextStrategy(agent.StrategyConfig{
 			Type:     agent.ContextStrategy(cfg.ContextStrategy),
 			KeepLast: cfg.ContextKeepLast,
 		}), agent.WithMemory(memoryStore), agent.WithProfiles(profileStore)),

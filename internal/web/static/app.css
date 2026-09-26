@@ -1703,4 +1703,24 @@ kbd {
 .invariant-form label[hidden] { display: none; }
 .invariant-card { margin-bottom: 12px; }
 .invariant-card p, .invariant-snapshot p { white-space: pre-wrap; overflow-wrap: anywhere; }
+#mcp-panel[hidden], #mcp-result[hidden] { display: none; }
+#mcp-controls { border: 0; margin: 0; padding: 0; min-width: 0; }
+.mcp-navigation { display: flex; align-items: flex-start; gap: 12px; margin: 20px 0; }
+.mcp-navigation > button { flex-shrink: 0; }
+.mcp-server-tabs { display: flex; flex-wrap: wrap; gap: 8px; flex: 1; min-width: 0; }
+.mcp-server-tabs button { max-width: 100%; overflow-wrap: anywhere; text-align: left; }
+.mcp-server-tabs [aria-selected="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-deep); }
+.mcp-server-tabs button:focus-visible, #mcp-server-panel:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+#mcp-presets { margin-bottom: 16px; }
+#mcp-presets[hidden], #mcp-server-actions[hidden], #mcp-save-hint[hidden] { display: none; }
+@media (max-width: 600px) { .mcp-navigation { flex-direction: column; } }
+#mcp-status { color: var(--accent-deep); }
+.mcp-notice { padding: 12px 16px; background: var(--accent-soft); border-radius: 8px; }
+.tasks-panel .mcp-checkbox { display: flex; align-items: center; gap: 8px; }
+.tasks-panel .mcp-checkbox input { width: auto; }
+#mcp-result { margin-top: 24px; scroll-margin-top: 20px; }
+.mcp-tool { border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin: 12px 0; overflow-wrap: anywhere; }
+.mcp-tool h3 { margin: 0; font-size: 14px; }
+.mcp-tool p { white-space: pre-wrap; }
+.mcp-tool pre { overflow: auto; max-height: 300px; font-size: 12px; background: var(--surface-soft); padding: 12px; border-radius: 8px; }
 #invariant-create > summary { cursor: pointer; color: var(--accent-deep); margin-top: 16px; }

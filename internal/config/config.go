@@ -30,6 +30,7 @@ type Config struct {
 	HistoryPath     string
 	MemoryPath      string
 	ProfilePath     string
+	MCPPath         string
 	ContextKeepLast int
 	ContextStrategy string
 }
@@ -73,6 +74,7 @@ func Load() (Config, error) {
 		Timeout:         timeout,
 		WebAddr:         webAddr,
 		HistoryPath:     historyPath,
+		MCPPath:         valueOrDefault("MCP_PATH", filepath.Join(filepath.Dir(historyPath), "mcp.json")),
 		ProfilePath:     valueOrDefault("PROFILE_PATH", filepath.Join(filepath.Dir(historyPath), "profiles")),
 		MemoryPath:      valueOrDefault("MEMORY_PATH", filepath.Join(filepath.Dir(historyPath), "memory")),
 		ContextKeepLast: contextKeepLast,

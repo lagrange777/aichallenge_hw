@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"codex-chat-cli/internal/agent"
+	"codex-chat-cli/internal/mcpclient"
 	"codex-chat-cli/internal/memory"
 	"codex-chat-cli/internal/models"
 	"codex-chat-cli/internal/profile"
@@ -30,7 +31,7 @@ const (
 	maxSessions     = 256
 )
 
-//go:embed static/index.html static/app.css static/app.js static/memory.js static/task-state.js static/invariants.js static/profiles.js static/markdown.js static/favicon.svg
+//go:embed static/index.html static/app.css static/app.js static/memory.js static/task-state.js static/invariants.js static/profiles.js static/mcp.js static/markdown.js static/favicon.svg
 var staticFiles embed.FS
 
 type sessionEntry struct {
@@ -39,6 +40,7 @@ type sessionEntry struct {
 }
 
 type server struct {
+	mcpStore     *mcpclient.Store
 	llm          agent.LLM
 	history      agent.History
 	model        string
@@ -65,6 +67,7 @@ type chatRequest struct {
 }
 
 type apiResponse struct {
+	MCP      *mcpView                `json:"mcp,omitempty"`
 	Profiles *agent.ProfileView      `json:"profiles,omitempty"`
 	Memory   *agent.MemoryView       `json:"memory,omitempty"`
 	Answer   string                  `json:"answer,omitempty"`
@@ -100,6 +103,11 @@ type responseMetrics struct {
 
 // NewHandler returns the complete local web application handler.
 func NewHandler(llm agent.LLM, model string, history agent.History, agentOptions ...agent.Option) http.Handler {
+	return NewHandlerWithMCP(llm, model, history, nil, agentOptions...)
+}
+
+// NewHandlerWithMCP adds project-wide MCP connection settings to the web app.
+func NewHandlerWithMCP(llm agent.LLM, model string, history agent.History, mcpStore *mcpclient.Store, agentOptions ...agent.Option) http.Handler {
 	model = strings.TrimSpace(model)
 	definitions := models.Available(model)
 	options := make([]modelOption, 0, len(definitions))
@@ -109,6 +117,7 @@ func NewHandler(llm agent.LLM, model string, history agent.History, agentOptions
 		allowed[definition.ID] = true
 	}
 	app := &server{
+		mcpStore:     mcpStore,
 		llm:          llm,
 		history:      history,
 		model:        model,
@@ -119,6 +128,13 @@ func NewHandler(llm agent.LLM, model string, history agent.History, agentOptions
 	}
 
 	mux := http.NewServeMux()
+	mux.HandleFunc("/mcp.js", func(w http.ResponseWriter, r *http.Request) {
+		app.serveStatic(w, r, "mcp.js", "text/javascript; charset=utf-8")
+	})
+	mux.HandleFunc("/api/mcp", app.handleMCP)
+	mux.HandleFunc("/api/mcp/save", app.handleMCPMutation)
+	mux.HandleFunc("/api/mcp/delete", app.handleMCPMutation)
+	mux.HandleFunc("/api/mcp/check", app.handleMCPMutation)
 	mux.HandleFunc("/", app.handleIndex)
 	mux.HandleFunc("/app.css", app.handleCSS)
 	mux.HandleFunc("/app.js", app.handleJS)
