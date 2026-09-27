@@ -435,6 +435,23 @@
       main.append(createResponseMetrics(message.model, message.metrics));
     }
     if (message.role === "assistant" && message.profile) main.append(window.CodexProfiles.snapshot(message.profile));
+    if (message.role === "assistant" && message.toolRuns?.length) {
+      const trace = document.createElement("details"); trace.className = "mcp-trace";
+      const heading = document.createElement("summary"); heading.textContent = `MCP: ${message.toolRuns.length} операций`;
+      trace.append(heading);
+      for (const run of message.toolRuns) {
+        const card = document.createElement("article"); card.className = "mcp-tool";
+        const title = document.createElement("h4"); title.textContent = `${run.serverName || "MCP"} · ${run.name} · ${run.error ? "Ошибка" : "Успешно"} · ${run.durationMs} мс`;
+        const args = document.createElement("pre");
+        try { args.textContent = JSON.stringify(JSON.parse(run.arguments), null, 2); } catch { args.textContent = run.arguments || "—"; }
+        const output = document.createElement("pre");
+        try { output.textContent = JSON.stringify(JSON.parse(run.output), null, 2); } catch { output.textContent = run.output; }
+        const argsLabel = document.createElement("p"); argsLabel.textContent = "Аргументы";
+        const resultLabel = document.createElement("p"); resultLabel.textContent = "Результат";
+        card.append(title, argsLabel, args, resultLabel, output); trace.append(card);
+      }
+      main.append(trace);
+    }
     if (message.role === "assistant" && message.invariantCheck) main.append(window.CodexInvariants.snapshot(message.invariantCheck));
     main.append(window.CodexMemory.messageActions(message));
     article.append(avatar, main);

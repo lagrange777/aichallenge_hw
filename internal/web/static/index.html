@@ -273,7 +273,7 @@
       <section id="mcp-panel" class="tasks-panel" role="tabpanel" aria-labelledby="tab-mcp" hidden>
         <div class="tasks-content">
           <header class="tasks-header"><div><p class="eyebrow">Интеграции проекта</p><h1>MCP-серверы</h1><p>Подключите сервер и посмотрите доступные инструменты. Настройки общие для всех профилей этого приложения.</p></div></header>
-          <p class="mcp-notice">Проверка устанавливает соединение и получает список инструментов. Использование инструментов в чате пока не подключено.</p>
+          <p class="mcp-notice">Проверьте подключение, выберите инструменты и включите их для чата. Доступны инструменты чтения (readOnlyHint); до 6 вызовов на сообщение. Настройки общие для проекта.</p>
           <p id="mcp-status" role="status" aria-live="polite">Добавьте сервер или выберите сохранённое подключение.</p>
           <fieldset id="mcp-controls">
             <div class="mcp-navigation">
@@ -281,7 +281,7 @@
               <button id="mcp-refresh" type="button" class="memory-button">Обновить список</button>
             </div>
             <div id="mcp-server-panel" role="tabpanel" tabindex="0">
-            <div id="mcp-presets" class="memory-actions"><button id="mcp-neurly" type="button" class="memory-button">Добавить Neurly</button><button id="mcp-custom" type="button" class="memory-button">Другой MCP-сервер</button></div>
+            <div id="mcp-presets" class="memory-actions"><button id="mcp-neurly" type="button" class="memory-button">Добавить Neurly</button><button id="mcp-mock" type="button" class="memory-button">Mock Issue Tracker</button><button id="mcp-custom" type="button" class="memory-button">Другой MCP-сервер</button></div>
             <form id="mcp-form" class="profile-form">
               <h2 id="mcp-form-title">Новое подключение</h2>
               <div class="profile-fields">
@@ -296,6 +296,13 @@
               <div id="mcp-server-actions" class="memory-actions" hidden><button id="mcp-check" type="button" class="memory-button">Проверить и получить инструменты</button><button id="mcp-delete" type="button" class="memory-button">Удалить сервер</button></div>
               <p id="mcp-save-hint" hidden>Сохраните изменения перед проверкой подключения.</p>
             </form>
+          <section id="mcp-permissions" class="task-current" hidden>
+            <h2>Доступ из чата</h2>
+            <label class="mcp-checkbox"><input id="mcp-enabled" type="checkbox">Использовать в чате</label>
+            <p id="mcp-allowed-summary"></p>
+            <p>Проверьте подключение и отметьте инструменты ниже. Изменения применяются после сохранения разрешений.</p>
+            <button id="mcp-save-permissions" type="button" class="memory-button">Сохранить разрешения</button>
+          </section>
           <section id="mcp-result" class="task-current" hidden aria-labelledby="mcp-result-title">
             <h2 id="mcp-result-title">Доступные инструменты</h2>
             <p id="mcp-server-info"></p>

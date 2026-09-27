@@ -10,6 +10,7 @@
   let active = "new";
   const drafts = new Map();
   const checks = new Map();
+  const permissionDrafts = new Map();
   const messages = new Map();
   const tabs = document.querySelector("#mcp-server-tabs");
   const panel = document.querySelector("#mcp-server-panel");
@@ -17,6 +18,9 @@
   let discovery = null;
   let busy = false;
   let loaded = false;
+  let selectedTools = new Set();
+  const enabled = document.querySelector("#mcp-enabled");
+  const permissionSave = document.querySelector("#mcp-save-permissions");
   const element = (tag, text, className) => {
     const node = document.createElement(tag);
     if (text !== undefined) node.textContent = text;
@@ -33,6 +37,7 @@
   }
   function remember() {
     drafts.set(active, values());
+    permissionDrafts.set(active, {enabled: enabled.checked, tools: [...selectedTools]});
     const check = checks.get(active);
     if (check) check.query = search.value;
   }
@@ -42,6 +47,7 @@
     const dirty = c && (draft.name.trim() !== c.name || draft.url.trim() !== c.url || draft.token.trim() || draft.clearToken);
     document.querySelector("#mcp-check").disabled = busy || !c || !!dirty;
     document.querySelector("#mcp-save-hint").hidden = !dirty;
+    permissionSave.disabled = busy || !c || !!dirty;
   }
   function showActive() {
     const c = current();
@@ -53,6 +59,11 @@
     field("token").placeholder = c?.hasToken ? "Ключ сохранён. Оставьте пустым, чтобы сохранить его" : "Для серверов без авторизации оставьте пустым";
     document.querySelector("#mcp-presets").hidden = !!c;
     document.querySelector("#mcp-server-actions").hidden = !c;
+    const grant = permissionDrafts.get(active);
+    selectedTools = new Set(grant?.tools || c?.allowedTools || []);
+    enabled.checked = grant?.enabled ?? !!c?.enabled;
+    document.querySelector("#mcp-permissions").hidden = !c;
+    permissionSummary();
     const check = checks.get(active);
     discovery = check?.discovery || null;
     result.hidden = !discovery;
@@ -93,10 +104,13 @@
   function applyConnections(next) {
     for (const c of connections) {
       if (!next.some(item => item.id === c.id && item.version === c.version)) {
-        drafts.delete(c.id); checks.delete(c.id); messages.delete(c.id);
+        drafts.delete(c.id); checks.delete(c.id); messages.delete(c.id); permissionDrafts.delete(c.id);
       }
     }
     connections = next;
+  }
+  function permissionSummary() {
+    document.querySelector("#mcp-allowed-summary").textContent = selectedTools.size ? `Выбрано: ${[...selectedTools].join(", ")}` : "Инструменты ещё не выбраны.";
   }
   function renderTools() {
     const list = document.querySelector("#mcp-tools"); list.replaceChildren();
@@ -107,6 +121,16 @@
     for (const tool of tools) {
       const card = element("article", undefined, "mcp-tool");
       card.append(element("h3", tool.name), element("p", tool.description || "Описание не предоставлено"));
+      const grant = element("label", undefined, "mcp-checkbox");
+      const checkbox = document.createElement("input"); checkbox.type = "checkbox";
+      checkbox.checked = selectedTools.has(tool.name);
+      checkbox.disabled = !tool.annotations?.readOnlyHint;
+      checkbox.addEventListener("change", () => {
+        if (checkbox.checked) selectedTools.add(tool.name); else selectedTools.delete(tool.name);
+        permissionSummary();
+      });
+      grant.append(checkbox, document.createTextNode(checkbox.disabled ? "Недоступен для чата: нет признака readOnlyHint" : "Разрешить в чате"));
+      card.append(grant);
       const schema = element("details");
       schema.append(element("summary", "Параметры инструмента"), element("pre", JSON.stringify(tool.inputSchema, null, 2)));
       card.append(schema); list.append(card);
@@ -139,6 +163,7 @@
     remember();
     const id = active;
     const connection = current();
+    const previousCheck = checks.get(id);
     const previousIDs = new Set(connections.map(c => c.id));
     busy = true; controls.disabled = true;
     if (action === "check") { checks.delete(id); discovery = null; result.hidden = true; }
@@ -149,6 +174,9 @@
       if (action === "check") {
         checks.set(id, { discovery: data.discovery, time: new Date().toLocaleTimeString(), query: "" });
         messages.set(id, `Соединение установлено. Получено инструментов: ${data.discovery.tools.length}.`);
+      } else if (action === "permissions") {
+        if (previousCheck) checks.set(id, previousCheck);
+        messages.set(id, "Разрешения сохранены. Они применятся к следующим MCP-вызовам.");
       } else if (action === "save") {
         drafts.delete(id); checks.delete(id);
         if (id === "new") active = connections.find(c => !previousIDs.has(c.id))?.id || "new";
@@ -179,8 +207,15 @@
     drafts.set("new", { name: "Neurly", url: "https://neurly.ru/v1/mcp", token: "", clearToken: false });
     showActive(); field("token").focus();
   });
+  document.querySelector("#mcp-mock").addEventListener("click", () => {
+    drafts.set("new", { name: "Mock Issue Tracker", url: "http://mock-issue-mcp:8090/mcp", token: "", clearToken: false });
+    showActive();
+  });
+  permissionSave.addEventListener("click", () => {
+    const c = current(); if (c) mutate("permissions", { id:c.id, version:c.version, enabled:enabled.checked, allowedTools:[...selectedTools] });
+  });
   document.querySelector("#mcp-custom").addEventListener("click", () => { drafts.delete("new"); showActive(); field("name").focus(); });
-  document.querySelector("#mcp-cancel").addEventListener("click", () => { drafts.delete(active); showActive(); });
+  document.querySelector("#mcp-cancel").addEventListener("click", () => { drafts.delete(active); permissionDrafts.delete(active); showActive(); });
   document.querySelector("#mcp-check").addEventListener("click", () => {
     const c = current(); if (c) mutate("check", { id: c.id, version: c.version });
   });

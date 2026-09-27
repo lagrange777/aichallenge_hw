@@ -1724,3 +1724,7 @@ kbd {
 .mcp-tool p { white-space: pre-wrap; }
 .mcp-tool pre { overflow: auto; max-height: 300px; font-size: 12px; background: var(--surface-soft); padding: 12px; border-radius: 8px; }
 #invariant-create > summary { cursor: pointer; color: var(--accent-deep); margin-top: 16px; }
+
+.mcp-trace { margin: 12px 0; }
+.mcp-trace summary { cursor: pointer; }
+.mcp-trace pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 360px; overflow: auto; }

@@ -102,3 +102,45 @@ func TestMCPSettingsAndDiscoveryAPI(t *testing.T) {
 		t.Fatal("deleted connection checked")
 	}
 }
+
+func TestMCPPermissionsValidateDiscoveryAndVersion(t *testing.T) {
+	remoteMCP := mcp.NewServer(&mcp.Implementation{Name: "permissions", Version: "1"}, nil)
+	for _, name := range []string{"read", "write"} {
+		mcp.AddTool(remoteMCP, &mcp.Tool{Name: name, Annotations: &mcp.ToolAnnotations{ReadOnlyHint: name == "read"}}, func(context.Context, *mcp.CallToolRequest, struct{}) (*mcp.CallToolResult, any, error) {
+			t.Error("permission save executed a tool")
+			return nil, nil, nil
+		})
+	}
+	remote := httptest.NewServer(mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server { return remoteMCP }, &mcp.StreamableHTTPOptions{Stateless: true, JSONResponse: true}))
+	defer remote.Close()
+	store, _ := mcpclient.NewStore(filepath.Join(t.TempDir(), "mcp.json"))
+	c, _ := store.Save(mcpclient.Connection{Name: "Mock", URL: remote.URL}, "", false)
+	handler := NewHandlerWithMCP(&fakeLLM{}, "test", nil, store)
+	grant := func(version int, enabled bool, names []string) int {
+		b, _ := json.Marshal(map[string]any{"id": c.ID, "version": version, "enabled": enabled, "allowedTools": names})
+		r := httptest.NewRequest("POST", "/api/mcp/permissions", strings.NewReader(string(b)))
+		r.Header.Set("Content-Type", "application/json")
+		r.Header.Set("X-Codex-Chat", "1")
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, r)
+		return w.Code
+	}
+	for _, name := range []string{"write", "missing"} {
+		if code := grant(c.Version, true, []string{name}); code != 400 {
+			t.Fatalf("accepted %s: %d", name, code)
+		}
+	}
+	if code := grant(c.Version, true, []string{"read"}); code != 200 {
+		t.Fatalf("grant: %d", code)
+	}
+	if code := grant(c.Version, false, nil); code != 409 {
+		t.Fatalf("stale grant: %d", code)
+	}
+	saved, _, err := store.Get(c.ID, c.Version+1)
+	if err != nil || !saved.Enabled || len(saved.AllowedTools) != 1 {
+		t.Fatalf("not saved: %+v %v", saved, err)
+	}
+	if code := grant(saved.Version, false, nil); code != 200 {
+		t.Fatalf("revoke: %d", code)
+	}
+}
