@@ -86,11 +86,11 @@ func (s *server) handleMCPMutation(w http.ResponseWriter, r *http.Request) {
 			if err == nil {
 				available := map[string]bool{}
 				for _, t := range d.Tools {
-					available[t.Name] = t.Annotations != nil && t.Annotations.ReadOnlyHint
+					available[t.Name], _ = mcpclient.ChatToolAccess(d.ServerName, t)
 				}
 				for _, name := range request.AllowedTools {
 					if !available[name] {
-						err = errors.New("Разрешены только доступные инструменты с признаком readOnlyHint")
+						err = errors.New("Инструмент не разрешён политикой чата")
 						break
 					}
 				}

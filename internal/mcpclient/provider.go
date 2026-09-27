@@ -46,7 +46,8 @@ func (p *Provider) Tools(ctx context.Context) ([]agent.ToolDefinition, []agent.T
 			if !slices.Contains(c.AllowedTools, t.Name) {
 				continue
 			}
-			if t.Annotations == nil || !t.Annotations.ReadOnlyHint {
+			allowed, mutates := ChatToolAccess(d.ServerName, t)
+			if !allowed {
 				continue
 			}
 			schema, e := json.Marshal(t.InputSchema)
@@ -62,20 +63,23 @@ func (p *Provider) Tools(ctx context.Context) ([]agent.ToolDefinition, []agent.T
 			}
 			matched[t.Name] = true
 			hash := sha256.Sum256([]byte(c.ID + ":" + t.Name))
-			defs = append(defs, agent.ToolDefinition{Name: fmt.Sprintf("mcp_%x", hash[:16]), ServerID: c.ID, ServerName: c.Name, ToolName: t.Name, Version: c.Version, Description: c.Name + " / " + t.Name + ": " + t.Description, Parameters: schema})
+			defs = append(defs, agent.ToolDefinition{Name: fmt.Sprintf("mcp_%x", hash[:16]), ServerID: c.ID, ServerName: c.Name, ToolName: t.Name, Mutates: mutates, Version: c.Version, Description: c.Name + " / " + t.Name + ": " + t.Description, Parameters: schema})
 			if len(defs) >= 64 {
 				return defs, runs
 			}
 		}
 		for _, name := range c.AllowedTools {
 			if !matched[name] {
-				runs = append(runs, agent.ToolRun{ServerName: c.Name, Name: name, Error: true, Output: "Выбранный инструмент недоступен: отсутствует, не имеет readOnlyHint или содержит неподдерживаемую схему"})
+				runs = append(runs, agent.ToolRun{ServerName: c.Name, Name: name, Error: true, Output: "Выбранный инструмент недоступен: отсутствует, не разрешён политикой чата или содержит неподдерживаемую схему"})
 			}
 		}
 	}
 	return defs, runs
 }
 func (p *Provider) Call(ctx context.Context, def agent.ToolDefinition, arguments string) (string, error) {
+	if def.Mutates && def.ToolName != "save_issue_report" {
+		return "", errors.New("Изменяющий инструмент не разрешён политикой чата")
+	}
 	c, token, err := p.store.Get(def.ServerID, def.Version)
 	if err != nil || !c.Enabled || !slices.Contains(c.AllowedTools, def.ToolName) {
 		return "", errors.New("Разрешение на инструмент отозвано или настройки изменились")

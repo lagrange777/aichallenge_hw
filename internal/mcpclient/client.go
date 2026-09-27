@@ -23,6 +23,23 @@ type Discovery struct {
 	Tools           []*mcp.Tool `json:"tools"`
 }
 
+// ChatToolAccess returns the narrow set of remote tools that may be granted to
+// the chat. The only mutating exception is the local report writer implemented
+// by the companion mock-issue-mcp project for the composition demo.
+func ChatToolAccess(serverName string, tool *mcp.Tool) (allowed, mutates bool) {
+	if tool == nil || tool.Annotations == nil {
+		return false, false
+	}
+	if tool.Annotations.ReadOnlyHint {
+		return true, false
+	}
+	annotations := tool.Annotations
+	if serverName == "mock-issue-mcp" && tool.Name == "save_issue_report" && annotations.DestructiveHint != nil && !*annotations.DestructiveHint && annotations.OpenWorldHint != nil && !*annotations.OpenWorldHint {
+		return true, true
+	}
+	return false, false
+}
+
 func ValidateEndpoint(endpoint string) error {
 	u, err := url.Parse(endpoint)
 	if err != nil || u.Hostname() == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || len(endpoint) > 2048 {

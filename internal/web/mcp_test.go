@@ -144,3 +144,34 @@ func TestMCPPermissionsValidateDiscoveryAndVersion(t *testing.T) {
 		t.Fatalf("revoke: %d", code)
 	}
 }
+
+func TestMCPPermissionsAllowOnlyMockIssueReportWriter(t *testing.T) {
+	falseValue := false
+	remoteMCP := mcp.NewServer(&mcp.Implementation{Name: "mock-issue-mcp", Version: "1.1.0"}, nil)
+	for _, name := range []string{"save_issue_report", "other_write"} {
+		mcp.AddTool(remoteMCP, &mcp.Tool{Name: name, Annotations: &mcp.ToolAnnotations{DestructiveHint: &falseValue, OpenWorldHint: &falseValue}}, func(context.Context, *mcp.CallToolRequest, struct{}) (*mcp.CallToolResult, any, error) {
+			t.Error("permission save executed a tool")
+			return nil, nil, nil
+		})
+	}
+	remote := httptest.NewServer(mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server { return remoteMCP }, &mcp.StreamableHTTPOptions{Stateless: true, JSONResponse: true}))
+	defer remote.Close()
+	store, _ := mcpclient.NewStore(filepath.Join(t.TempDir(), "mcp.json"))
+	connection, _ := store.Save(mcpclient.Connection{Name: "Mock", URL: remote.URL}, "", false)
+	handler := NewHandlerWithMCP(&fakeLLM{}, "test", nil, store)
+	grant := func(name string) int {
+		body, _ := json.Marshal(map[string]any{"id": connection.ID, "version": connection.Version, "enabled": true, "allowedTools": []string{name}})
+		request := httptest.NewRequest("POST", "/api/mcp/permissions", strings.NewReader(string(body)))
+		request.Header.Set("Content-Type", "application/json")
+		request.Header.Set("X-Codex-Chat", "1")
+		response := httptest.NewRecorder()
+		handler.ServeHTTP(response, request)
+		return response.Code
+	}
+	if code := grant("other_write"); code != 400 {
+		t.Fatalf("other write accepted: %d", code)
+	}
+	if code := grant("save_issue_report"); code != 200 {
+		t.Fatalf("report writer rejected: %d", code)
+	}
+}
