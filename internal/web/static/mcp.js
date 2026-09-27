@@ -124,12 +124,15 @@
       const grant = element("label", undefined, "mcp-checkbox");
       const checkbox = document.createElement("input"); checkbox.type = "checkbox";
       checkbox.checked = selectedTools.has(tool.name);
-      checkbox.disabled = !tool.annotations?.readOnlyHint;
+      const readOnly = tool.annotations?.readOnlyHint === true;
+      const reportWriter = discovery.serverName === "mock-issue-mcp" && tool.name === "save_issue_report" && tool.annotations?.destructiveHint === false && tool.annotations?.openWorldHint === false;
+      checkbox.disabled = !readOnly && !reportWriter;
       checkbox.addEventListener("change", () => {
         if (checkbox.checked) selectedTools.add(tool.name); else selectedTools.delete(tool.name);
         permissionSummary();
       });
-      grant.append(checkbox, document.createTextNode(checkbox.disabled ? "Недоступен для чата: нет признака readOnlyHint" : "Разрешить в чате"));
+      const permissionLabel = checkbox.disabled ? "Недоступен для чата: операция не разрешена политикой" : reportWriter ? "Разрешить сохранение отчётов" : "Разрешить чтение в чате";
+      grant.append(checkbox, document.createTextNode(permissionLabel));
       card.append(grant);
       const schema = element("details");
       schema.append(element("summary", "Параметры инструмента"), element("pre", JSON.stringify(tool.inputSchema, null, 2)));
