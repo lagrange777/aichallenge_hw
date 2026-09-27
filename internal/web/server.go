@@ -19,6 +19,8 @@ import (
 	"codex-chat-cli/internal/memory"
 	"codex-chat-cli/internal/models"
 	"codex-chat-cli/internal/profile"
+	"codex-chat-cli/internal/scheduler"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 const (
@@ -31,7 +33,7 @@ const (
 	maxSessions     = 256
 )
 
-//go:embed static/index.html static/app.css static/app.js static/memory.js static/task-state.js static/invariants.js static/profiles.js static/mcp.js static/markdown.js static/favicon.svg
+//go:embed static/index.html static/app.css static/app.js static/memory.js static/task-state.js static/invariants.js static/profiles.js static/mcp.js static/monitors.js static/markdown.js static/favicon.svg
 var staticFiles embed.FS
 
 type sessionEntry struct {
@@ -40,6 +42,7 @@ type sessionEntry struct {
 }
 
 type server struct {
+	monitors     *scheduler.Service
 	mcpStore     *mcpclient.Store
 	llm          agent.LLM
 	history      agent.History
@@ -108,8 +111,22 @@ func NewHandler(llm agent.LLM, model string, history agent.History, agentOptions
 
 // NewHandlerWithMCP adds project-wide MCP connection settings to the web app.
 func NewHandlerWithMCP(llm agent.LLM, model string, history agent.History, mcpStore *mcpclient.Store, agentOptions ...agent.Option) http.Handler {
+	return NewHandlerWithScheduler(llm, model, history, mcpStore, nil, agentOptions...)
+}
+
+func NewHandlerWithScheduler(llm agent.LLM, model string, history agent.History, mcpStore *mcpclient.Store, monitors *scheduler.Service, agentOptions ...agent.Option) http.Handler {
+	var localMCP *mcp.Server
+	if monitors != nil {
+		localMCP = monitors.MCP(mcpStore)
+	}
+	var remote agent.ToolProvider
 	if mcpStore != nil {
-		agentOptions = append(agentOptions, agent.WithTools(mcpclient.NewProvider(mcpStore)))
+		remote = mcpclient.NewProvider(mcpStore)
+	}
+	if monitors != nil {
+		agentOptions = append(agentOptions, agent.WithTools(&scheduler.Provider{Service: monitors, Server: localMCP, Remote: remote}))
+	} else if remote != nil {
+		agentOptions = append(agentOptions, agent.WithTools(remote))
 	}
 	model = strings.TrimSpace(model)
 	definitions := models.Available(model)
@@ -120,6 +137,7 @@ func NewHandlerWithMCP(llm agent.LLM, model string, history agent.History, mcpSt
 		allowed[definition.ID] = true
 	}
 	app := &server{
+		monitors:     monitors,
 		mcpStore:     mcpStore,
 		llm:          llm,
 		history:      history,
@@ -131,6 +149,27 @@ func NewHandlerWithMCP(llm agent.LLM, model string, history agent.History, mcpSt
 	}
 
 	mux := http.NewServeMux()
+	mux.HandleFunc("/monitors.js", func(w http.ResponseWriter, r *http.Request) {
+		app.serveStatic(w, r, "monitors.js", "text/javascript; charset=utf-8")
+	})
+	mux.HandleFunc("/api/monitors", app.handleMonitors)
+	for _, path := range []string{"/api/monitors/create", "/api/monitors/pause", "/api/monitors/settings", "/api/monitors/update", "/api/monitors/preview", "/api/monitors/run", "/api/monitors/delete"} {
+		mux.HandleFunc(path, app.handleMonitorMutation)
+	}
+	if localMCP != nil {
+		handler := mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server { return localMCP }, &mcp.StreamableHTTPOptions{Stateless: true, JSONResponse: true})
+		mux.HandleFunc("/mcp/scheduler", func(w http.ResponseWriter, r *http.Request) {
+			if r.Method != http.MethodPost && r.Method != http.MethodGet && r.Method != http.MethodDelete {
+				w.WriteHeader(405)
+				return
+			}
+			if !allowAPIRequest(w, r, r.Method) {
+				return
+			}
+			r.Body = http.MaxBytesReader(w, r.Body, 64<<10)
+			handler.ServeHTTP(w, r)
+		})
+	}
 	mux.HandleFunc("/mcp.js", func(w http.ResponseWriter, r *http.Request) {
 		app.serveStatic(w, r, "mcp.js", "text/javascript; charset=utf-8")
 	})
@@ -585,7 +624,7 @@ func validSessionID(id string) bool {
 	return err == nil
 }
 
-func writeJSON(w http.ResponseWriter, status int, response apiResponse) {
+func writeJSON(w http.ResponseWriter, status int, response any) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(status)

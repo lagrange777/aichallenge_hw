@@ -1728,3 +1728,14 @@ kbd {
 .mcp-trace { margin: 12px 0; }
 .mcp-trace summary { cursor: pointer; }
 .mcp-trace pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 360px; overflow: auto; }
+.monitor-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.monitor-warning { color: #a13a21; overflow-wrap: anywhere; }
+.monitor-table-wrap { overflow-x: auto; }
+.monitor-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.monitor-table th, .monitor-table td { padding: 8px; text-align: left; border-bottom: 1px solid var(--border, #ddd); }
+
+.monitor-json { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 28rem; overflow: auto; padding: 1rem; background: var(--surface-soft, #f3f5f7); border-radius: 8px; font-size: .85rem; }
+#monitor-arguments label { min-width: 0; }
+#monitor-arguments small { font-weight: normal; opacity: .8; }
+#monitor-arguments textarea, #monitor-summary-prompt textarea { width: 100%; box-sizing: border-box; }
+#monitor-form [hidden] { display: none !important; }
