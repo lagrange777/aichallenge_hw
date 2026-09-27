@@ -13,8 +13,10 @@ services:
       MEMORY_PATH: /data/memory
       PROFILE_PATH: /data/profiles
       MCP_PATH: /data/mcp.json
+      MCP_HTTP_ENDPOINTS: http://mock-issue-mcp:8090/mcp
       CONTEXT_KEEP_LAST: ${CONTEXT_KEEP_LAST:-10}
       CONTEXT_STRATEGY: ${CONTEXT_STRATEGY:-sliding_window}
+    networks: [default, mcp]
     ports:
       - "127.0.0.1:8080:8080"
     read_only: true
@@ -27,3 +29,8 @@ services:
 
 volumes:
   chat-history:
+
+networks:
+  mcp:
+    name: codex-mcp
+    external: true

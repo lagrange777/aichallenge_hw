@@ -43,6 +43,9 @@ type Request struct {
 
 // CompletionRequest is a normalized request sent from the agent to an LLM.
 type CompletionRequest struct {
+	Tools               []ToolDefinition
+	ToolOutputs         []ToolOutput
+	ToolRuns            []ToolRun
 	Profile             *profile.Profile
 	Internal            bool
 	Input               string
@@ -65,6 +68,8 @@ type ContextMessage struct {
 
 // CompletionResponse is the transport-neutral result returned by an LLM.
 type CompletionResponse struct {
+	ToolCalls  []ToolCall
+	ToolRuns   []ToolRun
 	ResponseID string
 	Output     string
 	Model      string
@@ -106,6 +111,7 @@ type MessageMetrics struct {
 
 // Message is one durable item in a conversation transcript.
 type Message struct {
+	ToolRuns       []ToolRun        `json:"toolRuns,omitempty"`
 	InvariantCheck *InvariantCheck  `json:"invariantCheck,omitempty"`
 	Profile        *profile.Profile `json:"profile,omitempty"`
 	ID             string           `json:"id"`
@@ -145,6 +151,7 @@ type History interface {
 
 // Agent owns one conversation and encapsulates its LLM request/response flow.
 type Agent struct {
+	tools         ToolProvider
 	profileStore  *profile.Store
 	browserID     string
 	activeProfile *profile.Profile
@@ -413,6 +420,7 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 		completionRequest.History = append([]ContextMessage{memoryContext(layers)}, completionRequest.History...)
 	}
 	guard := a.prepareInvariants(ctx, &completionRequest, layers)
+	a.prepareTools(ctx, &completionRequest, guard)
 	response := Response{
 		Model:        request.Model,
 		TokenMetrics: a.measureTokens(ctx, completionRequest, metricSummary),
@@ -516,6 +524,7 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 			Role:           "assistant",
 			Profile:        a.activeProfile,
 			InvariantCheck: invariantCheck,
+			ToolRuns:       completion.ToolRuns,
 			Text:           response.Text,
 			Time:           time.Now().UnixMilli(),
 			Model:          response.Model,
@@ -657,6 +666,7 @@ func cloneMessages(messages []Message) []Message {
 	cloned := make([]Message, len(messages))
 	for index, message := range messages {
 		cloned[index] = message
+		cloned[index].ToolRuns = append([]ToolRun(nil), message.ToolRuns...)
 		cloned[index].ID = messageID(message)
 		if message.InvariantCheck != nil {
 			check := *message.InvariantCheck

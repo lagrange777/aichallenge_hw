@@ -108,6 +108,9 @@ func NewHandler(llm agent.LLM, model string, history agent.History, agentOptions
 
 // NewHandlerWithMCP adds project-wide MCP connection settings to the web app.
 func NewHandlerWithMCP(llm agent.LLM, model string, history agent.History, mcpStore *mcpclient.Store, agentOptions ...agent.Option) http.Handler {
+	if mcpStore != nil {
+		agentOptions = append(agentOptions, agent.WithTools(mcpclient.NewProvider(mcpStore)))
+	}
 	model = strings.TrimSpace(model)
 	definitions := models.Available(model)
 	options := make([]modelOption, 0, len(definitions))
@@ -135,6 +138,7 @@ func NewHandlerWithMCP(llm agent.LLM, model string, history agent.History, mcpSt
 	mux.HandleFunc("/api/mcp/save", app.handleMCPMutation)
 	mux.HandleFunc("/api/mcp/delete", app.handleMCPMutation)
 	mux.HandleFunc("/api/mcp/check", app.handleMCPMutation)
+	mux.HandleFunc("/api/mcp/permissions", app.handleMCPMutation)
 	mux.HandleFunc("/", app.handleIndex)
 	mux.HandleFunc("/app.css", app.handleCSS)
 	mux.HandleFunc("/app.js", app.handleJS)

@@ -269,3 +269,47 @@ func TestCountTokensSeparatesCurrentRequestFromReplayedHistory(t *testing.T) {
 		t.Fatalf("expected one current-only and one replayed-history request: %#v, %#v", first, second)
 	}
 }
+
+func TestFunctionCallingWireFormat(t *testing.T) {
+	calls := 0
+	remote := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		var body map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Fatal(err)
+		}
+		tools := body["tools"].([]any)
+		tool := tools[0].(map[string]any)
+		if tool["type"] != "function" || tool["strict"] != false || tool["name"] != "get_issue" {
+			t.Errorf("tool: %+v", tool)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		if calls == 1 {
+			w.Write([]byte(`{"id":"resp1","output":[{"type":"function_call","name":"get_issue","call_id":"call1","arguments":"{\"key\":\"DEMO-101\"}"}]}`))
+			return
+		}
+		outputs := body["input"].([]any)
+		output := outputs[0].(map[string]any)
+		if body["previous_response_id"] != "resp1" || output["call_id"] != "call1" || output["type"] != "function_call_output" || output["output"] != "DEMO-100" {
+			t.Errorf("continuation: %+v", body)
+		}
+		w.Write([]byte(`{"id":"resp2","output":[{"type":"message","content":[{"type":"output_text","text":"Blocked by DEMO-100"}]}]}`))
+	}))
+	defer remote.Close()
+	client, _ := NewClient("test", remote.URL, "", remote.Client())
+	request := agent.CompletionRequest{Model: "test", Input: "why", Tools: []agent.ToolDefinition{{Name: "get_issue", Parameters: json.RawMessage(`{"type":"object","properties":{"key":{"type":"string"}},"required":["key"]}`)}}}
+	c, err := client.Complete(context.Background(), request)
+	if err != nil || len(c.ToolCalls) != 1 {
+		t.Fatalf("function response: %+v %v", c, err)
+	}
+	request.PreviousResponseID = c.ResponseID
+	request.ToolOutputs = []agent.ToolOutput{{CallID: c.ToolCalls[0].CallID, Output: "DEMO-100"}}
+	c, err = client.Complete(context.Background(), request)
+	if err != nil || !strings.Contains(c.Output, "DEMO-100") {
+		t.Fatalf("final: %+v %v", c, err)
+	}
+	request.Internal = true
+	if len(functionTools(request)) != 0 {
+		t.Fatal("internal tools leaked")
+	}
+}

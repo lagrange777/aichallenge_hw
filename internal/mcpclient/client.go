@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -29,8 +30,13 @@ func ValidateEndpoint(endpoint string) error {
 	}
 	ip := net.ParseIP(u.Hostname())
 	local := u.Hostname() == "localhost" || (ip != nil && ip.IsLoopback())
+	for _, allowed := range strings.Split(os.Getenv("MCP_HTTP_ENDPOINTS"), ",") {
+		if endpoint == strings.TrimSpace(allowed) {
+			local = true
+		}
+	}
 	if u.Scheme != "https" && !(u.Scheme == "http" && local) {
-		return errors.New("Используйте HTTPS; HTTP разрешён только для localhost")
+		return errors.New("Используйте HTTPS; HTTP разрешён для localhost и адресов из MCP_HTTP_ENDPOINTS")
 	}
 	return nil
 }
@@ -73,19 +79,11 @@ func Discover(ctx context.Context, endpoint, token string) (Discovery, error) {
 	}
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
-	transport := http.DefaultTransport.(*http.Transport).Clone()
-	defer transport.CloseIdleConnections()
-	httpClient := &http.Client{
-		Timeout:       30 * time.Second,
-		Transport:     authTransport{token, transport},
-		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
-	}
-	client := mcp.NewClient(&mcp.Implementation{Name: "codex-chat-web", Version: "1.0.0"}, nil)
-	session, err := client.Connect(ctx, &mcp.StreamableClientTransport{Endpoint: endpoint, HTTPClient: httpClient, DisableStandaloneSSE: true, MaxRetries: -1}, nil)
+	session, closeSession, err := connect(ctx, endpoint, token)
 	if err != nil {
-		return Discovery{}, connectionError(ctx, err, "Не удалось установить MCP-соединение")
+		return Discovery{}, err
 	}
-	defer session.Close()
+	defer closeSession()
 	info := session.InitializeResult()
 	if info == nil || info.ServerInfo == nil || info.Capabilities == nil {
 		return Discovery{}, errors.New("Сервер вернул некорректный ответ инициализации MCP")
@@ -134,4 +132,22 @@ func connectionError(ctx context.Context, err error, fallback string) error {
 		}
 	}
 	return errors.New(fallback + ". Проверьте URL, доступ к серверу и поддержку Streamable HTTP")
+}
+
+func connect(ctx context.Context, endpoint, token string) (*mcp.ClientSession, func(), error) {
+	if err := ValidateEndpoint(endpoint); err != nil {
+		return nil, nil, err
+	}
+	if strings.ContainsAny(token, "\r\n") {
+		return nil, nil, errors.New("Некорректный ключ")
+	}
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	httpClient := &http.Client{Timeout: 30 * time.Second, Transport: authTransport{token, transport}, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	client := mcp.NewClient(&mcp.Implementation{Name: "codex-chat-web", Version: "1.0.0"}, nil)
+	session, err := client.Connect(ctx, &mcp.StreamableClientTransport{Endpoint: endpoint, HTTPClient: httpClient, DisableStandaloneSSE: true, MaxRetries: -1}, nil)
+	if err != nil {
+		transport.CloseIdleConnections()
+		return nil, nil, connectionError(ctx, err, "Не удалось установить MCP-соединение")
+	}
+	return session, func() { session.Close(); transport.CloseIdleConnections() }, nil
 }

@@ -73,7 +73,7 @@ func run(logger *log.Logger) error {
 		}), agent.WithMemory(memoryStore), agent.WithProfiles(profileStore)),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
-		WriteTimeout:      3*cfg.Timeout + 40*time.Second,
+		WriteTimeout:      3*cfg.Timeout + 4*time.Minute,
 		IdleTimeout:       60 * time.Second,
 	}
 

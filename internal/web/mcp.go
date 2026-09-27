@@ -50,12 +50,14 @@ func (s *server) handleMCPMutation(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var request struct {
-		ID         string `json:"id"`
-		Version    int    `json:"version"`
-		Name       string `json:"name"`
-		URL        string `json:"url"`
-		Token      string `json:"token"`
-		ClearToken bool   `json:"clearToken"`
+		ID           string   `json:"id"`
+		Version      int      `json:"version"`
+		Name         string   `json:"name"`
+		URL          string   `json:"url"`
+		Token        string   `json:"token"`
+		ClearToken   bool     `json:"clearToken"`
+		Enabled      bool     `json:"enabled"`
+		AllowedTools []string `json:"allowedTools"`
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, 16<<10)
 	decoder := json.NewDecoder(r.Body)
@@ -75,6 +77,28 @@ func (s *server) handleMCPMutation(w http.ResponseWriter, r *http.Request) {
 		_, err = s.mcpStore.Save(mcpclient.Connection{ID: request.ID, Name: request.Name, URL: request.URL, Version: request.Version}, request.Token, request.ClearToken)
 	case "/api/mcp/delete":
 		err = s.mcpStore.Delete(request.ID, request.Version)
+	case "/api/mcp/permissions":
+		c, token, e := s.mcpStore.Get(request.ID, request.Version)
+		err = e
+		if err == nil && request.Enabled {
+			d, e := mcpclient.Discover(r.Context(), c.URL, token)
+			err = e
+			if err == nil {
+				available := map[string]bool{}
+				for _, t := range d.Tools {
+					available[t.Name] = t.Annotations != nil && t.Annotations.ReadOnlyHint
+				}
+				for _, name := range request.AllowedTools {
+					if !available[name] {
+						err = errors.New("Разрешены только доступные инструменты с признаком readOnlyHint")
+						break
+					}
+				}
+			}
+		}
+		if err == nil {
+			err = s.mcpStore.SetPermissions(request.ID, request.Version, request.Enabled, request.AllowedTools)
+		}
 	case "/api/mcp/check":
 		var c mcpclient.Connection
 		var token string

@@ -16,11 +16,13 @@ var ErrConflict = errors.New("Подключение изменилось или
 
 // Connection is a public view. Secrets are stored separately and never returned.
 type Connection struct {
-	ID       string `json:"id"`
-	Name     string `json:"name"`
-	URL      string `json:"url"`
-	HasToken bool   `json:"hasToken"`
-	Version  int    `json:"version"`
+	Enabled      bool     `json:"enabled"`
+	AllowedTools []string `json:"allowedTools"`
+	ID           string   `json:"id"`
+	Name         string   `json:"name"`
+	URL          string   `json:"url"`
+	HasToken     bool     `json:"hasToken"`
+	Version      int      `json:"version"`
 }
 type savedConnection struct {
 	Connection
@@ -83,6 +85,7 @@ func (s *Store) List() ([]Connection, error) {
 	return list, nil
 }
 func (s *Store) Save(c Connection, token string, clearToken bool) (Connection, error) {
+	c.Enabled, c.AllowedTools = false, nil
 	c.Name, c.URL = strings.TrimSpace(c.Name), strings.TrimSpace(c.URL)
 	token = strings.TrimSpace(token)
 	if c.Name == "" || utf8.RuneCountInString(c.Name) > 100 || len(token) > 8192 || strings.ContainsAny(token, "\r\n") {
@@ -112,6 +115,10 @@ func (s *Store) Save(c Connection, token string, clearToken bool) (Connection, e
 			return Connection{}, ErrConflict
 		}
 		old := records[index]
+		if c.URL == old.URL && (token == "" && !clearToken || token == old.Token) {
+			c.Enabled = old.Enabled
+			c.AllowedTools = old.AllowedTools
+		}
 		// Never send an existing secret to a newly edited endpoint without re-entry.
 		if token == "" && !clearToken && c.URL == old.URL {
 			token = old.Token
@@ -159,6 +166,38 @@ func (s *Store) Delete(id string, version int) error {
 	for i, record := range records {
 		if record.ID == id && record.Version == version {
 			return s.write(append(records[:i], records[i+1:]...))
+		}
+	}
+	return ErrConflict
+}
+
+// SetPermissions commits an explicit grant for the current connection version.
+func (s *Store) SetPermissions(id string, version int, enabled bool, names []string) error {
+	if len(names) > 64 {
+		return errors.New("Не более 64 инструментов на сервер")
+	}
+	seen := map[string]bool{}
+	for _, name := range names {
+		if name == "" || len(name) > 128 || seen[name] {
+			return errors.New("Некорректный список разрешений")
+		}
+		seen[name] = true
+	}
+	if enabled && len(names) == 0 {
+		return errors.New("Выберите хотя бы один инструмент")
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	records, err := s.read()
+	if err != nil {
+		return err
+	}
+	for i := range records {
+		if records[i].ID == id && records[i].Version == version {
+			records[i].Enabled = enabled
+			records[i].AllowedTools = append([]string(nil), names...)
+			records[i].Version++
+			return s.write(records)
 		}
 	}
 	return ErrConflict
