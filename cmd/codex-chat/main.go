@@ -19,6 +19,7 @@ import (
 	"codex-chat-cli/internal/memory"
 	"codex-chat-cli/internal/openai"
 	"codex-chat-cli/internal/profile"
+	"codex-chat-cli/internal/scheduler"
 	chatweb "codex-chat-cli/internal/web"
 )
 
@@ -65,9 +66,15 @@ func run(logger *log.Logger) error {
 	if err != nil {
 		return fmt.Errorf("инициализация MCP: %w", err)
 	}
+	schedulerStore, err := scheduler.Open(cfg.SchedulerPath)
+	if err != nil {
+		return fmt.Errorf("инициализация планировщика: %w", err)
+	}
+	defer schedulerStore.Close()
+	monitors := &scheduler.Service{Store: schedulerStore, Source: &scheduler.NeurlySource{Store: mcpStore}, Executor: &scheduler.MCPExecutor{Store: mcpStore}, LLM: apiClient, Model: cfg.Model}
 	server := &http.Server{
 		Addr: cfg.WebAddr,
-		Handler: chatweb.NewHandlerWithMCP(apiClient, cfg.Model, historyStore, mcpStore, agent.WithContextStrategy(agent.StrategyConfig{
+		Handler: chatweb.NewHandlerWithScheduler(apiClient, cfg.Model, historyStore, mcpStore, monitors, agent.WithContextStrategy(agent.StrategyConfig{
 			Type:     agent.ContextStrategy(cfg.ContextStrategy),
 			KeepLast: cfg.ContextKeepLast,
 		}), agent.WithMemory(memoryStore), agent.WithProfiles(profileStore)),
@@ -79,6 +86,13 @@ func run(logger *log.Logger) error {
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	workerCtx, cancelWorker := context.WithCancel(ctx)
+	workerDone := make(chan struct{})
+	go func() {
+		defer close(workerDone)
+		monitors.Run(workerCtx, func(err error) { logger.Printf("Планировщик: %v", err) })
+	}()
+	defer func() { cancelWorker(); <-workerDone }()
 
 	serverError := make(chan error, 1)
 	go func() {

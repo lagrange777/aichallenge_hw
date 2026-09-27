@@ -107,6 +107,7 @@
           <button id="tab-chat" class="workspace-tab" type="button" role="tab" aria-selected="true" aria-controls="chat-panel">Чат</button>
           <button id="tab-tasks" class="workspace-tab" type="button" role="tab" aria-selected="false" aria-controls="tasks-panel" tabindex="-1">Задачи</button>
           <button id="tab-profiles" class="workspace-tab" type="button" role="tab" aria-selected="false" aria-controls="profiles-panel" tabindex="-1">Профили</button>
+          <button id="tab-monitors" class="workspace-tab" type="button" role="tab" aria-selected="false" aria-controls="monitors-panel" tabindex="-1">Фоновые задачи</button>
           <button id="tab-mcp" class="workspace-tab" type="button" role="tab" aria-selected="false" aria-controls="mcp-panel" tabindex="-1">MCP</button>
         </nav>
         <button id="open-memory" class="memory-button" type="button" disabled>Память <span id="memory-pending-count"></span></button>
@@ -313,6 +314,51 @@
           </fieldset>
         </div>
       </section>
+      <section id="monitors-panel" class="tasks-panel" role="tabpanel" aria-labelledby="tab-monitors" hidden>
+        <div class="tasks-content">
+          <header class="tasks-header"><div><p class="eyebrow">Планировщик MCP</p><h1>Фоновые задачи</h1><p>Вызовы инструментов и регулярные сводки продолжаются при закрытом браузере, пока работает сервер.</p></div></header>
+          <p>Выберите MCP-сервер, инструмент чтения и расписание. Результаты сохраняются в журнале.</p>
+          <p id="monitors-status" role="status" aria-live="polite"></p>
+          <div class="task-current">
+            <label class="mcp-checkbox"><input id="monitors-chat-grant" type="checkbox">Разрешить агенту управлять заданиями через MCP</label>
+            <p>Применяется ко всем профилям проекта. Отключение разрешения не останавливает уже созданные задания — используйте «Пауза».</p>
+            <button id="monitors-save-grant" type="button" class="memory-button">Сохранить доступ агента</button>
+          </div>
+          <form id="monitor-form" class="profile-form">
+            <h2 id="monitor-form-title">Новая задача</h2>
+            <div class="profile-fields">
+              <label>Шаблон<select name="template"><option value="custom">Произвольный MCP-инструмент</option><option value="market">Обзор рынка — Мосбиржа</option></select></label>
+              <label>Название задачи<input name="name" maxlength="100" required placeholder="Например, сводка открытых задач"></label>
+              <label>MCP-сервер<select name="connectionId" required></select></label>
+              <label>Инструмент чтения<select name="toolName" required></select></label>
+            </div>
+            <p id="monitor-tool-description"></p>
+            <div id="monitor-arguments" class="profile-fields"></div>
+            <details><summary>Схема параметров инструмента</summary><pre id="monitor-schema" class="monitor-json"></pre></details>
+            <div class="profile-fields">
+              <label>Расписание<select name="scheduleKind"><option value="interval">Каждые N минут</option><option value="once">Один раз</option><option value="daily">Ежедневно</option></select></label>
+              <label data-schedule="interval">Интервал, минут<input name="intervalMinutes" type="number" min="1" max="1440" value="30"></label>
+              <label data-schedule="once" hidden>Дата и время запуска<input name="at" type="datetime-local"></label>
+              <label data-schedule="daily" hidden>Время запуска<input name="dailyTime" type="time" value="18:00"></label>
+              <label data-schedule="daily" hidden>Часовой пояс<input name="timezone" placeholder="Europe/Moscow" value="Europe/Moscow"></label>
+              <label>Обработка результата<select name="summaryMode"><option value="none">Сохранить ответ</option><option value="each">Ответ и сводка после запуска</option><option value="period">Ответы и сводка за период</option></select></label>
+              <label id="monitor-summary-period" hidden>Период сводки, минут<input name="summaryMinutes" type="number" min="1" max="1440" value="60"></label>
+            </div>
+            <label id="monitor-summary-prompt" hidden>Инструкция для сводки<textarea name="summaryPrompt" maxlength="2000" rows="3" placeholder="Покажи изменения, ошибки и то, что требует внимания"></textarea></label>
+            <p>Первый запуск по интервалу — сразу. Разовое время задаётся в часовом поясе браузера. Для ежедневного запуска используется указанный часовой пояс.</p>
+            <div class="memory-actions">
+              <button id="monitor-preview" type="button" class="memory-button">Пробный запуск</button>
+              <button id="monitor-submit" type="submit" class="memory-button memory-primary">Создать задачу</button>
+              <button id="monitor-cancel" type="button" class="memory-button" hidden>Отменить редактирование</button>
+            </div>
+            <p id="monitor-form-status" role="status" aria-live="polite"></p>
+            <pre id="monitor-preview-result" class="monitor-json" hidden></pre>
+          </form>
+          <div class="memory-actions"><button id="monitors-refresh" type="button" class="memory-button">Обновить задания</button><span>Время расписания — в часовом поясе браузера</span></div>
+          <div id="monitors-list"></div>
+          <section id="monitor-history" class="task-current" hidden><h2 id="monitor-history-title">Сводки</h2><div id="monitor-summaries"></div><h3>Журнал запусков</h3><div id="monitor-runs"></div></section>
+        </div>
+      </section>
     </main>
   </div>
 
@@ -389,6 +435,7 @@
   <script src="/memory.js" defer></script>
   <script src="/profiles.js" defer></script>
   <script src="/mcp.js" defer></script>
+  <script src="/monitors.js" defer></script>
   <script src="/app.js" defer></script>
 </body>
 </html>
