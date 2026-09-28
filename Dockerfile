@@ -24,17 +24,24 @@ RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build \
     -o /out/codex-chat \
     ./cmd/codex-chat
 
+RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build \
+    -trimpath \
+    -ldflags="-s -w" \
+    -o /out/broker-demo \
+    ./cmd/broker-demo
+
 RUN mkdir -p /out/data && chown 65532:65532 /out/data
 
 FROM scratch AS runtime
 
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --from=build /out/codex-chat /codex-chat
+COPY --from=build /out/broker-demo /broker-demo
 COPY --from=build --chown=65532:65532 /out/data /data
 
 USER 65532:65532
 
-EXPOSE 8080
+EXPOSE 8080 8090
 
 VOLUME ["/data"]
 

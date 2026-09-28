@@ -19,7 +19,10 @@ func TestDiscoverSDKServers(t *testing.T) {
 			server := mcp.NewServer(&mcp.Implementation{Name: "test-server", Version: "1.0"}, nil)
 			mcp.AddTool(server, &mcp.Tool{Name: "echo", Description: "Echo a message"}, func(context.Context, *mcp.CallToolRequest, struct {
 				Text string `json:"text"`
-			}) (*mcp.CallToolResult, any, error) { t.Error("discovery must not call tools"); return nil, nil, nil })
+			}) (*mcp.CallToolResult, any, error) {
+				t.Error("discovery must not call tools")
+				return nil, nil, nil
+			})
 			handler := mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server { return server }, &mcp.StreamableHTTPOptions{Stateless: stateless, JSONResponse: stateless})
 			remote := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.Header.Get("Authorization") != "Bearer test-secret" {
@@ -134,6 +137,30 @@ func TestValidateEndpoint(t *testing.T) {
 	for _, endpoint := range []string{"file:///etc/passwd", "http://remote.example/mcp", "https://user:key@example.com/mcp", "https://example.com/mcp?token=key", "https://example.com/#key", "https:///mcp"} {
 		if ValidateEndpoint(endpoint) == nil {
 			t.Errorf("accepted %s", endpoint)
+		}
+	}
+}
+
+func TestChatToolAccessAllowsOnlyNamedBrokerDemoMutations(t *testing.T) {
+	closed, destructive := false, true
+	for _, test := range []struct {
+		server, tool string
+		destructive  bool
+		want         bool
+	}{
+		{"demo-order-mcp", "create_buy_order", false, true},
+		{"demo-validation-mcp", "validate_order", false, true},
+		{"demo-broker-mcp", "execute_validated_order", true, true},
+		{"demo-broker-mcp", "withdraw_cash", true, false},
+		{"other-server", "execute_validated_order", true, false},
+	} {
+		hint := &closed
+		if test.destructive {
+			hint = &destructive
+		}
+		allowed, mutates := ChatToolAccess(test.server, &mcp.Tool{Name: test.tool, Annotations: &mcp.ToolAnnotations{DestructiveHint: hint, OpenWorldHint: &closed}})
+		if allowed != test.want || mutates != test.want {
+			t.Errorf("%s/%s: allowed=%v mutates=%v", test.server, test.tool, allowed, mutates)
 		}
 	}
 }

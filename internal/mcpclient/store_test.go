@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -72,5 +73,28 @@ func TestStoreSecretsRestartAndEdits(t *testing.T) {
 	}
 	if _, _, err = s.Get(updated.ID, updated.Version); !errors.Is(err, ErrConflict) {
 		t.Fatal("deleted connection exists")
+	}
+}
+
+func TestEnsureConnectionRegistersDemoIdempotently(t *testing.T) {
+	t.Setenv("MCP_HTTP_ENDPOINTS", "http://demo-order-mcp:8090/mcp")
+	store, err := NewStore(filepath.Join(t.TempDir(), "mcp.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	tools := []string{"create_buy_order", "list_my_orders"}
+	if err = store.EnsureConnection("Demo Orders", "http://demo-order-mcp:8090/mcp", tools); err != nil {
+		t.Fatal(err)
+	}
+	first, _ := store.List()
+	if len(first) != 1 || !first[0].Enabled || !slices.Equal(first[0].AllowedTools, tools) {
+		t.Fatalf("connection: %+v", first)
+	}
+	if err = store.EnsureConnection("Demo Orders", "http://demo-order-mcp:8090/mcp", tools); err != nil {
+		t.Fatal(err)
+	}
+	second, _ := store.List()
+	if len(second) != 1 || second[0].ID != first[0].ID || second[0].Version != first[0].Version {
+		t.Fatalf("ensure was not idempotent: before=%+v after=%+v", first, second)
 	}
 }

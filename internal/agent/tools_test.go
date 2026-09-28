@@ -30,6 +30,120 @@ type pipelineFixture struct {
 	args  []string
 }
 
+type brokerFlowFixture struct {
+	calls []string
+}
+
+func (p *brokerFlowFixture) Tools(context.Context) ([]ToolDefinition, []ToolRun) {
+	return []ToolDefinition{
+		{Name: "orders_create", ToolName: "create_buy_order", ServerName: "Demo Orders", Mutates: true},
+		{Name: "orders_list", ToolName: "list_my_orders", ServerName: "Demo Orders"},
+		{Name: "validation_validate", ToolName: "validate_order", ServerName: "Demo Validation", Mutates: true},
+		{Name: "broker_execute", ToolName: "execute_validated_order", ServerName: "Demo Broker", Mutates: true},
+		{Name: "orders_record", ToolName: "record_order_execution", ServerName: "Demo Orders", Mutates: true},
+		{Name: "broker_account", ToolName: "get_account", ServerName: "Demo Broker"},
+		{Name: "broker_portfolio", ToolName: "get_portfolio", ServerName: "Demo Broker"},
+	}, nil
+}
+
+func TestAgentRejectsOutOfOrderBrokerToolWithoutSpendingCallBudget(t *testing.T) {
+	provider := &brokerFlowFixture{}
+	steps := []ToolCall{
+		{CallID: "1", Name: "orders_create", Arguments: `{"requestId":"chat-flow-retry","instrument":"SBER","quantity":10,"limitPriceMinor":32000}`},
+		{CallID: "2", Name: "orders_list", Arguments: `{}`},
+		{CallID: "3", Name: "validation_validate", Arguments: `{"orderToken":"order-token-1"}`},
+		{CallID: "4", Name: "broker_execute", Arguments: `{"validationToken":"validation-token-1"}`},
+		{CallID: "5", Name: "orders_record", Arguments: `{"executionToken":"execution-token-1"}`},
+		{CallID: "6", Name: "broker_account", Arguments: `{}`},
+		{CallID: "7", Name: "broker_portfolio", Arguments: `{}`},
+	}
+	llm := &toolLLM{fn: func(request CompletionRequest, call int) (CompletionResponse, error) {
+		if call <= len(steps) {
+			if call == 3 && (len(request.ToolOutputs) != 1 || !strings.Contains(request.ToolOutputs[0].Output, "validate_order")) {
+				t.Fatalf("out-of-order call did not receive routing guidance: %+v", request.ToolOutputs)
+			}
+			return CompletionResponse{ResponseID: fmt.Sprintf("retry-%d", call), ToolCalls: []ToolCall{steps[call-1]}}, nil
+		}
+		return CompletionResponse{ResponseID: "retry-final", Output: "Готово"}, nil
+	}}
+	response, err := New(llm, "test", WithTools(provider)).Ask(context.Background(), Request{Message: "Купи 10 SBER не дороже 320 рублей"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "Demo Orders/create_buy_order,Demo Validation/validate_order,Demo Broker/execute_validated_order,Demo Orders/record_order_execution,Demo Broker/get_account,Demo Broker/get_portfolio"
+	if response.Text == "" || strings.Join(provider.calls, ",") != want {
+		t.Fatalf("flow: response=%q calls=%v", response.Text, provider.calls)
+	}
+}
+
+func (p *brokerFlowFixture) Call(_ context.Context, definition ToolDefinition, arguments string) (string, error) {
+	p.calls = append(p.calls, definition.ServerName+"/"+definition.ToolName)
+	switch definition.ToolName {
+	case "create_buy_order":
+		return `{"orderId":"ord-1","orderToken":"order-token-1","userId":"demo-user","instrument":"SBER","quantity":10,"limitPriceMinor":32000,"currency":"RUB","status":"NEW"}`, nil
+	case "validate_order":
+		if !strings.Contains(arguments, `"orderToken":"order-token-1"`) {
+			return "", errors.New("order output was not routed to validation")
+		}
+		return `{"orderId":"ord-1","decision":"APPROVED","validationToken":"validation-token-1"}`, nil
+	case "execute_validated_order":
+		if !strings.Contains(arguments, `"validationToken":"validation-token-1"`) {
+			return "", errors.New("validation output was not routed to broker")
+		}
+		return `{"orderId":"ord-1","tradeId":"trade-1","status":"FILLED","executionToken":"execution-token-1"}`, nil
+	case "record_order_execution":
+		if !strings.Contains(arguments, `"executionToken":"execution-token-1"`) {
+			return "", errors.New("broker output was not routed to orders")
+		}
+		return `{"orderId":"ord-1","status":"FILLED","tradeId":"trade-1"}`, nil
+	case "get_account":
+		return `{"userId":"demo-user","currency":"RUB","balanceMinor":99681181}`, nil
+	case "get_portfolio":
+		return `{"userId":"demo-user","positions":[{"instrument":"SBER","quantity":10,"averagePriceMinor":31850}]}`, nil
+	default:
+		return "", errors.New("unexpected tool")
+	}
+}
+
+func TestAgentRoutesLongFlowAcrossThreeMCPServers(t *testing.T) {
+	provider := &brokerFlowFixture{}
+	steps := []ToolCall{
+		{CallID: "1", Name: "orders_create", Arguments: `{"requestId":"chat-flow-001","instrument":"SBER","quantity":10,"limitPriceMinor":32000}`},
+		{CallID: "2", Name: "validation_validate", Arguments: `{"orderToken":"order-token-1"}`},
+		{CallID: "3", Name: "broker_execute", Arguments: `{"validationToken":"validation-token-1"}`},
+		{CallID: "4", Name: "orders_record", Arguments: `{"executionToken":"execution-token-1"}`},
+		{CallID: "5", Name: "broker_account", Arguments: `{}`},
+		{CallID: "6", Name: "broker_portfolio", Arguments: `{}`},
+	}
+	expectedOutputs := []string{"", "order-token-1", "validation-token-1", "execution-token-1", "FILLED", "balanceMinor"}
+	llm := &toolLLM{fn: func(request CompletionRequest, call int) (CompletionResponse, error) {
+		if call <= len(steps) {
+			if call > 1 {
+				if len(request.ToolOutputs) != 1 || !strings.Contains(request.ToolOutputs[0].Output, expectedOutputs[call-1]) {
+					t.Fatalf("step %d did not receive previous server output: %+v", call, request.ToolOutputs)
+				}
+			}
+			return CompletionResponse{ResponseID: fmt.Sprintf("response-%d", call), ToolCalls: []ToolCall{steps[call-1]}}, nil
+		}
+		if len(request.ToolOutputs) != 1 || !strings.Contains(request.ToolOutputs[0].Output, "SBER") {
+			t.Fatalf("final response did not receive portfolio: %+v", request.ToolOutputs)
+		}
+		return CompletionResponse{ResponseID: "response-final", Output: "Заявка исполнена. Баланс и портфель обновлены."}, nil
+	}}
+	a := New(llm, "test", WithTools(provider))
+	response, err := a.Ask(context.Background(), Request{Message: "Купи 10 SBER не дороже 320 рублей и покажи баланс и портфель"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "Demo Orders/create_buy_order,Demo Validation/validate_order,Demo Broker/execute_validated_order,Demo Orders/record_order_execution,Demo Broker/get_account,Demo Broker/get_portfolio"
+	if response.Text == "" || strings.Join(provider.calls, ",") != want {
+		t.Fatalf("flow: response=%q calls=%v", response.Text, provider.calls)
+	}
+	if len(response.TokenMetrics.ContextWarning) != 0 {
+		t.Fatalf("unexpected warning: %s", response.TokenMetrics.ContextWarning)
+	}
+}
+
 func (p *pipelineFixture) Tools(context.Context) ([]ToolDefinition, []ToolRun) {
 	return []ToolDefinition{
 		{Name: "search", ToolName: "search_issues", ServerName: "Mock"},

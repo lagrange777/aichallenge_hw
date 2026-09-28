@@ -77,12 +77,25 @@ func (p *Provider) Tools(ctx context.Context) ([]agent.ToolDefinition, []agent.T
 	return defs, runs
 }
 func (p *Provider) Call(ctx context.Context, def agent.ToolDefinition, arguments string) (string, error) {
-	if def.Mutates && def.ToolName != "save_issue_report" {
-		return "", errors.New("Изменяющий инструмент не разрешён политикой чата")
-	}
 	c, token, err := p.store.Get(def.ServerID, def.Version)
 	if err != nil || !c.Enabled || !slices.Contains(c.AllowedTools, def.ToolName) {
 		return "", errors.New("Разрешение на инструмент отозвано или настройки изменились")
+	}
+	if def.Mutates {
+		discovery, discoverErr := Discover(ctx, c.URL, token)
+		allowed := false
+		if discoverErr == nil {
+			for _, tool := range discovery.Tools {
+				if tool.Name == def.ToolName {
+					permitted, mutates := ChatToolAccess(discovery.ServerName, tool)
+					allowed = permitted && mutates
+					break
+				}
+			}
+		}
+		if !allowed {
+			return "", errors.New("Изменяющий инструмент не разрешён политикой чата")
+		}
 	}
 	var args map[string]any
 	if len(arguments) > 16<<10 || json.Unmarshal([]byte(arguments), &args) != nil || args == nil {

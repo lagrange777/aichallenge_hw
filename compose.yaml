@@ -14,7 +14,10 @@ services:
       PROFILE_PATH: /data/profiles
       MCP_PATH: /data/mcp.json
       SCHEDULER_PATH: /data/scheduler.db
-      MCP_HTTP_ENDPOINTS: http://mock-issue-mcp:8090/mcp
+      MCP_HTTP_ENDPOINTS: http://mock-issue-mcp:8090/mcp,http://demo-order-mcp:8090/mcp,http://demo-validation-mcp:8090/mcp,http://demo-broker-mcp:8090/mcp
+      BROKER_DEMO_ORDER_MCP: http://demo-order-mcp:8090/mcp
+      BROKER_DEMO_VALIDATION_MCP: http://demo-validation-mcp:8090/mcp
+      BROKER_DEMO_BROKER_MCP: http://demo-broker-mcp:8090/mcp
       CONTEXT_KEEP_LAST: ${CONTEXT_KEEP_LAST:-10}
       CONTEXT_STRATEGY: ${CONTEXT_STRATEGY:-sliding_window}
     networks: [default, mcp]
@@ -28,9 +31,73 @@ services:
       - ALL
     security_opt:
       - no-new-privileges:true
+    depends_on:
+      - demo-order-mcp
+      - demo-validation-mcp
+      - demo-broker-mcp
+
+  demo-order-mcp:
+    build:
+      context: .
+    image: codex-chat-web:local
+    entrypoint: ["/broker-demo"]
+    environment:
+      BROKER_DEMO_ROLE: orders
+      BROKER_DEMO_DB: /data/orders.db
+      BROKER_DEMO_SECRET: ${BROKER_DEMO_SECRET:-local-demo-secret-change-me}
+      LISTEN_ADDR: 0.0.0.0:8090
+    ports:
+      - "127.0.0.1:8091:8090"
+    read_only: true
+    volumes:
+      - broker-orders:/data
+    restart: unless-stopped
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+
+  demo-validation-mcp:
+    build:
+      context: .
+    image: codex-chat-web:local
+    entrypoint: ["/broker-demo"]
+    environment:
+      BROKER_DEMO_ROLE: validation
+      BROKER_DEMO_DB: /data/validation.db
+      BROKER_DEMO_SECRET: ${BROKER_DEMO_SECRET:-local-demo-secret-change-me}
+      LISTEN_ADDR: 0.0.0.0:8090
+    ports:
+      - "127.0.0.1:8092:8090"
+    read_only: true
+    volumes:
+      - broker-validation:/data
+    restart: unless-stopped
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+
+  demo-broker-mcp:
+    build:
+      context: .
+    image: codex-chat-web:local
+    entrypoint: ["/broker-demo"]
+    environment:
+      BROKER_DEMO_ROLE: broker
+      BROKER_DEMO_DB: /data/broker.db
+      BROKER_DEMO_SECRET: ${BROKER_DEMO_SECRET:-local-demo-secret-change-me}
+      LISTEN_ADDR: 0.0.0.0:8090
+    ports:
+      - "127.0.0.1:8093:8090"
+    read_only: true
+    volumes:
+      - broker-execution:/data
+    restart: unless-stopped
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
 
 volumes:
   chat-history:
+  broker-orders:
+  broker-validation:
+  broker-execution:
 
 networks:
   mcp:

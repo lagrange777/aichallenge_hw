@@ -66,6 +66,20 @@ func run(logger *log.Logger) error {
 	if err != nil {
 		return fmt.Errorf("инициализация MCP: %w", err)
 	}
+	for _, demo := range []struct {
+		name, endpoint string
+		tools          []string
+	}{
+		{"Demo Orders", strings.TrimSpace(os.Getenv("BROKER_DEMO_ORDER_MCP")), []string{"create_buy_order", "get_order", "list_my_orders", "record_order_execution", "record_validation_rejection"}},
+		{"Demo Validation", strings.TrimSpace(os.Getenv("BROKER_DEMO_VALIDATION_MCP")), []string{"validate_order"}},
+		{"Demo Broker", strings.TrimSpace(os.Getenv("BROKER_DEMO_BROKER_MCP")), []string{"execute_validated_order", "get_account", "get_portfolio"}},
+	} {
+		if demo.endpoint != "" {
+			if err := mcpStore.EnsureConnection(demo.name, demo.endpoint, demo.tools); err != nil {
+				return fmt.Errorf("регистрация %s: %w", demo.name, err)
+			}
+		}
+	}
 	schedulerStore, err := scheduler.Open(cfg.SchedulerPath)
 	if err != nil {
 		return fmt.Errorf("инициализация планировщика: %w", err)
