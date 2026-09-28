@@ -24,8 +24,7 @@ type Discovery struct {
 }
 
 // ChatToolAccess returns the narrow set of remote tools that may be granted to
-// the chat. The only mutating exception is the local report writer implemented
-// by the companion mock-issue-mcp project for the composition demo.
+// the chat. Mutating exceptions are restricted to bundled, closed-world demos.
 func ChatToolAccess(serverName string, tool *mcp.Tool) (allowed, mutates bool) {
 	if tool == nil || tool.Annotations == nil {
 		return false, false
@@ -33,11 +32,28 @@ func ChatToolAccess(serverName string, tool *mcp.Tool) (allowed, mutates bool) {
 	if tool.Annotations.ReadOnlyHint {
 		return true, false
 	}
-	annotations := tool.Annotations
-	if serverName == "mock-issue-mcp" && tool.Name == "save_issue_report" && annotations.DestructiveHint != nil && !*annotations.DestructiveHint && annotations.OpenWorldHint != nil && !*annotations.OpenWorldHint {
-		return true, true
+	if !chatMutationAllowed(serverName, tool.Name) || tool.Annotations.OpenWorldHint == nil || *tool.Annotations.OpenWorldHint {
+		return false, false
 	}
-	return false, false
+	if serverName == "mock-issue-mcp" && (tool.Annotations.DestructiveHint == nil || *tool.Annotations.DestructiveHint) {
+		return false, false
+	}
+	if strings.HasPrefix(serverName, "demo-") && tool.Annotations.DestructiveHint == nil {
+		return false, false
+	}
+	return true, true
+}
+
+func chatMutationAllowed(serverName, toolName string) bool {
+	allowed := map[string]map[string]bool{
+		"mock-issue-mcp": {"save_issue_report": true},
+		"demo-order-mcp": {
+			"create_buy_order": true, "record_order_execution": true, "record_validation_rejection": true,
+		},
+		"demo-validation-mcp": {"validate_order": true},
+		"demo-broker-mcp":     {"execute_validated_order": true},
+	}
+	return allowed[serverName][toolName]
 }
 
 func ValidateEndpoint(endpoint string) error {

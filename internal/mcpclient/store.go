@@ -7,6 +7,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"unicode/utf8"
@@ -201,4 +202,51 @@ func (s *Store) SetPermissions(id string, version int, enabled bool, names []str
 		}
 	}
 	return ErrConflict
+}
+
+// EnsureConnection idempotently registers a trusted local demo server and its
+// explicit tool grants. It is used only for endpoints supplied by the process
+// environment, never for arbitrary discovered servers.
+func (s *Store) EnsureConnection(name, endpoint string, tools []string) error {
+	name, endpoint = strings.TrimSpace(name), strings.TrimSpace(endpoint)
+	if name == "" || len(tools) == 0 {
+		return errors.New("demo MCP connection requires a name and tools")
+	}
+	if err := ValidateEndpoint(endpoint); err != nil {
+		return err
+	}
+	seen := map[string]bool{}
+	for _, tool := range tools {
+		if tool == "" || seen[tool] {
+			return errors.New("invalid demo MCP tool list")
+		}
+		seen[tool] = true
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	records, err := s.read()
+	if err != nil {
+		return err
+	}
+	for i := range records {
+		if records[i].Name != name {
+			continue
+		}
+		same := records[i].URL == endpoint && records[i].Enabled && slices.Equal(records[i].AllowedTools, tools) && records[i].Token == ""
+		if same {
+			return nil
+		}
+		records[i].URL, records[i].Enabled, records[i].AllowedTools, records[i].Token, records[i].HasToken = endpoint, true, append([]string(nil), tools...), "", false
+		records[i].Version++
+		return s.write(records)
+	}
+	if len(records) >= 20 {
+		return errors.New("Можно сохранить не более 20 MCP-серверов")
+	}
+	var id [16]byte
+	if _, err := rand.Read(id[:]); err != nil {
+		return err
+	}
+	records = append(records, savedConnection{Connection: Connection{ID: hex.EncodeToString(id[:]), Name: name, URL: endpoint, Enabled: true, AllowedTools: append([]string(nil), tools...), Version: 1}})
+	return s.write(records)
 }

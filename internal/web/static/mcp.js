@@ -21,6 +21,12 @@
   let selectedTools = new Set();
   const enabled = document.querySelector("#mcp-enabled");
   const permissionSave = document.querySelector("#mcp-save-permissions");
+  const writableTools = Object.freeze({
+    "mock-issue-mcp": new Set(["save_issue_report"]),
+    "demo-order-mcp": new Set(["create_buy_order", "record_order_execution", "record_validation_rejection"]),
+    "demo-validation-mcp": new Set(["validate_order"]),
+    "demo-broker-mcp": new Set(["execute_validated_order"])
+  });
   const element = (tag, text, className) => {
     const node = document.createElement(tag);
     if (text !== undefined) node.textContent = text;
@@ -125,13 +131,13 @@
       const checkbox = document.createElement("input"); checkbox.type = "checkbox";
       checkbox.checked = selectedTools.has(tool.name);
       const readOnly = tool.annotations?.readOnlyHint === true;
-      const reportWriter = discovery.serverName === "mock-issue-mcp" && tool.name === "save_issue_report" && tool.annotations?.destructiveHint === false && tool.annotations?.openWorldHint === false;
-      checkbox.disabled = !readOnly && !reportWriter;
+      const demoWriter = writableTools[discovery.serverName]?.has(tool.name) === true && tool.annotations?.destructiveHint !== undefined && tool.annotations?.openWorldHint === false;
+      checkbox.disabled = !readOnly && !demoWriter;
       checkbox.addEventListener("change", () => {
         if (checkbox.checked) selectedTools.add(tool.name); else selectedTools.delete(tool.name);
         permissionSummary();
       });
-      const permissionLabel = checkbox.disabled ? "Недоступен для чата: операция не разрешена политикой" : reportWriter ? "Разрешить сохранение отчётов" : "Разрешить чтение в чате";
+      const permissionLabel = checkbox.disabled ? "Недоступен для чата: операция не разрешена политикой" : demoWriter ? "Разрешить изменение в закрытом demo-контуре" : "Разрешить чтение в чате";
       grant.append(checkbox, document.createTextNode(permissionLabel));
       card.append(grant);
       const schema = element("details");
@@ -212,6 +218,14 @@
   });
   document.querySelector("#mcp-mock").addEventListener("click", () => {
     drafts.set("new", { name: "Mock Issue Tracker", url: "http://mock-issue-mcp:8090/mcp", token: "", clearToken: false });
+    showActive();
+  });
+  for (const [id, name, url] of [
+    ["mcp-demo-orders", "Demo Orders", "http://demo-order-mcp:8090/mcp"],
+    ["mcp-demo-validation", "Demo Validation", "http://demo-validation-mcp:8090/mcp"],
+    ["mcp-demo-broker", "Demo Broker", "http://demo-broker-mcp:8090/mcp"]
+  ]) document.querySelector("#" + id).addEventListener("click", () => {
+    drafts.set("new", { name, url, token: "", clearToken: false });
     showActive();
   });
   permissionSave.addEventListener("click", () => {
