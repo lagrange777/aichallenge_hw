@@ -7,6 +7,23 @@
     const box = node("details", undefined, "rag-trace");
     box.append(node("summary", r.mode === "rag" ? `С RAG · ${r.sources?.length || 0} источников · ${r.strategy} · поиск ${r.durationMs} мс` : "Без RAG · поиск по документам выключен"));
     if (r.mode !== "rag") return box;
+    if (r.options) box.append(node("p", `Режим: ${window.CodexRAG23?.labels[r.options.mode] || r.options.mode} · K ${r.options.topKBefore} → ${r.options.topKAfter} · порог ${r.options.relevanceThreshold}/3`));
+    if (r.query) box.append(node("p", `Исходный запрос: ${r.query}`));
+    if (r.rewrittenQuery) box.append(node("p", `Поисковый запрос: ${r.rewrittenQuery}`));
+    if (r.warning) box.append(node("p", r.warning, "rag-warning"));
+    if (r.empty) box.append(node("p", "Источники не отобраны. Ответ модели не генерировался."));
+    for (const step of r.steps || []) box.append(node("p", `${step.name} · ${step.model} · ${step.durationMs} мс · ${step.usage.TotalTokens} LLM-токенов${step.attempts > 1 ? " · попыток: " + step.attempts : ""}${step.warning ? " · " + step.warning : ""}`));
+    if (r.candidates?.length) {
+      const candidates=node("details");candidates.append(node("summary", `Кандидаты до отбора: ${r.candidates.length} → ${r.sources?.length || 0}`));
+      const decisions={selected:"В контексте",below_threshold:"Ниже порога",top_k:"За пределами top-K",context_budget:"Лимит контекста"};
+      for (const c of r.candidates) {
+        const item=node("details",undefined,"document-chunk");
+        item.append(node("summary", `#${c.rank} · ${c.source} · ${c.evaluated ? c.relevance+"/3" : "без оценки"} · ${decisions[c.decision] || c.decision}`));
+        item.append(node("p",`${c.section} · chunk_id: ${c.chunkId}`),node("p",`Ранг исходного запроса: ${c.originalRank || "—"}; rewrite: ${c.rewriteRank || "—"}. Cosine: ${c.score.toFixed(3)} (запрос первого появления). RRF: ${(c.fusionScore || 0).toFixed(4)}.`));
+        if(c.reason)item.append(node("p",c.reason));if(c.evidence)item.append(node("blockquote",c.evidence));item.append(node("pre",c.text));candidates.append(item);
+      }
+      box.append(candidates);
+    }
     box.append(node("p", `Эмбеддинг: ${r.embeddingModel} · ${r.embeddingTokens} токенов. Ссылки: ${(r.citations || []).join(", ") || "нет"}. Наличие ссылки ещё не гарантирует, что она подтверждает утверждение.`));
     if (r.invalidCitations?.length) box.append(node("p", `Неизвестные ссылки: ${r.invalidCitations.join(", ")}`, "rag-warning"));
     for (const s of r.sources || []) {
@@ -84,5 +101,5 @@
       renderPair(result, $("rag-live-result")); $("rag-live-status").textContent = "Готово · два новых ответа в независимых сессиях. Этот запуск не меняет сохранённый отчёт; оценки не выставлялись.";
     } catch (err) { $("rag-live-status").textContent = err.message; } finally {button.disabled = false;}
   });
-  window.CodexRAG = {load, trace};
+  window.CodexRAG = {load, trace, answerCard};
 })();

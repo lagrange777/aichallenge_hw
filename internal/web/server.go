@@ -35,7 +35,7 @@ const (
 	maxSessions     = 256
 )
 
-//go:embed static/index.html static/app.css static/app.js static/memory.js static/task-state.js static/invariants.js static/profiles.js static/mcp.js static/monitors.js static/documents.js static/rag.js static/markdown.js static/favicon.svg
+//go:embed static/index.html static/app.css static/app.js static/memory.js static/task-state.js static/invariants.js static/profiles.js static/mcp.js static/monitors.js static/documents.js static/rag.js static/rag23.js static/markdown.js static/favicon.svg
 var staticFiles embed.FS
 
 type sessionEntry struct {
@@ -59,18 +59,19 @@ type server struct {
 }
 
 type chatRequest struct {
-	RAG                 bool     `json:"rag,omitempty"`
-	TaskID              string   `json:"taskId,omitempty"`
-	TaskVersion         *int     `json:"taskVersion,omitempty"`
-	ProfileID           string   `json:"profileId,omitempty"`
-	Message             string   `json:"message"`
-	Model               string   `json:"model,omitempty"`
-	ResponseFormat      string   `json:"responseFormat,omitempty"`
-	LengthLimit         string   `json:"lengthLimit,omitempty"`
-	CompletionCondition string   `json:"completionCondition,omitempty"`
-	Temperature         *float64 `json:"temperature,omitempty"`
-	ContextStrategy     string   `json:"contextStrategy,omitempty"`
-	ContextKeepLast     *int     `json:"contextKeepLast,omitempty"`
+	RAGOptions          *agent.RetrievalOptions `json:"ragOptions,omitempty"`
+	RAG                 bool                    `json:"rag,omitempty"`
+	TaskID              string                  `json:"taskId,omitempty"`
+	TaskVersion         *int                    `json:"taskVersion,omitempty"`
+	ProfileID           string                  `json:"profileId,omitempty"`
+	Message             string                  `json:"message"`
+	Model               string                  `json:"model,omitempty"`
+	ResponseFormat      string                  `json:"responseFormat,omitempty"`
+	LengthLimit         string                  `json:"lengthLimit,omitempty"`
+	CompletionCondition string                  `json:"completionCondition,omitempty"`
+	Temperature         *float64                `json:"temperature,omitempty"`
+	ContextStrategy     string                  `json:"contextStrategy,omitempty"`
+	ContextKeepLast     *int                    `json:"contextKeepLast,omitempty"`
 }
 
 type apiResponse struct {
@@ -124,7 +125,7 @@ func NewHandlerWithScheduler(llm agent.LLM, model string, history agent.History,
 
 func NewHandlerWithDocuments(llm agent.LLM, model string, history agent.History, mcpStore *mcpclient.Store, monitors *scheduler.Service, documents *docindex.Service, agentOptions ...agent.Option) http.Handler {
 	if documents != nil {
-		agentOptions = append(agentOptions, agent.WithRetriever(rag.Retriever{Documents: documents}))
+		agentOptions = append(agentOptions, agent.WithRetriever(rag.Retriever{Documents: documents, LLM: llm, Model: model}))
 	}
 	var localMCP *mcp.Server
 	if monitors != nil {
@@ -164,6 +165,11 @@ func NewHandlerWithDocuments(llm agent.LLM, model string, history agent.History,
 	mux.HandleFunc("/rag.js", func(w http.ResponseWriter, r *http.Request) {
 		app.serveStatic(w, r, "rag.js", "text/javascript; charset=utf-8")
 	})
+	mux.HandleFunc("/rag23.js", func(w http.ResponseWriter, r *http.Request) {
+		app.serveStatic(w, r, "rag23.js", "text/javascript; charset=utf-8")
+	})
+	mux.HandleFunc("/api/rag/experiment", app.handleRAGExperiment)
+	mux.HandleFunc("/api/rag/run", app.handleRAGRun)
 	mux.HandleFunc("/api/rag/report", app.handleRAGReport)
 	mux.HandleFunc("/api/rag/compare", app.handleRAGCompare)
 	mux.HandleFunc("/documents.js", func(w http.ResponseWriter, r *http.Request) {
@@ -344,15 +350,22 @@ func (s *server) handleChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if request.RAGOptions != nil {
+		if err := request.RAGOptions.Validate(); err != nil {
+			writeJSON(w, 400, apiResponse{Error: err.Error()})
+			return
+		}
+	}
 	chatAgent, err := s.agentFor(w, r)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, apiResponse{Error: "Не удалось создать сессию"})
 		return
 	}
 	result, err := chatAgent.Ask(r.Context(), agent.Request{
-		RAG:       request.RAG,
-		ProfileID: request.ProfileID,
-		TaskID:    request.TaskID, TaskVersion: request.TaskVersion,
+		RAG:        request.RAG,
+		RAGOptions: request.RAGOptions,
+		ProfileID:  request.ProfileID,
+		TaskID:     request.TaskID, TaskVersion: request.TaskVersion,
 		Message:             request.Message,
 		Model:               request.Model,
 		Format:              request.ResponseFormat,

@@ -194,6 +194,7 @@
             </div>
           </details>
           <label class="rag-mode"><input id="rag-enabled" type="checkbox"> Искать в документах (RAG)</label>
+          <details class="rag-chat-settings"><summary>Настройки RAG</summary><div class="rag23-settings"><label>Режим<select id="rag-chat-mode"><option value="baseline">Базовый RAG</option><option value="filter">Реранкинг + фильтр</option><option value="rewrite">Query rewrite</option><option value="full" selected>Rewrite + фильтр</option></select></label><label>K до<input id="rag-chat-before" type="number" min="1" max="20" value="20" required></label><label>K после<input id="rag-chat-after" type="number" min="1" max="10" value="5" required></label><label>Порог (0–3)<input id="rag-chat-threshold" type="number" min="0" max="3" value="2" required></label></div></details>
           <p class="rag-hint">С RAG вопрос отправляется в OpenAI Embeddings, а найденные фрагменты — модели. Без RAG новая выборка не выполняется; история чата сохраняется.</p>
           <div class="composer-bar">
             <span class="composer-hint"><kbd>Shift</kbd> + <kbd>Enter</kbd> — новая строка</span>
@@ -211,7 +212,17 @@
       </footer>
       </div>
       <section id="rag-panel" class="tasks-panel" role="tabpanel" aria-labelledby="tab-rag" hidden>
-        <header class="memory-header"><div><h1>Первый RAG-запрос</h1><p>Вопрос → релевантные фрагменты → ответ с источниками</p></div><button id="rag-refresh" type="button" class="memory-button">Обновить отчёт</button></header>
+        <header class="memory-header"><div><h1>Реранкинг и фильтрация</h1><p>Query rewrite → поиск → оценка релевантности → ответ</p></div><button id="rag23-refresh" type="button" class="memory-button">Обновить сравнение</button></header>
+        <p id="rag23-status" role="status" aria-live="polite"></p><div id="rag23-summary"></div>
+        <p class="rag-method">Одинаковая модель и инструкция ответа; новые сессии без истории, памяти, профиля и MCP. Оценки 0–2; LLM-токены включают rewrite и reranker. Сравнение относится к замороженному корпусу.</p>
+        <label class="rag-question-label">Контрольный вопрос<select id="rag23-question" aria-label="Вопрос эксперимента"></select></label>
+        <div class="rag23-mode-pair"><label>Слева<select id="rag23-left"><option value="baseline" selected>Базовый RAG</option><option value="filter">Реранкинг + фильтр</option><option value="rewrite">Query rewrite</option><option value="full">Rewrite + фильтр</option></select></label><label>Справа<select id="rag23-right"><option value="baseline">Базовый RAG</option><option value="filter">Реранкинг + фильтр</option><option value="rewrite">Query rewrite</option><option value="full" selected>Rewrite + фильтр</option></select></label></div><div id="rag23-pair"></div>
+        <section class="rag-live"><h2>Проверить свой вопрос</h2><p>Новый запрос через OpenAI. Переписывание и реранкинг добавляют платные LLM-вызовы. Порог применяется только в режимах с фильтром.</p>
+          <form id="rag23-live-form"><div class="rag23-settings"><label>Режим<select id="rag23-live-mode"><option value="baseline">Базовый RAG</option><option value="filter">Реранкинг + фильтр</option><option value="rewrite">Query rewrite</option><option value="full" selected>Rewrite + фильтр</option></select></label><label>K до<input id="rag23-live-before" type="number" min="1" max="20" value="20" required></label><label>K после<input id="rag23-live-after" type="number" min="1" max="10" value="5" required></label><label>Порог (0–3)<input id="rag23-live-threshold" type="number" min="0" max="3" value="2" required></label></div><label class="rag-question-label">Вопрос<input id="rag23-query" required maxlength="2000" placeholder="Когда удаляются неактивные сессии?"></label><button id="rag23-run" type="submit" class="memory-button memory-primary">Выполнить RAG</button></form>
+          <p id="rag23-live-status" role="status" aria-live="polite"></p><div id="rag23-live-output"></div>
+        </section>
+        <details class="rag-previous"><summary>Задание 22: сравнение без RAG / с RAG</summary>
+        <header class="memory-header"><div><h2>Первый RAG-запрос</h2><p>Вопрос → релевантные фрагменты → ответ с источниками</p></div><button id="rag-refresh" type="button" class="memory-button">Обновить отчёт</button></header>
         <p id="rag-status" role="status" aria-live="polite"></p>
         <div id="rag-summary"></div>
         <p class="rag-method">В сравнении у каждого ответа новая сессия: одна модель, одинаковая инструкция, без истории, профиля, памяти и MCP. База — снимок документов проекта; она может отличаться от текущего кода.</p>
@@ -221,6 +232,7 @@
           <form id="rag-live-form"><label>Вопрос<input id="rag-live-query" required maxlength="2000" placeholder="Почему Sliding Window не использует previous_response_id?"></label><button id="rag-live-submit" type="submit" class="memory-button memory-primary">Сравнить без RAG / с RAG</button></form>
           <p id="rag-live-status" role="status" aria-live="polite"></p><div id="rag-live-result"></div>
         </section>
+        </details>
       </section>
       <section id="documents-panel" class="tasks-panel" role="tabpanel" aria-labelledby="tab-documents" hidden>
         <header class="memory-header"><div><h1>Документы</h1><p>Локальный индекс · две стратегии разбиения</p></div><button id="documents-refresh" type="button" class="memory-button">Обновить</button></header>
@@ -473,6 +485,7 @@
   <script src="/monitors.js" defer></script>
   <script src="/documents.js" defer></script>
   <script src="/rag.js" defer></script>
+  <script src="/rag23.js" defer></script>
   <script src="/app.js" defer></script>
 </body>
 </html>
