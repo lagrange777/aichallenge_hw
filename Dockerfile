@@ -13,6 +13,7 @@ RUN go mod download
 
 COPY cmd ./cmd
 COPY internal ./internal
+COPY documents ./documents
 
 RUN go test ./...
 
@@ -30,6 +31,12 @@ RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build \
     -o /out/broker-demo \
     ./cmd/broker-demo
 
+RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build \
+    -trimpath \
+    -ldflags="-s -w" \
+    -o /out/doc-index \
+    ./cmd/doc-index
+
 RUN mkdir -p /out/data && chown 65532:65532 /out/data
 
 FROM scratch AS runtime
@@ -37,7 +44,12 @@ FROM scratch AS runtime
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --from=build /out/codex-chat /codex-chat
 COPY --from=build /out/broker-demo /broker-demo
+COPY --from=build /out/doc-index /doc-index
+COPY --chown=65532:65532 documents /documents
+COPY --chown=65532:65532 artifacts/docindex /documents/artifacts
 COPY --from=build --chown=65532:65532 /out/data /data
+
+ENV DOCUMENT_INDEX_PATH=/documents/artifacts/index.sqlite
 
 USER 65532:65532
 

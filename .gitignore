@@ -8,6 +8,11 @@
 /codex-chat
 /data/
 
+# Transient SQLite journals (the reproducible document index itself is retained).
+/artifacts/docindex/*.sqlite-journal
+/artifacts/docindex/*.sqlite-wal
+/artifacts/docindex/*.sqlite-shm
+
 # Editor and OS files
 .DS_Store
 .idea/

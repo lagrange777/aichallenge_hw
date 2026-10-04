@@ -1529,7 +1529,7 @@ kbd {
 .memory-primary { color: white; background: var(--accent); border-color: var(--accent); }
 .memory-primary:hover { background: var(--accent-deep); }
 
-.workspace-tabs { display: flex; align-items: center; gap: 4px; }
+.workspace-tabs { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
 .workspace-tab { padding: 10px 16px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); font-weight: 600; cursor: pointer; }
 .workspace-tab[aria-selected="true"] { background: var(--accent-soft); color: var(--accent-deep); }
 #chat-panel { display: contents; }
@@ -1739,3 +1739,15 @@ kbd {
 #monitor-arguments small { font-weight: normal; opacity: .8; }
 #monitor-arguments textarea, #monitor-summary-prompt textarea { width: 100%; box-sizing: border-box; }
 #monitor-form [hidden] { display: none !important; }
+
+/* Document retrieval: safe text previews and side-by-side strategy comparison. */
+.workspace, .workspace:not(.has-messages) { grid-template-rows: auto auto minmax(0, 1fr) auto; }
+.workspace.tasks-active { grid-template-rows: auto minmax(0, 1fr); }
+.topbar { min-height: 70px; padding-top: 10px; padding-bottom: 10px; }
+.documents-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.document-chunk { padding: 12px; margin: 10px 0; border: 1px solid var(--line); border-radius: 10px; }
+.document-chunk summary { overflow-wrap: anywhere; line-height: 1.6; }
+.document-chunk pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; line-height: 1.6; max-height: 440px; overflow-y: auto; }
+#documents-evaluation details { margin: 12px 0; }
+#documents-panel [hidden], #documents-panel[hidden] { display: none; }
+@media (max-width: 900px) { .documents-columns { grid-template-columns: 1fr; } }

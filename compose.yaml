@@ -14,6 +14,7 @@ services:
       PROFILE_PATH: /data/profiles
       MCP_PATH: /data/mcp.json
       SCHEDULER_PATH: /data/scheduler.db
+      DOCUMENT_INDEX_PATH: /documents/artifacts/index.sqlite
       MCP_HTTP_ENDPOINTS: http://mock-issue-mcp:8090/mcp,http://demo-order-mcp:8090/mcp,http://demo-validation-mcp:8090/mcp,http://demo-broker-mcp:8090/mcp
       BROKER_DEMO_ORDER_MCP: http://demo-order-mcp:8090/mcp
       BROKER_DEMO_VALIDATION_MCP: http://demo-validation-mcp:8090/mcp

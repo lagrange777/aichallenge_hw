@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"codex-chat-cli/internal/agent"
+	"codex-chat-cli/internal/docindex"
 	"codex-chat-cli/internal/mcpclient"
 	"codex-chat-cli/internal/memory"
 	"codex-chat-cli/internal/models"
@@ -33,7 +34,7 @@ const (
 	maxSessions     = 256
 )
 
-//go:embed static/index.html static/app.css static/app.js static/memory.js static/task-state.js static/invariants.js static/profiles.js static/mcp.js static/monitors.js static/markdown.js static/favicon.svg
+//go:embed static/index.html static/app.css static/app.js static/memory.js static/task-state.js static/invariants.js static/profiles.js static/mcp.js static/monitors.js static/documents.js static/markdown.js static/favicon.svg
 var staticFiles embed.FS
 
 type sessionEntry struct {
@@ -42,6 +43,7 @@ type sessionEntry struct {
 }
 
 type server struct {
+	documents    *docindex.Service
 	monitors     *scheduler.Service
 	mcpStore     *mcpclient.Store
 	llm          agent.LLM
@@ -115,6 +117,10 @@ func NewHandlerWithMCP(llm agent.LLM, model string, history agent.History, mcpSt
 }
 
 func NewHandlerWithScheduler(llm agent.LLM, model string, history agent.History, mcpStore *mcpclient.Store, monitors *scheduler.Service, agentOptions ...agent.Option) http.Handler {
+	return NewHandlerWithDocuments(llm, model, history, mcpStore, monitors, nil, agentOptions...)
+}
+
+func NewHandlerWithDocuments(llm agent.LLM, model string, history agent.History, mcpStore *mcpclient.Store, monitors *scheduler.Service, documents *docindex.Service, agentOptions ...agent.Option) http.Handler {
 	var localMCP *mcp.Server
 	if monitors != nil {
 		localMCP = monitors.MCP(mcpStore)
@@ -137,6 +143,7 @@ func NewHandlerWithScheduler(llm agent.LLM, model string, history agent.History,
 		allowed[definition.ID] = true
 	}
 	app := &server{
+		documents:    documents,
 		monitors:     monitors,
 		mcpStore:     mcpStore,
 		llm:          llm,
@@ -149,6 +156,12 @@ func NewHandlerWithScheduler(llm agent.LLM, model string, history agent.History,
 	}
 
 	mux := http.NewServeMux()
+	mux.HandleFunc("/documents.js", func(w http.ResponseWriter, r *http.Request) {
+		app.serveStatic(w, r, "documents.js", "text/javascript; charset=utf-8")
+	})
+	mux.HandleFunc("/api/documents", app.handleDocuments)
+	mux.HandleFunc("/api/documents/chunks", app.handleDocumentChunks)
+	mux.HandleFunc("/api/documents/search", app.handleDocumentSearch)
 	mux.HandleFunc("/monitors.js", func(w http.ResponseWriter, r *http.Request) {
 		app.serveStatic(w, r, "monitors.js", "text/javascript; charset=utf-8")
 	})

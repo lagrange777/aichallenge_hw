@@ -22,18 +22,19 @@ const (
 
 // Config contains runtime configuration loaded from environment variables.
 type Config struct {
-	APIKey          string
-	Model           string
-	BaseURL         string
-	Timeout         time.Duration
-	WebAddr         string
-	HistoryPath     string
-	MemoryPath      string
-	ProfilePath     string
-	MCPPath         string
-	SchedulerPath   string
-	ContextKeepLast int
-	ContextStrategy string
+	APIKey            string
+	Model             string
+	BaseURL           string
+	Timeout           time.Duration
+	WebAddr           string
+	HistoryPath       string
+	MemoryPath        string
+	ProfilePath       string
+	MCPPath           string
+	SchedulerPath     string
+	DocumentIndexPath string
+	ContextKeepLast   int
+	ContextStrategy   string
 }
 
 // Load reads and validates configuration without logging secret values.
@@ -69,18 +70,19 @@ func Load() (Config, error) {
 	}
 
 	return Config{
-		APIKey:          apiKey,
-		Model:           model,
-		BaseURL:         baseURL,
-		Timeout:         timeout,
-		WebAddr:         webAddr,
-		HistoryPath:     historyPath,
-		SchedulerPath:   valueOrDefault("SCHEDULER_PATH", filepath.Join(filepath.Dir(historyPath), "scheduler.db")),
-		MCPPath:         valueOrDefault("MCP_PATH", filepath.Join(filepath.Dir(historyPath), "mcp.json")),
-		ProfilePath:     valueOrDefault("PROFILE_PATH", filepath.Join(filepath.Dir(historyPath), "profiles")),
-		MemoryPath:      valueOrDefault("MEMORY_PATH", filepath.Join(filepath.Dir(historyPath), "memory")),
-		ContextKeepLast: contextKeepLast,
-		ContextStrategy: contextStrategy,
+		APIKey:            apiKey,
+		Model:             model,
+		BaseURL:           baseURL,
+		Timeout:           timeout,
+		WebAddr:           webAddr,
+		HistoryPath:       historyPath,
+		DocumentIndexPath: valueOrDefault("DOCUMENT_INDEX_PATH", "artifacts/docindex/index.sqlite"),
+		SchedulerPath:     valueOrDefault("SCHEDULER_PATH", filepath.Join(filepath.Dir(historyPath), "scheduler.db")),
+		MCPPath:           valueOrDefault("MCP_PATH", filepath.Join(filepath.Dir(historyPath), "mcp.json")),
+		ProfilePath:       valueOrDefault("PROFILE_PATH", filepath.Join(filepath.Dir(historyPath), "profiles")),
+		MemoryPath:        valueOrDefault("MEMORY_PATH", filepath.Join(filepath.Dir(historyPath), "memory")),
+		ContextKeepLast:   contextKeepLast,
+		ContextStrategy:   contextStrategy,
 	}, nil
 }
 

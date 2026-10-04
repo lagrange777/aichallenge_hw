@@ -49,7 +49,7 @@
   let memoryBusy = false;
   let taskBlocked = true;
   let profileBusy = false;
-  const sections = ["chat", "tasks", "profiles", "monitors", "mcp"];
+  const sections = ["chat", "tasks", "profiles", "monitors", "mcp", "documents"];
   const sectionTabs = sections.map(name => document.querySelector(`#tab-${name}`));
   const currentThreadButton = document.querySelector(".thread");
   function selectSection(name) {
@@ -65,6 +65,7 @@
     if (name === "tasks" && historyReady) window.CodexMemory.load();
     if (name === "mcp") window.CodexMCP.load();
     if (name === "monitors") window.CodexMonitors.load();
+    if (name === "documents") window.CodexDocuments.load();
   }
   sectionTabs.forEach((tab, index) => {
     tab.addEventListener("click", () => selectSection(sections[index]));

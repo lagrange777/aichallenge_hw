@@ -109,6 +109,7 @@
           <button id="tab-profiles" class="workspace-tab" type="button" role="tab" aria-selected="false" aria-controls="profiles-panel" tabindex="-1">Профили</button>
           <button id="tab-monitors" class="workspace-tab" type="button" role="tab" aria-selected="false" aria-controls="monitors-panel" tabindex="-1">Фоновые задачи</button>
           <button id="tab-mcp" class="workspace-tab" type="button" role="tab" aria-selected="false" aria-controls="mcp-panel" tabindex="-1">MCP</button>
+          <button id="tab-documents" class="workspace-tab" type="button" role="tab" aria-selected="false" aria-controls="documents-panel" tabindex="-1">Документы</button>
         </nav>
         <button id="open-memory" class="memory-button" type="button" disabled>Память <span id="memory-pending-count"></span></button>
         <label class="model-badge" title="Модель OpenAI" for="model-select">
@@ -206,6 +207,25 @@
         <p class="disclaimer">Ответы модели могут содержать ошибки. Проверяйте важный код.</p>
       </footer>
       </div>
+      <section id="documents-panel" class="tasks-panel" role="tabpanel" aria-labelledby="tab-documents" hidden>
+        <header class="memory-header"><div><h1>Документы</h1><p>Локальный индекс · две стратегии разбиения</p></div><button id="documents-refresh" type="button" class="memory-button">Обновить</button></header>
+        <p id="documents-status" role="status" aria-live="polite"></p>
+        <div id="documents-content" hidden>
+          <div id="documents-summary"></div>
+          <div id="documents-stats" class="monitor-table-wrap"></div>
+          <details><summary>Источники корпуса</summary><div id="documents-sources"></div></details>
+          <h2>Сравнить поиск</h2>
+          <p>Один вопрос — пять ближайших фрагментов каждой стратегии. Текст вопроса отправляется в OpenAI для получения эмбеддинга.</p>
+          <form id="documents-search"><label>Вопрос<input name="query" required maxlength="2000" placeholder="Когда задача может быть завершена?"></label><button id="documents-search-button" type="submit" class="memory-button memory-primary">Найти в обеих стратегиях</button></form>
+          <p id="documents-search-status" role="status" aria-live="polite"></p>
+          <div id="documents-results" class="documents-columns"></div>
+          <h2>Контрольные вопросы</h2><div id="documents-evaluation"></div>
+          <h2>Просмотр чанков</h2>
+          <label>Стратегия<select id="documents-strategy"><option value="fixed">Фиксированный размер</option><option value="structured">По структуре</option></select></label>
+          <p id="documents-chunks-status" role="status"></p><div id="documents-chunks"></div>
+          <div class="memory-actions"><button id="documents-prev" class="memory-button" type="button">Назад</button><button id="documents-next" class="memory-button" type="button">Далее</button></div>
+        </div>
+      </section>
       <section id="tasks-panel" class="tasks-panel" role="tabpanel" aria-labelledby="tab-tasks" hidden>
         <div class="tasks-content">
           <header class="tasks-header">
@@ -436,6 +456,7 @@
   <script src="/profiles.js" defer></script>
   <script src="/mcp.js" defer></script>
   <script src="/monitors.js" defer></script>
+  <script src="/documents.js" defer></script>
   <script src="/app.js" defer></script>
 </body>
 </html>
