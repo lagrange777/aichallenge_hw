@@ -49,7 +49,7 @@
   let memoryBusy = false;
   let taskBlocked = true;
   let profileBusy = false;
-  const sections = ["chat", "tasks", "profiles", "monitors", "mcp", "documents"];
+  const sections = ["chat", "tasks", "profiles", "monitors", "mcp", "documents", "rag"];
   const sectionTabs = sections.map(name => document.querySelector(`#tab-${name}`));
   const currentThreadButton = document.querySelector(".thread");
   function selectSection(name) {
@@ -66,6 +66,7 @@
     if (name === "mcp") window.CodexMCP.load();
     if (name === "monitors") window.CodexMonitors.load();
     if (name === "documents") window.CodexDocuments.load();
+    if (name === "rag") window.CodexRAG.load();
   }
   sectionTabs.forEach((tab, index) => {
     tab.addEventListener("click", () => selectSection(sections[index]));
@@ -207,6 +208,7 @@
     } catch (error) {
       modelSelect.replaceChildren(new Option("нет соединения", ""));
       modelSelect.disabled = true;
+    document.querySelector("#rag-enabled").disabled = true;
       connection.classList.add("offline");
       connection.classList.remove("online");
       connectionLabel.textContent = "соединение потеряно";
@@ -303,7 +305,7 @@
           "Content-Type": "application/json",
           "X-Codex-Chat": "1"
         },
-        body: JSON.stringify({ message, taskId: window.CodexTaskState.current()?.id, taskVersion: window.CodexTaskState.current()?.workflow.version, profileId: window.CodexProfiles.activeID(), model: modelSelect.value, ...responseOptions })
+        body: JSON.stringify({ message, rag: document.querySelector("#rag-enabled").checked, taskId: window.CodexTaskState.current()?.id, taskVersion: window.CodexTaskState.current()?.workflow.version, profileId: window.CodexProfiles.activeID(), model: modelSelect.value, ...responseOptions })
       });
       const payload = await response.json().catch(() => ({}));
       requestWarning = typeof payload.warning === "string" ? payload.warning : "";
@@ -328,6 +330,7 @@
     } finally {
       await window.CodexMemory.load();
       sending = false;
+      document.querySelector("#rag-enabled").disabled = false;
       window.CodexMemory.setChatBusy(false);
       optionInputs.forEach((field) => { field.disabled = false; });
       modelSelect.disabled = modelSelect.value === "";
@@ -433,6 +436,7 @@
     }
 
     main.append(meta, content);
+    if (message.role === "assistant" && message.retrieval) main.append(window.CodexRAG.trace(message.retrieval));
     if (message.role === "assistant" && message.metrics) {
       main.append(createResponseMetrics(message.model, message.metrics));
     }

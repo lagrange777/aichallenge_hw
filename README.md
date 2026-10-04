@@ -7,6 +7,9 @@ Responses API. API-ключ остаётся на сервере и никогд
 
 ## Возможности
 
+- RAG в чате, источники под ответом и сравнение двух режимов на 10 вопросах
+  во вкладке «RAG» ([описание и запуск](RAG.md));
+
 - локальная индексация документов: OpenAI Embeddings, SQLite, две стратегии
   chunking, сравнение поиска и вкладка «Документы» ([инструкция](documents/README.md));
 
@@ -65,6 +68,7 @@ go run ./cmd/codex-chat
 | `OPENAI_BASE_URL` | `https://api.openai.com/v1` | базовый URL API |
 | `OPENAI_TIMEOUT` | `2m` | тайм-аут одного запроса |
 | `WEB_ADDR` | `127.0.0.1:8080` | адрес локального HTTP-сервера |
+| `RAG_REPORT_PATH` | `artifacts/rag/comparison.json` | сохранённое сравнение ответов во вкладке RAG |
 | `HISTORY_PATH` | `data/history.json` | путь к JSON-файлу с историями диалогов |
 | `PROFILE_PATH` | `profiles` рядом с файлом истории | реестр профилей и активный профиль браузера |
 | `MCP_PATH` | `mcp.json` рядом с файлом истории | подключения MCP, общие для локального экземпляра приложения |

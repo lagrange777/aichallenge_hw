@@ -1,0 +1,192 @@
+{
+  "q01": {
+    "without": {
+      "answerHash": "4bd5ec59779421853a09d4d61ec14c3c2942ca4c6f5831e7b47a0a1dfd159171",
+      "correctness": 1,
+      "completeness": 2,
+      "hallucination": false,
+      "abstention": true,
+      "rationale": "Назван верный общий механизм: временный файл и атомарный rename. Но модель прямо не подтверждает его для проекта; fsync и .bak обозначены как общий пример, поэтому не считаются выдуманным фактом."
+    },
+    "with": {
+      "answerHash": "201065bf5bc79386241ac0806ef4746ad72af60b2c218f815a1d2ee3a209aeee",
+      "correctness": 2,
+      "completeness": 2,
+      "hallucination": false,
+      "abstention": false,
+      "rationale": "Временный файл и атомарная замена явно подтверждены S1. Права 0600 подтверждены S2/S3 и верно отделены от защиты целостности.",
+      "citationSupport": true
+    }
+  },
+  "q02": {
+    "without": {
+      "answerHash": "718bc1c6aa21038c1b24301e481ec9b37e00d21b1a3e962f7944bd3a3e3bfac4",
+      "correctness": 0,
+      "completeness": 0,
+      "hallucination": false,
+      "abstention": true,
+      "rationale": "Модель честно не называет таймаут. Ожидаемые 12 часов и сохранение JSON-истории отсутствуют."
+    },
+    "with": {
+      "answerHash": "6a176993546c12c1fecbabfeb5b6f8d1cf5811634d3896536eb62a3ae6b164dc",
+      "correctness": 0,
+      "completeness": 0,
+      "hallucination": false,
+      "abstention": true,
+      "rationale": "Поиск не вернул фрагмент о 12 часах. Модель корректно ограничила отказ предоставленными фрагментами; ожидания не выполнены, выдуманного TTL нет. Ссылки ведут к действительно полученным фрагментам.",
+      "citationSupport": true
+    }
+  },
+  "q03": {
+    "without": {
+      "answerHash": "7106a55d01ec8f8ca3d3e98a757c3ede5ca3450265365c800b460f5decccac5f",
+      "correctness": 0,
+      "completeness": 0,
+      "hallucination": false,
+      "abstention": true,
+      "rationale": "Лимит 1 МиБ не указан. Предложение проверить типичный Node/Express не утверждает, что проект написан на Node, поэтому это не фактическая галлюцинация."
+    },
+    "with": {
+      "answerHash": "e579d9a6686795ca4c34d374c4ce25eed02ce3d6238853ae036f75dbcfabbc41",
+      "correctness": 2,
+      "completeness": 2,
+      "hallucination": false,
+      "abstention": false,
+      "rationale": "Точный лимит 1 МиБ присутствует в S2. Ожидание выполнено.",
+      "citationSupport": true
+    }
+  },
+  "q04": {
+    "without": {
+      "answerHash": "6ced99bf73030928728503f3340539f11d7879c91a1660f4ce592760dfa17375",
+      "correctness": 1,
+      "completeness": 1,
+      "hallucination": false,
+      "abstention": true,
+      "rationale": "Правильно описаны последние N сообщений и локальная пересборка контекста. Не сказано прямо, что скрытая цепочка вернёт отброшенную историю; конкретная реализация проекта не подтверждена."
+    },
+    "with": {
+      "answerHash": "78161648121f6d3b2515c4505792eb64d78682da677ab80e21fec5a38601ea82",
+      "correctness": 2,
+      "completeness": 2,
+      "hallucination": false,
+      "abstention": false,
+      "rationale": "Раскрыты явное окно и риск возвращения старой истории по previous_response_id. S1/S2 и код S4 это подтверждают. evidenceHit=false относится только к заранее заданной цитате ARCHITECTURE.md: альтернативный README.md содержит полноценное доказательство.",
+      "citationSupport": true
+    }
+  },
+  "q06": {
+    "without": {
+      "answerHash": "dc82b9f4e4ee9c18fb1c58be1b5a60158f7e218c8df7c5353731ac03cecb5070",
+      "correctness": 1,
+      "completeness": 1,
+      "hallucination": false,
+      "abstention": true,
+      "rationale": "Упомянуты ревизии и снимки как общие подходы, но нет новой ревизии обоих слоёв с атомарной заменой CURRENT.json."
+    },
+    "with": {
+      "answerHash": "99606893ff7e6d71be6ccbf7b8950495003ab26f26f8d65a30031098386720ab",
+      "correctness": 2,
+      "completeness": 2,
+      "hallucination": false,
+      "abstention": false,
+      "rationale": "S3 подтверждает отдельные файлы слоёв, новую ревизию и атомарную замену CURRENT.json; дополнительные сведения о правах и удалении старой ревизии также есть в S3.",
+      "citationSupport": true
+    }
+  },
+  "q07": {
+    "without": {
+      "answerHash": "3febb068bc5e03e3025bd2b3c35f2aaf4fea0c08a4c3f6124c374cec91958fa9",
+      "correctness": 2,
+      "completeness": 1,
+      "hallucination": false,
+      "abstention": true,
+      "rationale": "Верно требуется явное принятие пользователем. Не раскрыто исключение неподтверждённых/отклонённых предложений из основного запроса. Дополнительные механизмы отмечены как неизвестные."
+    },
+    "with": {
+      "answerHash": "697e9e1ad6627e18ec4656346e5e35ce9d641619d7a9a14873865839652995fb",
+      "correctness": 2,
+      "completeness": 2,
+      "hallucination": false,
+      "abstention": false,
+      "rationale": "Все ожидания выполнены: pending, ручное подтверждение и отсутствие неподтверждённых предложений в основном запросе подтверждены S1/S2/S4.",
+      "citationSupport": true
+    }
+  },
+  "q09": {
+    "without": {
+      "answerHash": "70485561e38576ce97386fc30684092c0faa99d19fec8b301d4f75c7834b537e",
+      "correctness": 2,
+      "completeness": 2,
+      "hallucination": false,
+      "abstention": true,
+      "rationale": "Верно указан приоритет текущего явного запроса над профилем и роль профиля как настроек по умолчанию. Оговорка о незнании проекта не делает совпавший по смыслу ответ неверным."
+    },
+    "with": {
+      "answerHash": "51d5531e14febc269811105df34b07216f99e422acdc2f957f346d6239280d86",
+      "correctness": 2,
+      "completeness": 2,
+      "hallucination": false,
+      "abstention": false,
+      "rationale": "S1 явно задаёт ту же иерархию; пример языка является логичным пояснением, а не новым неподтверждённым фактом.",
+      "citationSupport": true
+    }
+  },
+  "q11": {
+    "without": {
+      "answerHash": "d0c166732d0c40caafc50109bd34893c04a44d2caef0a1a532ea8bc0f81f018b",
+      "correctness": 1,
+      "completeness": 1,
+      "hallucination": false,
+      "abstention": true,
+      "rationale": "Названы успешная проверка и явное подтверждение, но отсутствует ключевое условие: passed должен относиться к текущей версии результата. Остальные пункты помечены как типичный процесс."
+    },
+    "with": {
+      "answerHash": "c1810317fdc96bb318f072002e08fb199e17a55d761d84747c41292e3093130d",
+      "correctness": 2,
+      "completeness": 1,
+      "hallucination": false,
+      "abstention": false,
+      "rationale": "Верно названы complete, passed и текущая версия результата; S2 подтверждает условия. Не сказано прямо, что переход подтверждает именно пользователь, поэтому полнота 1/2.",
+      "citationSupport": true
+    }
+  },
+  "q14": {
+    "without": {
+      "answerHash": "5465bde01525f14db39ea7b62e724f8ad8a460cd7557cc43c0cfce3706b466d5",
+      "correctness": 0,
+      "completeness": 0,
+      "hallucination": false,
+      "abstention": true,
+      "rationale": "Нет числа попыток и поведения после повторного нарушения; честное признание отсутствия информации."
+    },
+    "with": {
+      "answerHash": "feafd546811f4f1168ada8dfded6311ff3a03f68edba73804c48f73adcfa968f",
+      "correctness": 2,
+      "completeness": 2,
+      "hallucination": false,
+      "abstention": false,
+      "rationale": "S3 подтверждает одну повторную генерацию с проверкой и стандартный отказ при повторном нарушении/неопределённости/ошибке. Оба ожидания выполнены.",
+      "citationSupport": true
+    }
+  },
+  "q16": {
+    "without": {
+      "answerHash": "029f261ff75e0798468dad842c64abe3e3f5637c13743a6d43a82b7cc505e83b",
+      "correctness": 1,
+      "completeness": 1,
+      "hallucination": false,
+      "abstention": true,
+      "rationale": "HMAC назван среди общих вариантов защиты, но конкретная цепочка токенов, проверка подписи и связка полей заявки не раскрыты. mTLS и аудит не выдаются за факты о проекте."
+    },
+    "with": {
+      "answerHash": "fe5a8e5a0a141fe01ea6962cfc2d7327eac9624afd529c1fc902f384fe9e2729",
+      "correctness": 2,
+      "completeness": 2,
+      "hallucination": false,
+      "abstention": false,
+      "rationale": "S3 подтверждает HMAC-цепочку, проверку подписи и извлечение полей заявки, а также защиту от повторов. Подписи обеспечивают целостность, идемпотентность — отсутствие дубликатов; это различие раскрыто в основном тексте ответа.",
+      "citationSupport": true
+    }
+  }
+}
