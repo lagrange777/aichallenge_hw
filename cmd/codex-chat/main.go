@@ -14,6 +14,7 @@ import (
 
 	"codex-chat-cli/internal/agent"
 	"codex-chat-cli/internal/config"
+	"codex-chat-cli/internal/docindex"
 	"codex-chat-cli/internal/history"
 	"codex-chat-cli/internal/mcpclient"
 	"codex-chat-cli/internal/memory"
@@ -86,9 +87,25 @@ func run(logger *log.Logger) error {
 	}
 	defer schedulerStore.Close()
 	monitors := &scheduler.Service{Store: schedulerStore, Source: &scheduler.NeurlySource{Store: mcpStore}, Executor: &scheduler.MCPExecutor{Store: mcpStore}, LLM: apiClient, Model: cfg.Model}
+	var documents *docindex.Service
+	documentStore, err := docindex.OpenReadOnly(cfg.DocumentIndexPath)
+	if err == nil {
+		defer documentStore.Close()
+		info, infoErr := documentStore.Info()
+		if infoErr != nil {
+			return fmt.Errorf("индекс документов: %w", infoErr)
+		}
+		embedder, embedErr := docindex.NewOpenAIEmbedder(cfg.APIKey, cfg.BaseURL, info.Model, info.Dimensions)
+		if embedErr != nil {
+			return embedErr
+		}
+		documents = &docindex.Service{Store: documentStore, Embedder: embedder}
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("индекс документов: %w", err)
+	}
 	server := &http.Server{
 		Addr: cfg.WebAddr,
-		Handler: chatweb.NewHandlerWithScheduler(apiClient, cfg.Model, historyStore, mcpStore, monitors, agent.WithContextStrategy(agent.StrategyConfig{
+		Handler: chatweb.NewHandlerWithDocuments(apiClient, cfg.Model, historyStore, mcpStore, monitors, documents, agent.WithContextStrategy(agent.StrategyConfig{
 			Type:     agent.ContextStrategy(cfg.ContextStrategy),
 			KeepLast: cfg.ContextKeepLast,
 		}), agent.WithMemory(memoryStore), agent.WithProfiles(profileStore)),

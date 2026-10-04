@@ -1,0 +1,665 @@
+{
+  "characters": 117498,
+  "chunking": {
+    "size_characters": 1800,
+    "overlap_characters": 240
+  },
+  "chunks": {
+    "fixed": 79,
+    "structured": 143
+  },
+  "documents": [
+    {
+      "source": "ARCHITECTURE.md",
+      "title": "Архитектура Codex Chat Web",
+      "sha256": "0a66990d6478999fa56cb272613a58b2c647ec2c9dfd924569d976961e6664ca",
+      "characters": 9766,
+      "words": 1171,
+      "sections": [
+        {
+          "title": "Архитектура Codex Chat Web",
+          "start": 0,
+          "end": 60
+        },
+        {
+          "title": "Архитектура Codex Chat Web \u003e Цель",
+          "start": 60,
+          "end": 378
+        },
+        {
+          "title": "Архитектура Codex Chat Web \u003e MCP",
+          "start": 378,
+          "end": 1055
+        },
+        {
+          "title": "Архитектура Codex Chat Web \u003e Компоненты",
+          "start": 1055,
+          "end": 1850
+        },
+        {
+          "title": "Архитектура Codex Chat Web \u003e Компоненты \u003e `internal/web`",
+          "start": 1850,
+          "end": 2993
+        },
+        {
+          "title": "Архитектура Codex Chat Web \u003e Компоненты \u003e `internal/agent`",
+          "start": 2993,
+          "end": 4567
+        },
+        {
+          "title": "Архитектура Codex Chat Web \u003e Компоненты \u003e `internal/history`",
+          "start": 4567,
+          "end": 4917
+        },
+        {
+          "title": "Архитектура Codex Chat Web \u003e Компоненты \u003e `internal/openai`",
+          "start": 4917,
+          "end": 5555
+        },
+        {
+          "title": "Архитектура Codex Chat Web \u003e Компоненты \u003e `internal/models`",
+          "start": 5555,
+          "end": 6083
+        },
+        {
+          "title": "Архитектура Codex Chat Web \u003e Поток сообщения",
+          "start": 6083,
+          "end": 7280
+        },
+        {
+          "title": "Архитектура Codex Chat Web \u003e Безопасность",
+          "start": 7280,
+          "end": 8043
+        },
+        {
+          "title": "Архитектура Codex Chat Web \u003e Ограничения",
+          "start": 8043,
+          "end": 9102
+        },
+        {
+          "title": "Архитектура Codex Chat Web \u003e Персонализация",
+          "start": 9102,
+          "end": 9766
+        }
+      ]
+    },
+    {
+      "source": "INVARIANTS.md",
+      "title": "Инварианты задачи",
+      "sha256": "794d605e1f5a3ba1e13f18505b3b591cfd512bcad30de4be93fb5e073b6a0f59",
+      "characters": 8339,
+      "words": 1034,
+      "sections": [
+        {
+          "title": "Инварианты задачи",
+          "start": 0,
+          "end": 544
+        },
+        {
+          "title": "Инварианты задачи \u003e Хранение и управление",
+          "start": 544,
+          "end": 2283
+        },
+        {
+          "title": "Инварианты задачи \u003e Проверка запроса и ответа",
+          "start": 2283,
+          "end": 4278
+        },
+        {
+          "title": "Инварианты задачи \u003e Смысловая проверка и её пределы",
+          "start": 4278,
+          "end": 5016
+        },
+        {
+          "title": "Инварианты задачи \u003e Связь с состоянием задачи и интерфейсом",
+          "start": 5016,
+          "end": 6029
+        },
+        {
+          "title": "Инварианты задачи \u003e Проверки",
+          "start": 6029,
+          "end": 8339
+        }
+      ]
+    },
+    {
+      "source": "MEMORY.md",
+      "title": "Модель памяти агента",
+      "sha256": "495c1f0efb556333251b6b55d3ab3aa409d279c63dbadbcf46fae4425aa9ed86",
+      "characters": 10630,
+      "words": 1379,
+      "sections": [
+        {
+          "title": "Модель памяти агента",
+          "start": 0,
+          "end": 1279
+        },
+        {
+          "title": "Модель памяти агента \u003e Управление задачами",
+          "start": 1279,
+          "end": 1735
+        },
+        {
+          "title": "Модель памяти агента \u003e Три слоя",
+          "start": 1735,
+          "end": 3146
+        },
+        {
+          "title": "Модель памяти агента \u003e Отдельное хранение",
+          "start": 3146,
+          "end": 4591
+        },
+        {
+          "title": "Модель памяти агента \u003e Как память влияет на запрос",
+          "start": 4591,
+          "end": 6823
+        },
+        {
+          "title": "Модель памяти агента \u003e HTTP API",
+          "start": 6823,
+          "end": 8249
+        },
+        {
+          "title": "Модель памяти агента \u003e Проверка для сдачи задания",
+          "start": 8249,
+          "end": 10630
+        }
+      ]
+    },
+    {
+      "source": "PERSONALIZATION.md",
+      "title": "Персонализация ассистента",
+      "sha256": "655982e7de0fbfd38a65de645c1dcc107ba0e5ec97c50e6f620b55c9e74d67e0",
+      "characters": 4509,
+      "words": 587,
+      "sections": [
+        {
+          "title": "Персонализация ассистента",
+          "start": 0,
+          "end": 391
+        },
+        {
+          "title": "Персонализация ассистента \u003e Связь с памятью",
+          "start": 391,
+          "end": 1085
+        },
+        {
+          "title": "Персонализация ассистента \u003e Подключение к запросам",
+          "start": 1085,
+          "end": 2446
+        },
+        {
+          "title": "Персонализация ассистента \u003e Проверка реальной модели",
+          "start": 2446,
+          "end": 3998
+        },
+        {
+          "title": "Персонализация ассистента \u003e Автоматические проверки",
+          "start": 3998,
+          "end": 4509
+        }
+      ]
+    },
+    {
+      "source": "README.md",
+      "title": "Codex Chat Web",
+      "sha256": "c073d445c2ab63995d5bee4a665238a58e66e3a3d614deb12d2a3e63f0adb626",
+      "characters": 30679,
+      "words": 3860,
+      "sections": [
+        {
+          "title": "Codex Chat Web",
+          "start": 0,
+          "end": 306
+        },
+        {
+          "title": "Codex Chat Web \u003e Возможности",
+          "start": 306,
+          "end": 2205
+        },
+        {
+          "title": "Codex Chat Web \u003e Требования",
+          "start": 2205,
+          "end": 2417
+        },
+        {
+          "title": "Codex Chat Web \u003e Локальный запуск",
+          "start": 2417,
+          "end": 2724
+        },
+        {
+          "title": "Codex Chat Web \u003e Настройки",
+          "start": 2724,
+          "end": 4555
+        },
+        {
+          "title": "Codex Chat Web \u003e Запуск в Docker",
+          "start": 4555,
+          "end": 5309
+        },
+        {
+          "title": "Codex Chat Web \u003e HTTP-маршруты",
+          "start": 5309,
+          "end": 8558
+        },
+        {
+          "title": "Codex Chat Web \u003e Стратегии управления контекстом",
+          "start": 8558,
+          "end": 8989
+        },
+        {
+          "title": "Codex Chat Web \u003e Стратегии управления контекстом \u003e Без стратегии",
+          "start": 8989,
+          "end": 9383
+        },
+        {
+          "title": "Codex Chat Web \u003e Стратегии управления контекстом \u003e Sliding Window",
+          "start": 9383,
+          "end": 9613
+        },
+        {
+          "title": "Codex Chat Web \u003e Стратегии управления контекстом \u003e Sticky Facts / Key-Value Memory",
+          "start": 9613,
+          "end": 10025
+        },
+        {
+          "title": "Codex Chat Web \u003e Стратегии управления контекстом \u003e Branching",
+          "start": 10025,
+          "end": 10388
+        },
+        {
+          "title": "Codex Chat Web \u003e Стратегии управления контекстом \u003e Сценарий сравнения на 12 сообщениях",
+          "start": 10388,
+          "end": 12056
+        },
+        {
+          "title": "Codex Chat Web \u003e Проверка роста токенов",
+          "start": 12056,
+          "end": 12657
+        },
+        {
+          "title": "Codex Chat Web \u003e Проверка",
+          "start": 12657,
+          "end": 12670
+        },
+        {
+          "title": "Codex Chat Web \u003e Проверка \u003e MCP-подключения",
+          "start": 12670,
+          "end": 16313
+        },
+        {
+          "title": "Codex Chat Web \u003e Проверка \u003e Проверка проекта",
+          "start": 16313,
+          "end": 17571
+        },
+        {
+          "title": "Codex Chat Web \u003e Персонализация",
+          "start": 17571,
+          "end": 17908
+        },
+        {
+          "title": "Codex Chat Web \u003e Персонализация \u003e Состояние задачи",
+          "start": 17908,
+          "end": 18283
+        },
+        {
+          "title": "Codex Chat Web \u003e Персонализация \u003e Инварианты задачи",
+          "start": 18283,
+          "end": 18620
+        },
+        {
+          "title": "Codex Chat Web \u003e Персонализация \u003e Mock MCP и вызов из чата",
+          "start": 18620,
+          "end": 21653
+        },
+        {
+          "title": "Codex Chat Web \u003e Персонализация \u003e Длинный flow через три MCP-сервера",
+          "start": 21653,
+          "end": 24094
+        },
+        {
+          "title": "Codex Chat Web \u003e Персонализация \u003e Универсальные фоновые задачи MCP",
+          "start": 24094,
+          "end": 30679
+        }
+      ]
+    },
+    {
+      "source": "TASK_LIFECYCLE_TEST_REPORT.md",
+      "title": "Проверка контролируемого жизненного цикла задачи",
+      "sha256": "18bc634ad110bf38560e835be5a1e0b136d9b9f6a60e2005d959c70d77cd65ae",
+      "characters": 4963,
+      "words": 741,
+      "sections": [
+        {
+          "title": "Проверка контролируемого жизненного цикла задачи",
+          "start": 0,
+          "end": 475
+        },
+        {
+          "title": "Проверка контролируемого жизненного цикла задачи \u003e Результаты",
+          "start": 475,
+          "end": 2102
+        },
+        {
+          "title": "Проверка контролируемого жизненного цикла задачи \u003e Обходы через API",
+          "start": 2102,
+          "end": 2524
+        },
+        {
+          "title": "Проверка контролируемого жизненного цикла задачи \u003e Пауза и восстановление",
+          "start": 2524,
+          "end": 3195
+        },
+        {
+          "title": "Проверка контролируемого жизненного цикла задачи \u003e Автоматизация и доказательства",
+          "start": 3195,
+          "end": 4047
+        },
+        {
+          "title": "Проверка контролируемого жизненного цикла задачи \u003e Дополнительная проверка формы с табами",
+          "start": 4047,
+          "end": 4963
+        }
+      ]
+    },
+    {
+      "source": "TASK_STATE.md",
+      "title": "Состояние задачи",
+      "sha256": "c261c9471fc31ba014c30be65d7804a93a3867cb6679b7305d8b7189b844a85a",
+      "characters": 11015,
+      "words": 1422,
+      "sections": [
+        {
+          "title": "Состояние задачи",
+          "start": 0,
+          "end": 238
+        },
+        {
+          "title": "Состояние задачи \u003e Автомат и подтверждения",
+          "start": 238,
+          "end": 2429
+        },
+        {
+          "title": "Состояние задачи \u003e Что сохраняется",
+          "start": 2429,
+          "end": 4984
+        },
+        {
+          "title": "Состояние задачи \u003e Контекст и интерфейс",
+          "start": 4984,
+          "end": 7677
+        },
+        {
+          "title": "Состояние задачи \u003e Проверки",
+          "start": 7677,
+          "end": 10044
+        },
+        {
+          "title": "Состояние задачи \u003e Контролируемые переходы",
+          "start": 10044,
+          "end": 11015
+        }
+      ]
+    },
+    {
+      "source": "internal/agent/agent.go.txt",
+      "title": "agent.go.txt",
+      "sha256": "e68d2c39e5a0dd0030fba0ddca1ba67392043ea726e09124f3054af546eca944",
+      "characters": 25346,
+      "words": 2384,
+      "sections": [
+        {
+          "title": "Преамбула",
+          "start": 0,
+          "end": 166
+        },
+        {
+          "title": "import",
+          "start": 166,
+          "end": 337
+        },
+        {
+          "title": "type LLM",
+          "start": 337,
+          "end": 520
+        },
+        {
+          "title": "type TokenCounter",
+          "start": 520,
+          "end": 707
+        },
+        {
+          "title": "type Request",
+          "start": 707,
+          "end": 1117
+        },
+        {
+          "title": "type CompletionRequest",
+          "start": 1117,
+          "end": 1659
+        },
+        {
+          "title": "type ContextMessage",
+          "start": 1659,
+          "end": 1873
+        },
+        {
+          "title": "type CompletionResponse",
+          "start": 1873,
+          "end": 2103
+        },
+        {
+          "title": "type Usage",
+          "start": 2103,
+          "end": 2320
+        },
+        {
+          "title": "type Response",
+          "start": 2320,
+          "end": 2565
+        },
+        {
+          "title": "type MessageMetrics",
+          "start": 2565,
+          "end": 3092
+        },
+        {
+          "title": "type Message",
+          "start": 3092,
+          "end": 3670
+        },
+        {
+          "title": "type ConversationState",
+          "start": 3670,
+          "end": 4702
+        },
+        {
+          "title": "var ErrHistoryNotFound",
+          "start": 4702,
+          "end": 4849
+        },
+        {
+          "title": "type History",
+          "start": 4849,
+          "end": 5085
+        },
+        {
+          "title": "type Agent",
+          "start": 5085,
+          "end": 5915
+        },
+        {
+          "title": "func New",
+          "start": 5915,
+          "end": 6609
+        },
+        {
+          "title": "func NewPersistent",
+          "start": 6609,
+          "end": 7599
+        },
+        {
+          "title": "func Agent.historyKey",
+          "start": 7599,
+          "end": 7741
+        },
+        {
+          "title": "func Agent.loadTaskHistory",
+          "start": 7741,
+          "end": 8492
+        },
+        {
+          "title": "func Agent.restoreConversationLocked",
+          "start": 8492,
+          "end": 9854
+        },
+        {
+          "title": "func Agent.Ask",
+          "start": 9854,
+          "end": 22654
+        },
+        {
+          "title": "func countConversationMessages",
+          "start": 22654,
+          "end": 22860
+        },
+        {
+          "title": "func contextMessages",
+          "start": 22860,
+          "end": 23272
+        },
+        {
+          "title": "func Agent.Reset",
+          "start": 23272,
+          "end": 23822
+        },
+        {
+          "title": "func Agent.clearConversationLocked",
+          "start": 23822,
+          "end": 24148
+        },
+        {
+          "title": "func Agent.Messages",
+          "start": 24148,
+          "end": 24321
+        },
+        {
+          "title": "func cloneMessages",
+          "start": 24321,
+          "end": 25346
+        }
+      ]
+    },
+    {
+      "source": "internal/memory/workflow.go.txt",
+      "title": "workflow.go.txt",
+      "sha256": "6fd57546accb01aa0f78ca9cc0da9871f8c792590b34b23df67540923db73a71",
+      "characters": 12251,
+      "words": 1475,
+      "sections": [
+        {
+          "title": "Преамбула",
+          "start": 0,
+          "end": 16
+        },
+        {
+          "title": "import",
+          "start": 16,
+          "end": 70
+        },
+        {
+          "title": "type Progress",
+          "start": 70,
+          "end": 664
+        },
+        {
+          "title": "type TaskProposal",
+          "start": 664,
+          "end": 765
+        },
+        {
+          "title": "type TaskEvent",
+          "start": 765,
+          "end": 1053
+        },
+        {
+          "title": "type TaskTurn",
+          "start": 1053,
+          "end": 1147
+        },
+        {
+          "title": "type Workflow",
+          "start": 1147,
+          "end": 1861
+        },
+        {
+          "title": "type WorkflowCommand",
+          "start": 1861,
+          "end": 2240
+        },
+        {
+          "title": "func initialWorkflow",
+          "start": 2240,
+          "end": 2549
+        },
+        {
+          "title": "func normalizeTask",
+          "start": 2549,
+          "end": 2798
+        },
+        {
+          "title": "func AllowedTransition",
+          "start": 2798,
+          "end": 3173
+        },
+        {
+          "title": "func ValidateProgress",
+          "start": 3173,
+          "end": 4336
+        },
+        {
+          "title": "func PreviewWorkflow",
+          "start": 4336,
+          "end": 9188
+        },
+        {
+          "title": "func appendWorkflowEvent",
+          "start": 9188,
+          "end": 9655
+        },
+        {
+          "title": "func Store.UpdateWorkflow",
+          "start": 9655,
+          "end": 10230
+        },
+        {
+          "title": "func Store.RecordWorkflowRejection",
+          "start": 10230,
+          "end": 10686
+        },
+        {
+          "title": "func truncateTurn",
+          "start": 10686,
+          "end": 10888
+        },
+        {
+          "title": "func PreserveApprovedArtifacts",
+          "start": 10888,
+          "end": 11272
+        },
+        {
+          "title": "func Store.RecordTaskTurn",
+          "start": 11272,
+          "end": 12251
+        }
+      ]
+    }
+  ],
+  "embedding_input_utf8_bytes": 381591,
+  "estimated_pages_at_400_words": 35.1325,
+  "status": "prepared_without_embeddings",
+  "token_upper_bound_from_utf8_bytes": 381591,
+  "unique_embedding_inputs": 222,
+  "words": 14053
+}
