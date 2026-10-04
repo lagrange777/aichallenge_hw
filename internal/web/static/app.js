@@ -66,7 +66,7 @@
     if (name === "mcp") window.CodexMCP.load();
     if (name === "monitors") window.CodexMonitors.load();
     if (name === "documents") window.CodexDocuments.load();
-    if (name === "rag") window.CodexRAG.load();
+    if (name === "rag") { window.CodexRAG.load(); window.CodexRAG23.load(); }
   }
   sectionTabs.forEach((tab, index) => {
     tab.addEventListener("click", () => selectSection(sections[index]));
@@ -209,6 +209,7 @@
       modelSelect.replaceChildren(new Option("нет соединения", ""));
       modelSelect.disabled = true;
     document.querySelector("#rag-enabled").disabled = true;
+    window.CodexRAG23.setChatBusy(true);
       connection.classList.add("offline");
       connection.classList.remove("online");
       connectionLabel.textContent = "соединение потеряно";
@@ -305,7 +306,7 @@
           "Content-Type": "application/json",
           "X-Codex-Chat": "1"
         },
-        body: JSON.stringify({ message, rag: document.querySelector("#rag-enabled").checked, taskId: window.CodexTaskState.current()?.id, taskVersion: window.CodexTaskState.current()?.workflow.version, profileId: window.CodexProfiles.activeID(), model: modelSelect.value, ...responseOptions })
+        body: JSON.stringify({ message, rag: document.querySelector("#rag-enabled").checked, ragOptions: window.CodexRAG23.chatOptions(), taskId: window.CodexTaskState.current()?.id, taskVersion: window.CodexTaskState.current()?.workflow.version, profileId: window.CodexProfiles.activeID(), model: modelSelect.value, ...responseOptions })
       });
       const payload = await response.json().catch(() => ({}));
       requestWarning = typeof payload.warning === "string" ? payload.warning : "";
@@ -331,6 +332,7 @@
       await window.CodexMemory.load();
       sending = false;
       document.querySelector("#rag-enabled").disabled = false;
+      window.CodexRAG23.setChatBusy(false);
       window.CodexMemory.setChatBusy(false);
       optionInputs.forEach((field) => { field.disabled = false; });
       modelSelect.disabled = modelSelect.value === "";

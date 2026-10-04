@@ -27,6 +27,7 @@ type TokenCounter interface {
 
 // Request is a user request accepted by the agent.
 type Request struct {
+	RAGOptions          *RetrievalOptions
 	RAG                 bool
 	ProfileID           string
 	TaskID              string
@@ -410,7 +411,7 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 		CompletionCondition: request.CompletionCondition,
 		Temperature:         request.Temperature,
 	}
-	retrieval, err := a.prepareRetrieval(ctx, request.RAG, &completionRequest)
+	retrieval, err := a.prepareRetrieval(ctx, request.RAG, &completionRequest, request.RAGOptions)
 	if err != nil {
 		return Response{}, err
 	}
@@ -427,12 +428,18 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 		}
 		completionRequest.History = append([]ContextMessage{memoryContext(layers)}, completionRequest.History...)
 	}
-	guard := a.prepareInvariants(ctx, &completionRequest, layers)
-	a.prepareTools(ctx, &completionRequest, guard)
+	var guard invariantPlan
+	if !retrieval.Empty {
+		guard = a.prepareInvariants(ctx, &completionRequest, layers)
+		a.prepareTools(ctx, &completionRequest, guard)
+	}
 	response := Response{
 		Retrieval:    retrieval,
 		Model:        request.Model,
-		TokenMetrics: a.measureTokens(ctx, completionRequest, metricSummary),
+		TokenMetrics: TokenMetrics{},
+	}
+	if !retrieval.Empty {
+		response.TokenMetrics = a.measureTokens(ctx, completionRequest, metricSummary)
 	}
 	response.TokenMetrics.ContextStrategy = string(a.strategy.Type)
 	response.TokenMetrics.WindowMessages = countConversationMessages(replayHistory)
@@ -455,7 +462,11 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 			response.TokenMetrics.ContextWarning += " " + combinedWarning
 		}
 	}
-	completion, invariantCheck, err := a.completeWithInvariants(ctx, completionRequest, guard)
+	completion := CompletionResponse{Model: request.Model, Output: NoRAGEvidence}
+	var invariantCheck *InvariantCheck
+	if !retrieval.Empty {
+		completion, invariantCheck, err = a.completeWithInvariants(ctx, completionRequest, guard)
+	}
 	if err != nil {
 		response.Duration = time.Since(started)
 		return response, err
@@ -471,15 +482,23 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 	response.Text = completion.Output
 	response.Retrieval.RecordCitations(response.Text)
 	response.Model = completion.Model
-	response.Usage = completion.Usage
+	response.Usage = sumUsage(completion.Usage, retrieval.AuxiliaryUsage())
 	response.Duration = time.Since(started)
 	if cost, ok := models.EstimateCost(request.Model, completion.Usage.InputTokens, completion.Usage.CachedInputTokens, completion.Usage.CacheWriteTokens, completion.Usage.OutputTokens); ok {
 		response.CostUSD = &cost
 	}
+	for _, step := range retrieval.Steps {
+		if cost, ok := models.EstimateCost(step.Model, step.Usage.InputTokens, step.Usage.CachedInputTokens, step.Usage.CacheWriteTokens, step.Usage.OutputTokens); ok {
+			response.CostUSD = addKnownCosts(response.CostUSD, &cost)
+		} else {
+			response.CostUSD = nil
+			break
+		}
+	}
 	var proposals []memory.Proposal
 	var taskProposal *memory.TaskProposal
 	var invariantProposals []memory.Invariant
-	if a.memoryStore != nil && (invariantCheck == nil || invariantCheck.Status == "allow" || invariantCheck.Status == "partial") {
+	if !retrieval.Empty && a.memoryStore != nil && (invariantCheck == nil || invariantCheck.Status == "allow" || invariantCheck.Status == "partial") {
 		var usage Usage
 		var cost *float64
 		var warning string

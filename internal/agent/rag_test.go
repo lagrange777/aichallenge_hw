@@ -81,3 +81,25 @@ func TestRAGExplicitReplayPreservesCompressedHistory(t *testing.T) {
 		t.Fatalf("summary lost: %+v", request)
 	}
 }
+
+type emptyRetriever struct{}
+
+func (emptyRetriever) Retrieve(context.Context, string) (*Retrieval, error) {
+	return &Retrieval{Mode: "rag", Steps: []RetrievalStep{{Name: "rerank", Model: "test", Usage: Usage{InputTokens: 10, OutputTokens: 2, TotalTokens: 12}}}}, nil
+}
+func TestEmptyRAGRefusesWithoutAnsweringCallAndCountsAuxiliaryUsage(t *testing.T) {
+	llm := &fakeLLM{}
+	a := New(llm, "test", WithRetriever(emptyRetriever{}))
+	response, err := a.Ask(context.Background(), Request{Message: "unknown", RAG: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if llm.callCount != 0 || response.Text != NoRAGEvidence || response.Usage.TotalTokens != 12 || !a.Messages()[1].Retrieval.Empty {
+		t.Fatalf("unexpected refusal: %+v", response)
+	}
+	copy := a.Messages()
+	copy[1].Retrieval.Steps[0].Usage.TotalTokens = 999
+	if a.Messages()[1].Retrieval.Steps[0].Usage.TotalTokens != 12 {
+		t.Fatal("mutable stages")
+	}
+}

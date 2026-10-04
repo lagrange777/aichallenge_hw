@@ -1,0 +1,572 @@
+{
+  "q01": {
+    "baseline": {
+      "answerHash": "50d1301a8217ed56b30dbefd61b0a57f01cda06835788a9234881819bc15a458",
+      "correctness": 2,
+      "completeness": 2,
+      "hallucination": false,
+      "abstention": false,
+      "citationSupport": true,
+      "rationale": "Верно названы временный файл и атомарная замена; S1 подтверждает механизм истории, отдельная ссылка подтверждает CURRENT.json для памяти."
+    },
+    "filter": {
+      "answerHash": "cc5cd7ff6c17e5362d611647ad6e13ebe9f3398fff51e3d37d8804999204bcb3",
+      "correctness": 2,
+      "completeness": 2,
+      "hallucination": false,
+      "abstention": false,
+      "citationSupport": true,
+      "rationale": "Верно названы временный файл и атомарная замена; S1 подтверждает механизм истории, отдельная ссылка подтверждает CURRENT.json для памяти."
+    },
+    "rewrite": {
+      "answerHash": "5c18f40cc5b95c53b9734aa84239b8d6e6c73a5e1fc7268d56d068c9af88ac43",
+      "correctness": 2,
+      "completeness": 2,
+      "hallucination": false,
+      "abstention": false,
+      "citationSupport": true,
+      "rationale": "Верно названы временный файл и атомарная замена; S1 подтверждает механизм истории, отдельная ссылка подтверждает CURRENT.json для памяти."
+    },
+    "full": {
+      "answerHash": "67a935b4887c434dafb43bb10da796b9560025343d68e967f8ee01af10788862",
+      "correctness": 2,
+      "completeness": 2,
+      "hallucination": false,
+      "abstention": false,
+      "citationSupport": true,
+      "rationale": "Верно названы временный файл и атомарная замена; S1 подтверждает механизм истории, отдельная ссылка подтверждает CURRENT.json для памяти."
+    }
+  },
+  "q02": {
+    "baseline": {
+      "answerHash": "1733a6848c271ca325bcdba56e6e00fb781b641dd657d0ca5640c0e247e1e651",
+      "correctness": 0,
+      "completeness": 0,
+      "hallucination": false,
+      "abstention": true,
+      "citationSupport": true,
+      "rationale": "Честно признаёт отсутствие TTL в переданных фрагментах, но не отвечает на контрольный вопрос: в корпусе есть 12 часов. Ссылка на описание компонента не заменяет нужный раздел internal/web."
+    },
+    "filter": {
+      "answerHash": "faeb07eb4bd5ed5f0feead91b4ee71e22291bd69e0e576bc97ab5eaa37231b93",
+      "correctness": 2,
+      "completeness": 1,
+      "hallucination": false,
+      "abstention": false,
+      "citationSupport": true,
+      "rationale": "Верно указаны 12 часов, ссылка S1 содержит именно этот срок. Ожидание о сохранении JSON-истории на диске не раскрыто."
+    },
+    "rewrite": {
+      "answerHash": "5af4e64b432c887cab2e47b74c6c09241e2bd9951841bf329dea0c1ff7cda432",
+      "correctness": 0,
+      "completeness": 0,
+      "hallucination": false,
+      "abstention": true,
+      "citationSupport": true,
+      "rationale": "Честно признаёт отсутствие TTL в переданных фрагментах, но не отвечает на контрольный вопрос: в корпусе есть 12 часов. Ссылка на описание компонента не заменяет нужный раздел internal/web."
+    },
+    "full": {
+      "answerHash": "cbbd9c6e50d352bebd1bf0b858175e8f14b761f7da2460aa82aa771be99fe42f",
+      "correctness": 2,
+      "completeness": 1,
+      "hallucination": false,
+      "abstention": false,
+      "citationSupport": true,
+      "rationale": "Верно указаны 12 часов, ссылка S1 содержит именно этот срок. Ожидание о сохранении JSON-истории на диске не раскрыто."
+    }
+  },
+  "q03": {
+    "baseline": {
+      "answerHash": "63e875b5471288e82f51b7ab2a41453740b804b8e16cf650035fb8d5a5a05bc8",
+      "correctness": 2,
+      "completeness": 2,
+      "hallucination": false,
+      "abstention": false,
+      "citationSupport": true,
+      "rationale": "Верно указан лимит 1 МиБ; процитирован раздел «Безопасность», содержащий этот лимит."
+    },
+    "filter": {
+      "answerHash": "e116562df5caecd136bdc307d660ec8c79f3f6080af93cbb9b129fb70105628b",
+      "correctness": 2,
+      "completeness": 2,
+      "hallucination": false,
+      "abstention": false,
+      "citationSupport": true,
+      "rationale": "Верно указан лимит 1 МиБ; процитирован раздел «Безопасность», содержащий этот лимит."
+    },
+    "rewrite": {
+      "answerHash": "4616b67bd4d7ba234382f7d505ffe69802eb06d6409e34bc93af3a92bd45d120",
+      "correctness": 2,
+      "completeness": 2,
+      "hallucination": false,
+      "abstention": false,
+      "citationSupport": true,
+      "rationale": "Верно указан лимит 1 МиБ; процитирован раздел «Безопасность», содержащий этот лимит."
+    },
+    "full": {
+      "answerHash": "6cca0b876f3ccacbe06b65d6e1e34535453a701e7adf60895aec2b7bd7d534ea",
+      "correctness": 2,
+      "completeness": 2,
+      "hallucination": false,
+      "abstention": false,
+      "citationSupport": true,
+      "rationale": "Верно указан лимит 1 МиБ; процитирован раздел «Безопасность», содержащий этот лимит."
+    }
+  },
+  "q04": {
+    "baseline": {
+      "answerHash": "0018489065e871bab8becdc5c44ea427021d8d2e936a8596d5892f74fe151a9c",
+      "correctness": 2,
+      "completeness": 2,
+      "hallucination": false,
+      "abstention": false,
+      "citationSupport": true,
+      "rationale": "Правильно объяснено скрытое восстановление отброшенной истории через previous_response_id и передача явного окна. README/архитектура и выбранный фрагмент Agent.Ask подтверждают утверждения; точная эталонная цитата не обязательна для смысловой корректности."
+    },
+    "filter": {
+      "answerHash": "8d9512405c2f79ff809f8daf78170e3200250f447ecbde3d4a5ced4634c7dc73",
+      "correctness": 2,
+      "completeness": 2,
+      "hallucination": false,
+      "abstention": false,
+      "citationSupport": true,
+      "rationale": "Правильно объяснено скрытое восстановление отброшенной истории через previous_response_id и передача явного окна. README/архитектура и выбранный фрагмент Agent.Ask подтверждают утверждения; точная эталонная цитата не обязательна для смысловой корректности."
+    },
+    "rewrite": {
+      "answerHash": "8fb3e3a92f9ed5c414e98b0a5c528fec83d982ec32653490bf9a3dfe94df45af",
+      "correctness": 2,
+      "completeness": 2,
+      "hallucination": false,
+      "abstention": false,
+      "citationSupport": true,
+      "rationale": "Правильно объяснено скрытое восстановление отброшенной истории через previous_response_id и передача явного окна. README/архитектура и выбранный фрагмент Agent.Ask подтверждают утверждения; точная эталонная цитата не обязательна для смысловой корректности."
+    },
+    "full": {
+      "answerHash": "77e18c3ee683699b432c15dd245fa87d1c36fc814ec667a724936f7901173372",
+      "correctness": 2,
+      "completeness": 2,
+      "hallucination": false,
+      "abstention": false,
+      "citationSupport": true,
+      "rationale": "Правильно объяснено скрытое восстановление отброшенной истории через previous_response_id и передача явного окна. README/архитектура и выбранный фрагмент Agent.Ask подтверждают утверждения; точная эталонная цитата не обязательна для смысловой корректности."
+    }
+  },
+  "q06": {
+    "baseline": {
+      "answerHash": "bd1ada49781a6e6e973a35e963b6c47dadb9334833a141d2cede952f7b53f749",
+      "correctness": 2,
+      "completeness": 2,
+      "hallucination": false,
+      "abstention": false,
+      "citationSupport": true,
+      "rationale": "Верно описаны отдельные файлы слоёв новой ревизии и атомарная замена CURRENT.json; вывод о согласованном чтении подтверждён разделом «Отдельное хранение». Дополнительные сведения о правах/однопроцессности/подтверждении также есть в процитированных фрагментах."
+    },
+    "filter": {
+      "answerHash": "c65aa4199a45cfe1b39fa557811835c08714faa05160cb7f132641c8f6403558",
+      "correctness": 2,
+      "completeness": 2,
+      "hallucination": false,
+      "abstention": false,
+      "citationSupport": true,
+      "rationale": "Верно описаны отдельные файлы слоёв новой ревизии и атомарная замена CURRENT.json; вывод о согласованном чтении подтверждён разделом «Отдельное хранение». Дополнительные сведения о правах/однопроцессности/подтверждении также есть в процитированных фрагментах."
+    },
+    "rewrite": {
+      "answerHash": "203698524dd4a6be41f41332d70b000e2788373adce413ddc167f2d601437a15",
+      "correctness": 2,
+      "completeness": 2,
+      "hallucination": false,
+      "abstention": false,
+      "citationSupport": true,
+      "rationale": "Верно описаны отдельные файлы слоёв новой ревизии и атомарная замена CURRENT.json; вывод о согласованном чтении подтверждён разделом «Отдельное хранение». Дополнительные сведения о правах/однопроцессности/подтверждении также есть в процитированных фрагментах."
+    },
+    "full": {
+      "answerHash": "49f7c777cf75b8da819dac8d77115b8f0d1a61fe11ba366aacda407930c45860",
+      "correctness": 2,
+      "completeness": 2,
+      "hallucination": false,
+      "abstention": false,
+      "citationSupport": true,
+      "rationale": "Верно описаны отдельные файлы слоёв новой ревизии и атомарная замена CURRENT.json; вывод о согласованном чтении подтверждён разделом «Отдельное хранение». Дополнительные сведения о правах/однопроцессности/подтверждении также есть в процитированных фрагментах."
+    }
+  },
+  "q07": {
+    "baseline": {
+      "answerHash": "230a45baee32b1df9e04c86df2af648dfa55c83189c2e4c4f1e7c65152507c1f",
+      "correctness": 2,
+      "completeness": 2,
+      "hallucination": false,
+      "abstention": false,
+      "citationSupport": true,
+      "rationale": "Верно описаны pending и обязательное подтверждение пользователя; неподтверждённые и отклонённые предложения исключены из блока памяти. Ссылки на MEMORY.md и выбранные дополнительные источники поддерживают ответ."
+    },
+    "filter": {
+      "answerHash": "0a97eb04288d7ea3b8b804e408044b307f03b639178ad896191bbf9c56f1cf27",
+      "correctness": 2,
+      "completeness": 2,
+      "hallucination": false,
+      "abstention": false,
+      "citationSupport": true,
+      "rationale": "Верно описаны pending и обязательное подтверждение пользователя; неподтверждённые и отклонённые предложения исключены из блока памяти. Ссылки на MEMORY.md и выбранные дополнительные источники поддерживают ответ."
+    },
+    "rewrite": {
+      "answerHash": "2a7200af208bd59b7209aeaf9a40df21b9d9f1c587f03804d6d1487247e18671",
+      "correctness": 2,
+      "completeness": 2,
+      "hallucination": false,
+      "abstention": false,
+      "citationSupport": true,
+      "rationale": "Верно описаны pending и обязательное подтверждение пользователя; неподтверждённые и отклонённые предложения исключены из блока памяти. Ссылки на MEMORY.md и выбранные дополнительные источники поддерживают ответ."
+    },
+    "full": {
+      "answerHash": "ede5d85ceda5d21ac5625170c3c18581be946c281218a95b1b4df86883a7dc48",
+      "correctness": 2,
+      "completeness": 2,
+      "hallucination": false,
+      "abstention": false,
+      "citationSupport": true,
+      "rationale": "Верно описаны pending и обязательное подтверждение пользователя; неподтверждённые и отклонённые предложения исключены из блока памяти. Ссылки на MEMORY.md и выбранные дополнительные источники поддерживают ответ."
+    }
+  },
+  "q09": {
+    "baseline": {
+      "answerHash": "fdf9be1341177b795e778308c490469c2895381405434e5da90a9920544c7afd",
+      "correctness": 2,
+      "completeness": 2,
+      "hallucination": false,
+      "abstention": false,
+      "citationSupport": true,
+      "rationale": "Верно назван приоритет явной просьбы и параметров текущего ответа над профилем; PERSONALIZATION.md прямо содержит этот порядок и пример переопределения языка."
+    },
+    "filter": {
+      "answerHash": "7256fd715701120f09925cf6b2dc03c59f0d79bdfd3d2e8fbc4b8b6fb04ff9fa",
+      "correctness": 2,
+      "completeness": 2,
+      "hallucination": false,
+      "abstention": false,
+      "citationSupport": true,
+      "rationale": "Верно назван приоритет явной просьбы и параметров текущего ответа над профилем; PERSONALIZATION.md прямо содержит этот порядок и пример переопределения языка."
+    },
+    "rewrite": {
+      "answerHash": "e3cc77f261d6572c9a935cec800152e255d921d009791a10cb9bc269c1b6c032",
+      "correctness": 2,
+      "completeness": 2,
+      "hallucination": false,
+      "abstention": false,
+      "citationSupport": true,
+      "rationale": "Верно назван приоритет явной просьбы и параметров текущего ответа над профилем; PERSONALIZATION.md прямо содержит этот порядок и пример переопределения языка."
+    },
+    "full": {
+      "answerHash": "dd46fea9ae48435d84e4cf29435879df5e8ac649b5ee9905193ccb97b7652cba",
+      "correctness": 2,
+      "completeness": 2,
+      "hallucination": false,
+      "abstention": false,
+      "citationSupport": true,
+      "rationale": "Верно назван приоритет явной просьбы и параметров текущего ответа над профилем; PERSONALIZATION.md прямо содержит этот порядок и пример переопределения языка."
+    }
+  },
+  "q11": {
+    "baseline": {
+      "answerHash": "b76c4556d7363a921fa3cbf6712fc3a8641e7ab9de4f0a1672872d6f69e15141",
+      "correctness": 2,
+      "completeness": 1,
+      "hallucination": false,
+      "abstention": false,
+      "citationSupport": true,
+      "rationale": "Верно названы validation, отдельная команда complete и passed для текущей версии результата; ссылки поддерживают условия. Не сказано явно, что переход в done подтверждает пользователь, поэтому полнота 1/2."
+    },
+    "filter": {
+      "answerHash": "ca619dc439ddfc9f8a52d108e8aaeee539b2dcff821d200a6ddf22db3336ada9",
+      "correctness": 2,
+      "completeness": 1,
+      "hallucination": false,
+      "abstention": false,
+      "citationSupport": true,
+      "rationale": "Верно названы validation, отдельная команда complete и passed для текущей версии результата; ссылки поддерживают условия. Не сказано явно, что переход в done подтверждает пользователь, поэтому полнота 1/2."
+    },
+    "rewrite": {
+      "answerHash": "f1e0642f85c0993ee06bb6fbe5e76ab3326ec926e57b6421e3740ab34a5263bb",
+      "correctness": 2,
+      "completeness": 1,
+      "hallucination": false,
+      "abstention": false,
+      "citationSupport": true,
+      "rationale": "Верно названы validation, отдельная команда complete и passed для текущей версии результата; ссылки поддерживают условия. Не сказано явно, что переход в done подтверждает пользователь, поэтому полнота 1/2."
+    },
+    "full": {
+      "answerHash": "23d9a117431d37832ddf375a48beaf618aacd5ed6ec2d3cf1444b87ba4100605",
+      "correctness": 2,
+      "completeness": 1,
+      "hallucination": false,
+      "abstention": false,
+      "citationSupport": true,
+      "rationale": "Верно названы validation, отдельная команда complete и passed для текущей версии результата; ссылки поддерживают условия. Не сказано явно, что переход в done подтверждает пользователь, поэтому полнота 1/2."
+    }
+  },
+  "q14": {
+    "baseline": {
+      "answerHash": "74209a12c17842c6ae74225b981744346cf43ed16244cede7e414f5ad39ee828",
+      "correctness": 2,
+      "completeness": 2,
+      "hallucination": false,
+      "abstention": false,
+      "citationSupport": true,
+      "rationale": "Верно указана одна генерация исправления и блокировка после повторного нарушения; процитированные документы описывают повторную проверку и запрет показа/сохранения неподходящего черновика."
+    },
+    "filter": {
+      "answerHash": "3807984999c17a22bf35ffc484df304f525d71a9a9059711770a73da3db82a74",
+      "correctness": 2,
+      "completeness": 2,
+      "hallucination": false,
+      "abstention": false,
+      "citationSupport": true,
+      "rationale": "Верно указана одна генерация исправления и блокировка после повторного нарушения; процитированные документы описывают повторную проверку и запрет показа/сохранения неподходящего черновика."
+    },
+    "rewrite": {
+      "answerHash": "769bcebb221542cff9ad4bed4e232bffff910effa6e9bf534fc35da028f188a6",
+      "correctness": 2,
+      "completeness": 2,
+      "hallucination": false,
+      "abstention": false,
+      "citationSupport": true,
+      "rationale": "Верно указана одна генерация исправления и блокировка после повторного нарушения; процитированные документы описывают повторную проверку и запрет показа/сохранения неподходящего черновика."
+    },
+    "full": {
+      "answerHash": "53bffb566728a38cd7b1c6cdb662044241b75f0a8a3c891a76c82136b02fcef0",
+      "correctness": 2,
+      "completeness": 2,
+      "hallucination": false,
+      "abstention": false,
+      "citationSupport": true,
+      "rationale": "Верно указана одна генерация исправления и блокировка после повторного нарушения; процитированные документы описывают повторную проверку и запрет показа/сохранения неподходящего черновика."
+    }
+  },
+  "q16": {
+    "baseline": {
+      "answerHash": "2bc7887f8d19e95296bab19db0cf56e38967f11482cd9ae106d8dd56f23be163",
+      "correctness": 2,
+      "completeness": 2,
+      "hallucination": false,
+      "abstention": false,
+      "citationSupport": true,
+      "rationale": "Верно описаны цепочка HMAC-токенов, проверка подписи и извлечение полей заявки из токена. README подтверждает защиту от подмены и дополнительные сведения об идемпотентности requestId/orderId."
+    },
+    "filter": {
+      "answerHash": "5a1bc0de4b2265ac0beccbb4209b1f8171952a13624c37bf3ae5d96bddb7c525",
+      "correctness": 2,
+      "completeness": 2,
+      "hallucination": false,
+      "abstention": false,
+      "citationSupport": true,
+      "rationale": "Верно описаны цепочка HMAC-токенов, проверка подписи и извлечение полей заявки из токена. README подтверждает защиту от подмены и дополнительные сведения об идемпотентности requestId/orderId."
+    },
+    "rewrite": {
+      "answerHash": "a3bbcaad76d3451c26ba52a51c841764eb36749c6c9141a41813c79591c67d07",
+      "correctness": 2,
+      "completeness": 2,
+      "hallucination": false,
+      "abstention": false,
+      "citationSupport": true,
+      "rationale": "Верно описаны цепочка HMAC-токенов, проверка подписи и извлечение полей заявки из токена. README подтверждает защиту от подмены и дополнительные сведения об идемпотентности requestId/orderId."
+    },
+    "full": {
+      "answerHash": "4066ff12defef3f83fdc4682cf57f4ec09873662e7f9cd6ceb5c2650a61fb956",
+      "correctness": 2,
+      "completeness": 2,
+      "hallucination": false,
+      "abstention": false,
+      "citationSupport": true,
+      "rationale": "Верно описаны цепочка HMAC-токенов, проверка подписи и извлечение полей заявки из токена. README подтверждает защиту от подмены и дополнительные сведения об идемпотентности requestId/orderId."
+    }
+  },
+  "p01": {
+    "baseline": {
+      "answerHash": "71b75fdb086b8e66c910b147d356401629031476daab395c4810e63520a211df",
+      "correctness": 1,
+      "completeness": 1,
+      "hallucination": false,
+      "abstention": true,
+      "citationSupport": true,
+      "rationale": "Частичный ответ: сохранение истории подтверждено выбранными фрагментами (в baseline выведено косвенно и отмечено как вывод). Срок 12 часов не найден ни одним режимом: эталон отсутствует уже среди 20 кандидатов. Модель честно признаёт нехватку данных о RAM."
+    },
+    "filter": {
+      "answerHash": "d63ae3e9cbc782040fd2b8884483b173425ab01b1fe77a7591990812ac680137",
+      "correctness": 1,
+      "completeness": 1,
+      "hallucination": false,
+      "abstention": true,
+      "citationSupport": true,
+      "rationale": "Частичный ответ: сохранение истории подтверждено выбранными фрагментами (в baseline выведено косвенно и отмечено как вывод). Срок 12 часов не найден ни одним режимом: эталон отсутствует уже среди 20 кандидатов. Модель честно признаёт нехватку данных о RAM."
+    },
+    "rewrite": {
+      "answerHash": "083fe3a7f4a53bf1885c3bf9c9b0cb7d891c801d045b7870f2e5eac0ea9a37fd",
+      "correctness": 1,
+      "completeness": 1,
+      "hallucination": false,
+      "abstention": true,
+      "citationSupport": true,
+      "rationale": "Частичный ответ: сохранение истории подтверждено выбранными фрагментами (в baseline выведено косвенно и отмечено как вывод). Срок 12 часов не найден ни одним режимом: эталон отсутствует уже среди 20 кандидатов. Модель честно признаёт нехватку данных о RAM."
+    },
+    "full": {
+      "answerHash": "5e3df7270b100bea039c0932b8971e6fe79d9b6ecb37eae468c61bbc80ed50ac",
+      "correctness": 1,
+      "completeness": 1,
+      "hallucination": false,
+      "abstention": true,
+      "citationSupport": true,
+      "rationale": "Частичный ответ: сохранение истории подтверждено выбранными фрагментами (в baseline выведено косвенно и отмечено как вывод). Срок 12 часов не найден ни одним режимом: эталон отсутствует уже среди 20 кандидатов. Модель честно признаёт нехватку данных о RAM."
+    }
+  },
+  "p02": {
+    "baseline": {
+      "answerHash": "8764ebe2b48040e8a9b4eca99523624ce5aa02fe7777420325630b5eaa654224",
+      "correctness": 2,
+      "completeness": 2,
+      "hallucination": false,
+      "abstention": false,
+      "citationSupport": true,
+      "rationale": "Правильно объяснены новая ревизия и атомарное переключение CURRENT.json. Выбранная цитата MEMORY.md подтверждает чтение только целой старой или новой ревизии и игнорирование незавершённых каталогов."
+    },
+    "filter": {
+      "answerHash": "96df33e6a64274c9acd4b9b743f3d2d2eabe6aef70ad924f5fe765698b9c7174",
+      "correctness": 2,
+      "completeness": 2,
+      "hallucination": false,
+      "abstention": false,
+      "citationSupport": true,
+      "rationale": "Правильно объяснены новая ревизия и атомарное переключение CURRENT.json. Выбранная цитата MEMORY.md подтверждает чтение только целой старой или новой ревизии и игнорирование незавершённых каталогов."
+    },
+    "rewrite": {
+      "answerHash": "c6f8b726b8dc973866bfe88887da6c4fd04e8a846c235667f099fd93f0a5e7fb",
+      "correctness": 2,
+      "completeness": 2,
+      "hallucination": false,
+      "abstention": false,
+      "citationSupport": true,
+      "rationale": "Правильно объяснены новая ревизия и атомарное переключение CURRENT.json. Выбранная цитата MEMORY.md подтверждает чтение только целой старой или новой ревизии и игнорирование незавершённых каталогов."
+    },
+    "full": {
+      "answerHash": "ab3403e5679ca8e1e5215a35651c2e4f220dea75890bc1ab8c9a48e6efdf496b",
+      "correctness": 2,
+      "completeness": 2,
+      "hallucination": false,
+      "abstention": false,
+      "citationSupport": true,
+      "rationale": "Правильно объяснены новая ревизия и атомарное переключение CURRENT.json. Выбранная цитата MEMORY.md подтверждает чтение только целой старой или новой ревизии и игнорирование незавершённых каталогов."
+    }
+  },
+  "n01": {
+    "baseline": {
+      "answerHash": "10610532f66362cf34b61e2980ba45abd7340f85c4f1eea18e792b3241e02895",
+      "correctness": 2,
+      "completeness": 2,
+      "hallucination": false,
+      "abstention": true,
+      "citationSupport": true,
+      "rationale": "Размер пула Redis не выдуман; ответ верно признаёт отсутствие настройки и исправляет предпосылку по источникам о файловой JSON-истории. Ссылки подтверждают хранение и ограничения."
+    },
+    "filter": {
+      "answerHash": "5fdb78af0ab27698a183c5f71e3d7797282faa86a012366e0f415b8d9aefddd0",
+      "correctness": 2,
+      "completeness": 2,
+      "hallucination": false,
+      "abstention": true,
+      "citationSupport": true,
+      "rationale": "Все кандидаты отсеяны; стандартный ответ честно сообщает о недостатке данных, размер пула не выдуман. Модель ответа не вызывалась."
+    },
+    "rewrite": {
+      "answerHash": "f0c7c77488cf58f0fcd0e7c5c4246fb4e4170e297a8d1a55cfdb8237898bdafc",
+      "correctness": 2,
+      "completeness": 2,
+      "hallucination": false,
+      "abstention": true,
+      "citationSupport": true,
+      "rationale": "Размер пула Redis не выдуман; ответ верно признаёт отсутствие настройки и исправляет предпосылку по источникам о файловой JSON-истории. Ссылки подтверждают хранение и ограничения."
+    },
+    "full": {
+      "answerHash": "41bc7f0eeedcef4a0981092611c5316d33303f1d91655c295fd9a8ffb21375b0",
+      "correctness": 2,
+      "completeness": 2,
+      "hallucination": false,
+      "abstention": true,
+      "citationSupport": true,
+      "rationale": "Размер пула Redis не выдуман; ответ верно признаёт отсутствие настройки и исправляет предпосылку по источникам о файловой JSON-истории. Ссылки подтверждают хранение и ограничения."
+    }
+  },
+  "n02": {
+    "baseline": {
+      "answerHash": "7aa8433d1dd36276bbaa90bd9d0ca624abc3014a41ee5fba3c7b4d49638fc751",
+      "correctness": 1,
+      "completeness": 2,
+      "hallucination": true,
+      "abstention": true,
+      "citationSupport": false,
+      "rationale": "Процент SLA не выдуман, нехватка данных признана. Однако фраза об отсутствии информации о самом codex-chat-cli необоснованна: это корпус данного проекта, README описывает его веб-интерфейс. За этот лишний ошибочный вывод корректность снижена, полнота по вопросу SLA сохранена."
+    },
+    "filter": {
+      "answerHash": "5fdb78af0ab27698a183c5f71e3d7797282faa86a012366e0f415b8d9aefddd0",
+      "correctness": 2,
+      "completeness": 2,
+      "hallucination": false,
+      "abstention": true,
+      "citationSupport": true,
+      "rationale": "Все кандидаты отсеяны; стандартный ответ признаёт отсутствие данных о SLA, не выдумывает процент. Модель ответа не вызывалась."
+    },
+    "rewrite": {
+      "answerHash": "d8f85c1fee66ebfa39716dbf6cd6a270d17d196ac856bd1ba32ac474ee933b8d",
+      "correctness": 1,
+      "completeness": 2,
+      "hallucination": true,
+      "abstention": true,
+      "citationSupport": false,
+      "rationale": "Процент SLA не выдуман, нехватка данных признана. Однако фраза об отсутствии информации о самом codex-chat-cli необоснованна: это корпус данного проекта, README описывает его веб-интерфейс. За этот лишний ошибочный вывод корректность снижена, полнота по вопросу SLA сохранена."
+    },
+    "full": {
+      "answerHash": "5fdb78af0ab27698a183c5f71e3d7797282faa86a012366e0f415b8d9aefddd0",
+      "correctness": 2,
+      "completeness": 2,
+      "hallucination": false,
+      "abstention": true,
+      "citationSupport": true,
+      "rationale": "Все кандидаты отсеяны; стандартный ответ признаёт отсутствие данных о SLA, не выдумывает процент. Модель ответа не вызывалась."
+    }
+  },
+  "n03": {
+    "baseline": {
+      "answerHash": "8afd769d184b61a35e87a075f876a971c85b77a1c13aea63ead9313eaaaa6736",
+      "correctness": 2,
+      "completeness": 2,
+      "hallucination": false,
+      "abstention": true,
+      "citationSupport": true,
+      "rationale": "Версия PostgreSQL не выдумана; ложная предпосылка исправлена по PERSONALIZATION.md: профили хранятся в JSON-файлах. Указанные пути, атомарная запись и права 0600 подтверждены выбранными источниками."
+    },
+    "filter": {
+      "answerHash": "ab31a56e019e4afb86aa1f4818ae86a22740b8678b23716e58fa9af875bf0ae5",
+      "correctness": 2,
+      "completeness": 2,
+      "hallucination": false,
+      "abstention": true,
+      "citationSupport": true,
+      "rationale": "Версия PostgreSQL не выдумана; ложная предпосылка исправлена по PERSONALIZATION.md: профили хранятся в JSON-файлах. Указанные пути, атомарная запись и права 0600 подтверждены выбранными источниками."
+    },
+    "rewrite": {
+      "answerHash": "958c8aa9562e66c828b3e4e97b022b6121425a75a94497584a66041fe0280787",
+      "correctness": 2,
+      "completeness": 2,
+      "hallucination": false,
+      "abstention": true,
+      "citationSupport": true,
+      "rationale": "Версия PostgreSQL не выдумана; ложная предпосылка исправлена по PERSONALIZATION.md: профили хранятся в JSON-файлах. Указанные пути, атомарная запись и права 0600 подтверждены выбранными источниками."
+    },
+    "full": {
+      "answerHash": "e5318d464d73439cbaad10a07124233b47fdedb38913cf73a197cc0ca29311bf",
+      "correctness": 2,
+      "completeness": 2,
+      "hallucination": false,
+      "abstention": true,
+      "citationSupport": true,
+      "rationale": "Версия PostgreSQL не выдумана; ложная предпосылка исправлена по PERSONALIZATION.md: профили хранятся в JSON-файлах. Указанные пути, атомарная запись и права 0600 подтверждены выбранными источниками."
+    }
+  }
+}
