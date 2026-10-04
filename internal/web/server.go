@@ -20,6 +20,7 @@ import (
 	"codex-chat-cli/internal/memory"
 	"codex-chat-cli/internal/models"
 	"codex-chat-cli/internal/profile"
+	"codex-chat-cli/internal/rag"
 	"codex-chat-cli/internal/scheduler"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -34,7 +35,7 @@ const (
 	maxSessions     = 256
 )
 
-//go:embed static/index.html static/app.css static/app.js static/memory.js static/task-state.js static/invariants.js static/profiles.js static/mcp.js static/monitors.js static/documents.js static/markdown.js static/favicon.svg
+//go:embed static/index.html static/app.css static/app.js static/memory.js static/task-state.js static/invariants.js static/profiles.js static/mcp.js static/monitors.js static/documents.js static/rag.js static/markdown.js static/favicon.svg
 var staticFiles embed.FS
 
 type sessionEntry struct {
@@ -58,6 +59,7 @@ type server struct {
 }
 
 type chatRequest struct {
+	RAG                 bool     `json:"rag,omitempty"`
 	TaskID              string   `json:"taskId,omitempty"`
 	TaskVersion         *int     `json:"taskVersion,omitempty"`
 	ProfileID           string   `json:"profileId,omitempty"`
@@ -121,6 +123,9 @@ func NewHandlerWithScheduler(llm agent.LLM, model string, history agent.History,
 }
 
 func NewHandlerWithDocuments(llm agent.LLM, model string, history agent.History, mcpStore *mcpclient.Store, monitors *scheduler.Service, documents *docindex.Service, agentOptions ...agent.Option) http.Handler {
+	if documents != nil {
+		agentOptions = append(agentOptions, agent.WithRetriever(rag.Retriever{Documents: documents}))
+	}
 	var localMCP *mcp.Server
 	if monitors != nil {
 		localMCP = monitors.MCP(mcpStore)
@@ -156,6 +161,11 @@ func NewHandlerWithDocuments(llm agent.LLM, model string, history agent.History,
 	}
 
 	mux := http.NewServeMux()
+	mux.HandleFunc("/rag.js", func(w http.ResponseWriter, r *http.Request) {
+		app.serveStatic(w, r, "rag.js", "text/javascript; charset=utf-8")
+	})
+	mux.HandleFunc("/api/rag/report", app.handleRAGReport)
+	mux.HandleFunc("/api/rag/compare", app.handleRAGCompare)
 	mux.HandleFunc("/documents.js", func(w http.ResponseWriter, r *http.Request) {
 		app.serveStatic(w, r, "documents.js", "text/javascript; charset=utf-8")
 	})
@@ -340,6 +350,7 @@ func (s *server) handleChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	result, err := chatAgent.Ask(r.Context(), agent.Request{
+		RAG:       request.RAG,
 		ProfileID: request.ProfileID,
 		TaskID:    request.TaskID, TaskVersion: request.TaskVersion,
 		Message:             request.Message,

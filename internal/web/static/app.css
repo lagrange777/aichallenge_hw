@@ -1751,3 +1751,25 @@ kbd {
 #documents-evaluation details { margin: 12px 0; }
 #documents-panel [hidden], #documents-panel[hidden] { display: none; }
 @media (max-width: 900px) { .documents-columns { grid-template-columns: 1fr; } }
+
+/* RAG evidence and paired evaluation. */
+.rag-mode { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 8px 0; }
+.rag-mode input { width: auto; }
+.rag-hint, .rag-method, .rag-metrics, .rag-review-label { color: var(--muted, #929ba8); font-size: 12px; line-height: 1.6; }
+.rag-hint { margin: 4px 0; }
+.rag-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin: 14px 0; }
+.rag-answer, .rag-stat { border: 1px solid var(--line); border-radius: 14px; padding: 20px; min-width: 0; }
+.rag-answer h3 { margin: 0 0 12px; }
+.rag-answer .message-content { font-size: 14px; }
+.rag-grade { color: var(--accent-deep); font-weight: 600; }
+.rag-trace { margin: 12px 0; font-size: 12px; overflow-wrap: anywhere; }
+.rag-trace summary, .rag-expectations summary, .rag-answer details > summary { cursor: pointer; padding: 8px 0; }
+.rag-trace pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 360px; overflow: auto; }
+.rag-question-label { display: grid; gap: 8px; margin-top: 24px; }
+.rag-question-label select { width: 100%; min-width: 0; }
+.rag-live { border-top: 1px solid var(--line); margin-top: 28px; padding-top: 20px; }
+#rag-live-form { display: flex; gap: 12px; align-items: end; }
+#rag-live-form label { display: grid; gap: 8px; flex: 1; }
+#rag-live-query { width: 100%; }
+.rag-warning { color: var(--danger); }
+@media (max-width: 900px) { .rag-columns { grid-template-columns: 1fr; } #rag-live-form { flex-direction: column; align-items: stretch; } }

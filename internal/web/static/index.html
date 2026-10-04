@@ -110,6 +110,7 @@
           <button id="tab-monitors" class="workspace-tab" type="button" role="tab" aria-selected="false" aria-controls="monitors-panel" tabindex="-1">Фоновые задачи</button>
           <button id="tab-mcp" class="workspace-tab" type="button" role="tab" aria-selected="false" aria-controls="mcp-panel" tabindex="-1">MCP</button>
           <button id="tab-documents" class="workspace-tab" type="button" role="tab" aria-selected="false" aria-controls="documents-panel" tabindex="-1">Документы</button>
+          <button id="tab-rag" class="workspace-tab" type="button" role="tab" aria-selected="false" aria-controls="rag-panel" tabindex="-1">RAG</button>
         </nav>
         <button id="open-memory" class="memory-button" type="button" disabled>Память <span id="memory-pending-count"></span></button>
         <label class="model-badge" title="Модель OpenAI" for="model-select">
@@ -192,6 +193,8 @@
               </label>
             </div>
           </details>
+          <label class="rag-mode"><input id="rag-enabled" type="checkbox"> Искать в документах (RAG)</label>
+          <p class="rag-hint">С RAG вопрос отправляется в OpenAI Embeddings, а найденные фрагменты — модели. Без RAG новая выборка не выполняется; история чата сохраняется.</p>
           <div class="composer-bar">
             <span class="composer-hint"><kbd>Shift</kbd> + <kbd>Enter</kbd> — новая строка</span>
             <div class="composer-actions">
@@ -207,6 +210,18 @@
         <p class="disclaimer">Ответы модели могут содержать ошибки. Проверяйте важный код.</p>
       </footer>
       </div>
+      <section id="rag-panel" class="tasks-panel" role="tabpanel" aria-labelledby="tab-rag" hidden>
+        <header class="memory-header"><div><h1>Первый RAG-запрос</h1><p>Вопрос → релевантные фрагменты → ответ с источниками</p></div><button id="rag-refresh" type="button" class="memory-button">Обновить отчёт</button></header>
+        <p id="rag-status" role="status" aria-live="polite"></p>
+        <div id="rag-summary"></div>
+        <p class="rag-method">В сравнении у каждого ответа новая сессия: одна модель, одинаковая инструкция, без истории, профиля, памяти и MCP. База — снимок документов проекта; она может отличаться от текущего кода.</p>
+        <label class="rag-question-label">10 контрольных вопросов<select id="rag-question-select" aria-label="Контрольный вопрос"></select></label>
+        <div id="rag-saved-result"></div>
+        <section class="rag-live"><h2>Проверить свой вопрос</h2><p>Два новых ответа через OpenAI. Используется модель, выбранная вверху. Запуск расходует API-токены.</p>
+          <form id="rag-live-form"><label>Вопрос<input id="rag-live-query" required maxlength="2000" placeholder="Почему Sliding Window не использует previous_response_id?"></label><button id="rag-live-submit" type="submit" class="memory-button memory-primary">Сравнить без RAG / с RAG</button></form>
+          <p id="rag-live-status" role="status" aria-live="polite"></p><div id="rag-live-result"></div>
+        </section>
+      </section>
       <section id="documents-panel" class="tasks-panel" role="tabpanel" aria-labelledby="tab-documents" hidden>
         <header class="memory-header"><div><h1>Документы</h1><p>Локальный индекс · две стратегии разбиения</p></div><button id="documents-refresh" type="button" class="memory-button">Обновить</button></header>
         <p id="documents-status" role="status" aria-live="polite"></p>
@@ -457,6 +472,7 @@
   <script src="/mcp.js" defer></script>
   <script src="/monitors.js" defer></script>
   <script src="/documents.js" defer></script>
+  <script src="/rag.js" defer></script>
   <script src="/app.js" defer></script>
 </body>
 </html>

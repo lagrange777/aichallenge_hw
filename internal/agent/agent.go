@@ -27,6 +27,7 @@ type TokenCounter interface {
 
 // Request is a user request accepted by the agent.
 type Request struct {
+	RAG                 bool
 	ProfileID           string
 	TaskID              string
 	TaskVersion         *int
@@ -88,6 +89,7 @@ type Usage struct {
 
 // Response is the final result prepared by the agent for the interface layer.
 type Response struct {
+	Retrieval    *Retrieval
 	Text         string
 	Model        string
 	Usage        Usage
@@ -111,6 +113,7 @@ type MessageMetrics struct {
 
 // Message is one durable item in a conversation transcript.
 type Message struct {
+	Retrieval      *Retrieval       `json:"retrieval,omitempty"`
 	ToolRuns       []ToolRun        `json:"toolRuns,omitempty"`
 	InvariantCheck *InvariantCheck  `json:"invariantCheck,omitempty"`
 	Profile        *profile.Profile `json:"profile,omitempty"`
@@ -151,6 +154,7 @@ type History interface {
 
 // Agent owns one conversation and encapsulates its LLM request/response flow.
 type Agent struct {
+	retriever     Retriever
 	tools         ToolProvider
 	profileStore  *profile.Store
 	browserID     string
@@ -406,6 +410,10 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 		CompletionCondition: request.CompletionCondition,
 		Temperature:         request.Temperature,
 	}
+	retrieval, err := a.prepareRetrieval(ctx, request.RAG, &completionRequest)
+	if err != nil {
+		return Response{}, err
+	}
 	if a.activeProfile != nil && completionRequest.PreviousResponseID != "" {
 		// Profile edits must not keep older instructions in a hidden response chain.
 		completionRequest.History = contextMessages(a.messages)
@@ -422,6 +430,7 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 	guard := a.prepareInvariants(ctx, &completionRequest, layers)
 	a.prepareTools(ctx, &completionRequest, guard)
 	response := Response{
+		Retrieval:    retrieval,
 		Model:        request.Model,
 		TokenMetrics: a.measureTokens(ctx, completionRequest, metricSummary),
 	}
@@ -460,6 +469,7 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 	}
 
 	response.Text = completion.Output
+	response.Retrieval.RecordCitations(response.Text)
 	response.Model = completion.Model
 	response.Usage = completion.Usage
 	response.Duration = time.Since(started)
@@ -522,6 +532,7 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 		Message{Role: "user", Text: request.Message, Time: started.UnixMilli()},
 		Message{
 			Role:           "assistant",
+			Retrieval:      cloneRetrieval(response.Retrieval),
 			Profile:        a.activeProfile,
 			InvariantCheck: invariantCheck,
 			ToolRuns:       completion.ToolRuns,
@@ -666,6 +677,7 @@ func cloneMessages(messages []Message) []Message {
 	cloned := make([]Message, len(messages))
 	for index, message := range messages {
 		cloned[index] = message
+		cloned[index].Retrieval = cloneRetrieval(message.Retrieval)
 		cloned[index].ToolRuns = append([]ToolRun(nil), message.ToolRuns...)
 		cloned[index].ID = messageID(message)
 		if message.InvariantCheck != nil {
