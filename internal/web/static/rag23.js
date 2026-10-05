@@ -56,5 +56,6 @@
     try{const response=await fetch("/api/rag/run",{method:"POST",headers:{"Content-Type":"application/json","X-Codex-Chat":"1"},body:JSON.stringify({query:$("rag23-query").value,model:$("model-select").value,options:settings})});const value=await response.json();if(!response.ok)throw new Error(value.error);$("rag23-live-output").append(result(value));$("rag23-live-status").textContent="Готово. Новый запрос выполнен в независимой сессии; сохранённый эксперимент не изменён.";}
     catch(e){$("rag23-live-status").textContent=e.message;}finally{button.disabled=false;}
   });
-  window.CodexRAG23={load,labels,chatOptions:()=>options("rag-chat"),setChatBusy:busy=>{for(const id of ["mode","before","after","threshold"])$("rag-chat-"+id).disabled=busy;}};
+  $("rag-chat-grounded").addEventListener("change",()=>{if($("rag-chat-grounded").checked){$("rag-chat-mode").value="filter";$("rag-chat-threshold").value=Math.max(2,Number($("rag-chat-threshold").value));}});
+  window.CodexRAG23={load,labels,chatOptions:()=>({...options("rag-chat"),grounded:$("rag-chat-grounded").checked}),setChatBusy:busy=>{$("rag-chat-grounded").disabled=busy;for(const id of ["mode","before","after","threshold"])$("rag-chat-"+id).disabled=busy;}};
 })();

@@ -35,7 +35,7 @@ const (
 	maxSessions     = 256
 )
 
-//go:embed static/index.html static/app.css static/app.js static/memory.js static/task-state.js static/invariants.js static/profiles.js static/mcp.js static/monitors.js static/documents.js static/rag.js static/rag23.js static/markdown.js static/favicon.svg
+//go:embed static/index.html static/app.css static/app.js static/memory.js static/task-state.js static/invariants.js static/profiles.js static/mcp.js static/monitors.js static/documents.js static/rag.js static/rag23.js static/rag24.js static/markdown.js static/favicon.svg
 var staticFiles embed.FS
 
 type sessionEntry struct {
@@ -168,6 +168,10 @@ func NewHandlerWithDocuments(llm agent.LLM, model string, history agent.History,
 	mux.HandleFunc("/rag23.js", func(w http.ResponseWriter, r *http.Request) {
 		app.serveStatic(w, r, "rag23.js", "text/javascript; charset=utf-8")
 	})
+	mux.HandleFunc("/rag24.js", func(w http.ResponseWriter, r *http.Request) {
+		app.serveStatic(w, r, "rag24.js", "text/javascript; charset=utf-8")
+	})
+	mux.HandleFunc("/api/rag/grounding", app.handleRAGGrounding)
 	mux.HandleFunc("/api/rag/experiment", app.handleRAGExperiment)
 	mux.HandleFunc("/api/rag/run", app.handleRAGRun)
 	mux.HandleFunc("/api/rag/report", app.handleRAGReport)

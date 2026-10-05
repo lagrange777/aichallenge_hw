@@ -428,10 +428,13 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 		}
 		completionRequest.History = append([]ContextMessage{memoryContext(layers)}, completionRequest.History...)
 	}
+	strictRAG := request.RAG && retrieval.Options != nil && retrieval.Options.Grounded
 	var guard invariantPlan
 	if !retrieval.Empty {
 		guard = a.prepareInvariants(ctx, &completionRequest, layers)
-		a.prepareTools(ctx, &completionRequest, guard)
+		if !strictRAG {
+			a.prepareTools(ctx, &completionRequest, guard)
+		}
 	}
 	response := Response{
 		Retrieval:    retrieval,
@@ -464,7 +467,12 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 	}
 	completion := CompletionResponse{Model: request.Model, Output: NoRAGEvidence}
 	var invariantCheck *InvariantCheck
-	if !retrieval.Empty {
+	if strictRAG && retrieval.Empty {
+		retrieval.Grounding = unknownGrounding("below_threshold", 0)
+		completion.Output = UnknownRAGAnswer
+	} else if strictRAG {
+		completion, invariantCheck, err = a.completeGrounded(ctx, completionRequest, retrieval, guard)
+	} else if !retrieval.Empty {
 		completion, invariantCheck, err = a.completeWithInvariants(ctx, completionRequest, guard)
 	}
 	if err != nil {

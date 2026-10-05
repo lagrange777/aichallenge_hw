@@ -124,3 +124,82 @@ func TestRAGRunValidationAndConfiguredPipeline(t *testing.T) {
 		t.Fatalf("unexpected LLM calls: %d", llm.calls)
 	}
 }
+
+func TestGroundedRAGRunAndReport(t *testing.T) {
+	root := t.TempDir()
+	os.WriteFile(filepath.Join(root, "guide.md"), []byte("# Guide\nTTL is 12 hours."), 0600)
+	docs, err := docindex.LoadCorpus(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	store, err := docindex.Open(filepath.Join(t.TempDir(), "index.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	emb := &documentTestEmbedder{}
+	if _, err = store.Build(context.Background(), docs, emb, docindex.DefaultChunkConfig(), nil); err != nil {
+		t.Fatal(err)
+	}
+	llm := &fakeLLM{respond: func(r agent.CompletionRequest) string {
+		switch r.Instructions {
+		case rag.RerankPrompt:
+			var input struct {
+				Candidates []struct {
+					ID string `json:"id"`
+				} `json:"candidates"`
+			}
+			json.Unmarshal([]byte(r.Input), &input)
+			scores := []map[string]any{}
+			for _, c := range input.Candidates {
+				scores = append(scores, map[string]any{"id": c.ID, "score": 3, "reason": "direct evidence", "evidenceLine": 2})
+			}
+			b, _ := json.Marshal(map[string]any{"scores": scores})
+			return string(b)
+		case agent.GroundingPrompt:
+			return `{"status":"answered","claims":[{"text":"TTL — 12 часов.","evidence":[{"ref":"S1","start":2,"end":2}]}]}`
+		case agent.GroundingCheckPrompt:
+			return `{"claims":[{"index":0,"verdict":"supported","reason":"Указано явно"}],"complete":true}`
+		default:
+			t.Errorf("unexpected instruction %s", r.Instructions)
+			return ""
+		}
+	}}
+	h := NewHandlerWithDocuments(llm, "test", nil, nil, nil, &docindex.Service{Store: store, Embedder: emb})
+	for _, mode := range []string{"baseline", "filter"} {
+		req := httptest.NewRequest("POST", "/api/rag/run", strings.NewReader(`{"query":"TTL?","options":{"mode":"`+mode+`","topKBefore":20,"topKAfter":5,"relevanceThreshold":2,"grounded":true}}`))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("X-Codex-Chat", "1")
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, req)
+		if mode == "baseline" {
+			if w.Code != 400 || llm.calls != 0 {
+				t.Fatal("invalid mode performed calls")
+			}
+			continue
+		}
+		if w.Code != 200 {
+			t.Fatal(w.Code, w.Body.String())
+		}
+		var result rag.ModeResult
+		if err = json.Unmarshal(w.Body.Bytes(), &result); err != nil {
+			t.Fatal(err)
+		}
+		if result.Answer.Retrieval.Grounding == nil || result.Answer.Retrieval.Grounding.Status != "answered" || !strings.Contains(result.Answer.Text, "TTL is 12 hours.") {
+			t.Fatal(w.Body.String())
+		}
+	}
+	if llm.calls != 3 {
+		t.Fatalf("wanted reranker + answer + check, got %d", llm.calls)
+	}
+	report := filepath.Join(t.TempDir(), "report.json")
+	os.WriteFile(report, []byte(`{"version":1,"complete":true,"pairs":[]}`), 0600)
+	t.Setenv("RAG_GROUNDING_PATH", report)
+	req := httptest.NewRequest("GET", "/api/rag/grounding", nil)
+	req.Header.Set("X-Codex-Chat", "1")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+	if w.Code != 200 || !strings.Contains(w.Body.String(), `"complete":true`) {
+		t.Fatal(w.Body.String())
+	}
+}

@@ -64,7 +64,9 @@ type Report struct {
 type comparisonLLM struct{ agent.LLM }
 
 func (l comparisonLLM) Complete(ctx context.Context, r agent.CompletionRequest) (agent.CompletionResponse, error) {
-	r.Instructions = EvaluationPrompt
+	if !r.Internal {
+		r.Instructions = EvaluationPrompt
+	}
 	return l.LLM.Complete(ctx, r)
 }
 func AnswerQuestion(ctx context.Context, llm agent.LLM, retriever agent.Retriever, model, query string, enabled bool) (Answer, error) {
