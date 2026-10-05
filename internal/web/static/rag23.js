@@ -57,5 +57,5 @@
     catch(e){$("rag23-live-status").textContent=e.message;}finally{button.disabled=false;}
   });
   $("rag-chat-grounded").addEventListener("change",()=>{if($("rag-chat-grounded").checked){$("rag-chat-mode").value="filter";$("rag-chat-threshold").value=Math.max(2,Number($("rag-chat-threshold").value));}});
-  window.CodexRAG23={load,labels,chatOptions:()=>({...options("rag-chat"),grounded:$("rag-chat-grounded").checked}),setChatBusy:busy=>{$("rag-chat-grounded").disabled=busy;for(const id of ["mode","before","after","threshold"])$("rag-chat-"+id).disabled=busy;}};
+  window.CodexRAG23={load,labels,chatOptions:()=>({...options("rag-chat"),grounded:$("rag-chat-grounded").checked,dialogue:$("rag-chat-dialogue").checked}),setChatBusy:busy=>{$("rag-chat-dialogue").disabled=busy;$("rag-chat-grounded").disabled=busy;for(const id of ["mode","before","after","threshold"])$("rag-chat-"+id).disabled=busy;}};
 })();

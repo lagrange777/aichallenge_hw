@@ -203,3 +203,26 @@ func TestGroundedRAGRunAndReport(t *testing.T) {
 		t.Fatal(w.Body.String())
 	}
 }
+
+func TestDialogueAPIRequiresPersistentChat(t *testing.T) {
+	h := NewHandler(&fakeLLM{}, "test-model", nil)
+	w := performChatBody(h, nil, `{"message":"q","rag":false,"ragOptions":{"mode":"filter","topKBefore":20,"topKAfter":5,"relevanceThreshold":2,"grounded":true,"dialogue":true}}`)
+	if w.Code != 400 {
+		t.Fatal(w.Code, w.Body.String())
+	}
+	report := filepath.Join(t.TempDir(), "dialogues.json")
+	os.WriteFile(report, []byte(`{"version":1,"complete":true,"runs":[]}`), 0600)
+	t.Setenv("RAG_DIALOGUE_PATH", report)
+	for _, tc := range []struct {
+		method, header string
+		want           int
+	}{{"GET", "1", 200}, {"POST", "1", 405}, {"GET", "", 403}} {
+		req := httptest.NewRequest(tc.method, "/api/rag/dialogues", nil)
+		req.Header.Set("X-Codex-Chat", tc.header)
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, req)
+		if w.Code != tc.want {
+			t.Fatal(w.Code, w.Body.String())
+		}
+	}
+}

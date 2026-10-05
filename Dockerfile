@@ -42,6 +42,8 @@ RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build -trimpath -ldflags="-s -w" -o /ou
 
 RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build -trimpath -ldflags="-s -w" -o /out/rag-grounding ./cmd/rag-grounding
 
+RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build -trimpath -ldflags="-s -w" -o /out/rag-dialogue ./cmd/rag-dialogue
+
 RUN mkdir -p /out/data && chown 65532:65532 /out/data
 
 FROM scratch AS runtime
@@ -53,17 +55,20 @@ COPY --from=build /out/doc-index /doc-index
 COPY --from=build /out/rag-eval /rag-eval
 COPY --from=build /out/rag-bench /rag-bench
 COPY --from=build /out/rag-grounding /rag-grounding
+COPY --from=build /out/rag-dialogue /rag-dialogue
 COPY --chown=65532:65532 documents /documents
 COPY --chown=65532:65532 artifacts/docindex /documents/artifacts
 COPY --chown=65532:65532 artifacts/rag/comparison.json /documents/rag/comparison.json
 COPY --chown=65532:65532 artifacts/rag23/comparison.json /documents/rag23/comparison.json
 COPY --chown=65532:65532 artifacts/rag24/comparison.json /documents/rag24/comparison.json
+COPY --chown=65532:65532 artifacts/rag25 /documents/rag25
 COPY --from=build --chown=65532:65532 /out/data /data
 
 ENV DOCUMENT_INDEX_PATH=/documents/artifacts/index.sqlite
 ENV RAG_REPORT_PATH=/documents/rag/comparison.json
 ENV RAG_EXPERIMENT_PATH=/documents/rag23/comparison.json
 ENV RAG_GROUNDING_PATH=/documents/rag24/comparison.json
+ENV RAG_DIALOGUE_PATH=/documents/rag25/comparison.json
 
 USER 65532:65532
 

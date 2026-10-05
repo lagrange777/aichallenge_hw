@@ -112,6 +112,10 @@ func (s *server) handleRAGRun(w http.ResponseWriter, r *http.Request) {
 	if input.Options != nil {
 		o = *input.Options
 	}
+	if o.Dialogue {
+		writeJSON(w, 400, apiResponse{Error: "Режим памяти доступен в чате, а не в одиночном запросе"})
+		return
+	}
 	if err := o.Validate(); err != nil {
 		writeJSON(w, 400, apiResponse{Error: err.Error()})
 		return
@@ -149,6 +153,27 @@ func (s *server) handleRAGGrounding(w http.ResponseWriter, r *http.Request) {
 	var report rag.GroundingExperiment
 	if json.Unmarshal(b, &report) != nil {
 		writeJSON(w, 500, apiResponse{Error: "Некорректный отчёт"})
+		return
+	}
+	writeJSON(w, 200, report)
+}
+
+func (s *server) handleRAGDialogues(w http.ResponseWriter, r *http.Request) {
+	if !allowAPIRequest(w, r, http.MethodGet) {
+		return
+	}
+	path := os.Getenv("RAG_DIALOGUE_PATH")
+	if path == "" {
+		path = "artifacts/rag25/comparison.json"
+	}
+	b, err := os.ReadFile(path)
+	if err != nil {
+		writeJSON(w, 404, apiResponse{Error: "Сценарии ещё не выполнены. Запустите rag-dialogue."})
+		return
+	}
+	var report rag.DialogueExperiment
+	if json.Unmarshal(b, &report) != nil {
+		writeJSON(w, 500, apiResponse{Error: "Не удалось прочитать сценарии"})
 		return
 	}
 	writeJSON(w, 200, report)

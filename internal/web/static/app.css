@@ -1783,3 +1783,10 @@ kbd {
 #rag23-summary td,#rag23-summary th {padding:10px;text-align:left;font-size:12px;}
 #rag23-run {margin-top:12px;}
 @media(max-width:700px){.rag23-settings{grid-template-columns:repeat(2,minmax(0,1fr));}.rag23-mode-pair{grid-template-columns:1fr;}}
+
+.dialogue-memory { margin: 8px 24px; padding: 10px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); flex-shrink: 0; }
+#dialogue-memory-content { max-height: min(160px, 18vh); overflow: auto; font-size: 13px; }
+.dialogue-entry { padding: 10px 0; border-bottom: 1px solid var(--line); }
+.dialogue-entry p { margin: 6px 0; overflow-wrap: anywhere; }
+#dialogue-memory-panel[hidden] { display: none; }
+.workspace:has(#dialogue-memory-panel:not([hidden])):not(.tasks-active) { grid-template-rows: auto auto auto minmax(0, 1fr) auto; }

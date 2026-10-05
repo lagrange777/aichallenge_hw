@@ -128,6 +128,7 @@ type Message struct {
 
 // ConversationState is the complete state needed to restore an Agent.
 type ConversationState struct {
+	Dialogue           *DialogueState         `json:"dialogue,omitempty"`
 	MemoryTaskID       string                 `json:"memoryTaskId,omitempty"`
 	PreviousResponseID string                 `json:"previousResponseId,omitempty"`
 	ActiveModel        string                 `json:"activeModel,omitempty"`
@@ -155,6 +156,7 @@ type History interface {
 
 // Agent owns one conversation and encapsulates its LLM request/response flow.
 type Agent struct {
+	dialogue      *DialogueState
 	retriever     Retriever
 	tools         ToolProvider
 	profileStore  *profile.Store
@@ -279,6 +281,7 @@ func (a *Agent) restoreConversationLocked(state ConversationState) {
 	a.clearConversationLocked()
 	a.previousResponseID = strings.TrimSpace(state.PreviousResponseID)
 	a.activeModel = strings.TrimSpace(state.ActiveModel)
+	a.dialogue = cloneDialogue(state.Dialogue)
 	a.messages = cloneMessages(state.Messages)
 	if state.Strategy != nil {
 		a.strategy = normalizeStrategyConfig(*state.Strategy)
@@ -366,6 +369,31 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 		return Response{}, err
 	}
 
+	if request.RAGOptions != nil && request.RAGOptions.Dialogue && !request.RAG {
+		return Response{}, fmt.Errorf("диалог с памятью требует включённого RAG")
+	}
+	dialogueMode := request.RAG && request.RAGOptions != nil && request.RAGOptions.Dialogue
+	if request.RAGOptions != nil {
+		if err := request.RAGOptions.Validate(); err != nil {
+			return Response{}, err
+		}
+	}
+	if dialogueMode && a.strategy.Type != StrategySlidingWindow {
+		return Response{}, fmt.Errorf("диалог с RAG использует Sliding Window; создайте чат с этой стратегией")
+	}
+	nextDialogue := cloneDialogue(a.dialogue)
+	if nextDialogue != nil {
+		nextDialogue.Enabled = dialogueMode
+	}
+	var dialoguePlan dialoguePlan
+	var dialogueSteps []RetrievalStep
+	if dialogueMode {
+		var err error
+		nextDialogue, dialoguePlan, dialogueSteps, err = a.prepareDialogue(ctx, request.Model, request.Message)
+		if err != nil {
+			return Response{}, err
+		}
+	}
 	prepared := preparedCompression{Summary: cloneSummary(a.summary)}
 	preparedFacts := cloneFacts(a.facts)
 	preparedMemory := cloneMemoryUsage(a.memory)
@@ -411,9 +439,21 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 		CompletionCondition: request.CompletionCondition,
 		Temperature:         request.Temperature,
 	}
+	originalInput := completionRequest.Input
+	if dialogueMode {
+		completionRequest.Input = dialoguePlan.Query
+	}
 	retrieval, err := a.prepareRetrieval(ctx, request.RAG, &completionRequest, request.RAGOptions)
+	completionRequest.Input = originalInput
 	if err != nil {
 		return Response{}, err
+	}
+	if dialogueMode {
+		retrieval.Dialogue = cloneDialogue(nextDialogue)
+		retrieval.OriginalQuery = request.Message
+		retrieval.ResolvedQuery = dialoguePlan.Query
+		retrieval.Clarification = dialoguePlan.Clarification
+		retrieval.Steps = append(dialogueSteps, retrieval.Steps...)
 	}
 	if a.activeProfile != nil && completionRequest.PreviousResponseID != "" {
 		// Profile edits must not keep older instructions in a hidden response chain.
@@ -430,7 +470,7 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 	}
 	strictRAG := request.RAG && retrieval.Options != nil && retrieval.Options.Grounded
 	var guard invariantPlan
-	if !retrieval.Empty {
+	if !retrieval.Empty || dialogueMode {
 		guard = a.prepareInvariants(ctx, &completionRequest, layers)
 		if !strictRAG {
 			a.prepareTools(ctx, &completionRequest, guard)
@@ -467,9 +507,15 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 	}
 	completion := CompletionResponse{Model: request.Model, Output: NoRAGEvidence}
 	var invariantCheck *InvariantCheck
-	if strictRAG && retrieval.Empty {
+	if dialogueMode && retrieval.Clarification != "" {
+		retrieval.Grounding = unknownGrounding("ambiguous_question", 0)
+		completion.Output = "Не знаю, к чему относится уточнение. Пожалуйста, уточните вопрос или назовите обсуждаемый объект.\n\nИсточники: подтверждающие источники не найдены."
+	} else if strictRAG && retrieval.Empty && !(dialogueMode && dialoguePlan.Scope == "memory" && len(nextDialogue.Sources) > 0) {
 		retrieval.Grounding = unknownGrounding("below_threshold", 0)
 		completion.Output = UnknownRAGAnswer
+		if dialogueMode {
+			completion.Output += "\n\nИсточники: подтверждающие источники не найдены."
+		}
 	} else if strictRAG {
 		completion, invariantCheck, err = a.completeGrounded(ctx, completionRequest, retrieval, guard)
 	} else if !retrieval.Empty {
@@ -590,6 +636,7 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 	}
 	if a.history != nil {
 		state := ConversationState{
+			Dialogue:           cloneDialogue(nextDialogue),
 			MemoryTaskID:       layers.Task.ID,
 			PreviousResponseID: completion.ResponseID,
 			ActiveModel:        request.Model,
@@ -611,6 +658,7 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 	a.previousResponseID = completion.ResponseID
 	a.activeModel = request.Model
 	a.messages = nextMessages
+	a.dialogue = nextDialogue
 	a.summary = prepared.Summary
 	a.facts = preparedFacts
 	a.memory = preparedMemory
@@ -681,6 +729,7 @@ func (a *Agent) clearConversationLocked() {
 	a.previousResponseID = ""
 	a.activeModel = ""
 	a.messages = nil
+	a.dialogue = nil
 	a.summary = ConversationSummary{}
 	a.strategy = a.defaultStrategy
 	a.facts = make(map[string]string)

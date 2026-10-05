@@ -161,8 +161,15 @@ func (a *Agent) completeGrounded(ctx context.Context, request CompletionRequest,
 	if plan.Failed {
 		return result, nil, fmt.Errorf("RAG: проверка инвариантов недоступна")
 	}
+	evidence := append([]Source(nil), r.Sources...)
+	answerPrompt, checkPrompt := GroundingPrompt, GroundingCheckPrompt
+	if r.Dialogue != nil {
+		evidence = append(evidence, r.Dialogue.Sources...)
+		answerPrompt += DialogueGroundingInstructions
+		checkPrompt += DialogueGroundingInstructions
+	}
 	docs := []any{}
-	for _, s := range r.Sources {
+	for _, s := range evidence {
 		lines := map[int]string{}
 		for i, line := range strings.Split(s.Text, "\n") {
 			lines[i+1] = line
@@ -170,16 +177,21 @@ func (a *Agent) completeGrounded(ctx context.Context, request CompletionRequest,
 		docs = append(docs, map[string]any{"ref": s.Ref, "source": s.Source, "section": s.Section, "lines": lines})
 	}
 	input := map[string]any{"question": request.Input, "sources": docs}
+	if r.Dialogue != nil {
+		input["originalQuestion"] = request.Input
+		input["resolvedQuestion"] = r.ResolvedQuery
+		input["taskState"] = dialogueJSON(r.Dialogue)
+	}
 	var g *Grounding
 	for attempt := 1; attempt <= 2; attempt++ {
-		c, err := a.groundingCall(ctx, request.Model, "grounded_answer", GroundingPrompt, input, r)
+		c, err := a.groundingCall(ctx, request.Model, "grounded_answer", answerPrompt, input, r)
 		if err != nil {
 			return result, nil, err
 		}
-		g, err = validateGroundedDraft(c.Output, r.Sources)
+		g, err = validateGroundedDraft(c.Output, evidence)
 		if err == nil && g.Status != "unknown" {
 			var check CompletionResponse
-			check, err = a.groundingCall(ctx, request.Model, "grounding_check", GroundingCheckPrompt, map[string]any{"question": request.Input, "claims": g.Claims, "quotes": g.Quotes, "context": g.Sources}, r)
+			check, err = a.groundingCall(ctx, request.Model, "grounding_check", checkPrompt, map[string]any{"question": request.Input, "resolvedQuestion": r.ResolvedQuery, "taskState": r.Dialogue, "claims": g.Claims, "quotes": g.Quotes, "context": g.Sources}, r)
 			if err != nil {
 				return result, nil, err
 			}
@@ -221,6 +233,9 @@ func (a *Agent) completeGrounded(ctx context.Context, request CompletionRequest,
 		return result, nil, fmt.Errorf("RAG: ответ не прошёл проверку после исправления; непроверенные утверждения не сохранены")
 	}
 	result.Output = renderGrounding(g)
+	if r.Dialogue != nil && g.Status == "unknown" {
+		result.Output += "\n\nИсточники: подтверждающие источники не найдены."
+	}
 	var report *InvariantCheck
 	if len(plan.Rules) > 0 {
 		v, u, err := a.checkInvariants(ctx, request.Model, "answer", plan.Rules, request, result.Output)

@@ -25,6 +25,10 @@ type Source struct {
 	Score   float64 `json:"score"`
 }
 type Retrieval struct {
+	Dialogue         *DialogueState    `json:"dialogue,omitempty"`
+	OriginalQuery    string            `json:"originalQuery,omitempty"`
+	ResolvedQuery    string            `json:"resolvedQuery,omitempty"`
+	Clarification    string            `json:"clarification,omitempty"`
 	Grounding        *Grounding        `json:"grounding,omitempty"`
 	Options          *RetrievalOptions `json:"options,omitempty"`
 	Query            string            `json:"query,omitempty"`
@@ -125,6 +129,7 @@ func cloneRetrieval(r *Retrieval) *Retrieval {
 		return nil
 	}
 	c := *r
+	c.Dialogue = cloneDialogue(r.Dialogue)
 	if r.Grounding != nil {
 		data, _ := json.Marshal(r.Grounding)
 		var g Grounding
