@@ -66,7 +66,7 @@
     if (name === "mcp") window.CodexMCP.load();
     if (name === "monitors") window.CodexMonitors.load();
     if (name === "documents") window.CodexDocuments.load();
-    if (name === "rag") { window.CodexRAG.load(); window.CodexRAG23.load(); window.CodexRAG24.load(); }
+    if (name === "rag") { window.CodexRAG.load(); window.CodexRAG23.load(); window.CodexRAG24.load(); window.CodexRAG25.load(); }
   }
   sectionTabs.forEach((tab, index) => {
     tab.addEventListener("click", () => selectSection(sections[index]));
@@ -361,6 +361,7 @@
       }
       transcript = [];
       renderTranscript();
+      window.CodexRAG25?.memory(null);
       input.value = "";
       optionInputs.forEach((field) => { field.value = ""; });
       responseOptionsDetails.open = false;
@@ -732,6 +733,7 @@
   }
 
   function applyContextState(next) {
+ window.CodexRAG25?.memory(next?.dialogue);
     if (!next || typeof next !== "object") {
       return;
     }

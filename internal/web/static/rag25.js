@@ -1,0 +1,27 @@
+(() => {
+  "use strict";
+  const $=id=>document.getElementById(id);
+  const node=(tag,text)=>{const el=document.createElement(tag);if(text!==undefined)el.textContent=text;return el;};
+  const kinds={goal:"Цель",clarification:"Уточнение",constraint:"Ограничение",term:"Термин"};
+  let report;
+  function entries(state,editable=false){
+    const box=node("div");
+    box.append(node("p",`Версия ${state.version} · ход ${state.turn} · условия пользователя, не факты из документов`));
+    for(const e of state.entries||[]){const row=node("div");row.className="dialogue-entry";row.append(node("strong",kinds[e.kind]),node("p",e.text));const source=node("details");source.append(node("summary",`Источник: сообщение ${e.ref}`));const original=(state.sources||[]).find(s=>s.ref===e.ref);if(original)source.append(node("p",original.text));row.append(source);
+      if(editable){const edit=node("button","Исправить в чате");edit.type="button";edit.className="memory-button";edit.addEventListener("click",()=>{const input=$("message-input");input.value=`Уточнение к записи «${e.text}»: `;input.dispatchEvent(new Event("input",{bubbles:true}));input.focus();});row.append(edit);}box.append(row);
+    }return box;
+  }
+  function memory(state){const panel=$("dialogue-memory-panel");panel.hidden=!state;$("dialogue-memory-content").replaceChildren();$("rag-chat-dialogue").checked=Boolean(state?.enabled);if(state){$("dialogue-memory-content").append(entries(state,true));if(state.enabled)enable();}}
+  function enable(){if(!$("rag-chat-dialogue").checked)return;$("rag-enabled").checked=true;$("rag-chat-grounded").checked=true;$("rag-chat-mode").value="filter";$("rag-chat-threshold").value=Math.max(2,Number($("rag-chat-threshold").value));}
+  $("rag-chat-dialogue").addEventListener("change",enable);
+  $("rag-enabled").addEventListener("change",()=>{if(!$("rag-enabled").checked)$("rag-chat-dialogue").checked=false;});
+  $("rag-chat-grounded").addEventListener("change",()=>{if(!$("rag-chat-grounded").checked)$("rag-chat-dialogue").checked=false;});
+  function renderTurn(){const run=report?.runs[Number($("rag25-scenario").value)];if(!run)return;const i=Number($("rag25-turn").value),turn=run.scenario.turns[i],out=$("rag25-result");out.replaceChildren(node("h2",`Ход ${i+1}: ${turn.query}`));const exp=node("details");exp.append(node("summary","Ожидания и память после хода"));for(const t of turn.expectations)exp.append(node("p",t));for(const t of turn.expectedMemory)exp.append(node("p",`В памяти: ${t}`));exp.append(node("p",`Источники: ${turn.sources.join(", ")||"ожидается отказ"}`));out.append(exp);const cols=node("div");cols.className="rag-columns";
+    for(const [mode,title] of [["before","Строгий RAG без контекста диалога"],["after","RAG с памятью задачи"]]){const result=run[mode]?.[i];if(!result)continue;const card=window.CodexRAG.answerCard(title,result.answer);if(result.grade){const g=result.grade;card.insertBefore(node("p",`Цель: ${g.goalRetained?"✓":"✗"} · условия: ${g.constraintsMet?"✓":"✗"} · контекст: ${g.contextUnderstood?"✓":"✗"} · источники: ${g.sourcesSupported?"✓":"✗"} · ${g.correctness}/2`),card.children[1]);card.append(node("p",g.rationale));}if(result.state){const d=node("details");d.append(node("summary",`Память: ${(result.state.entries||[]).length} записей · ожидания ${result.memoryMatches?"выполнены":"не выполнены"}`),entries(result.state));card.append(d);}cols.append(card);}out.append(cols);
+  }
+  function scenario(){const run=report?.runs[Number($("rag25-scenario").value)];if(!run)return;$("rag25-turn").replaceChildren(...run.scenario.turns.map((t,i)=>{const el=node("option",`${i+1}. ${t.query}`);el.value=i;return el;}));renderTurn();}
+  async function load(){try{const response=await fetch("/api/rag/dialogues",{headers:{"X-Codex-Chat":"1"}});const v=await response.json();if(!response.ok)throw Error(v.error);report=v;$("rag25-status").textContent=`${v.complete?"Сценарии завершены":"Частичный прогон"} · ${v.model} · новая выборка на каждом ходе`;const out=$("rag25-summary");out.replaceChildren();const table=node("table");table.className="monitor-table";const h=node("tr");for(const x of ["Режим","Ходов","Цель","Условия","Контекст","Источники","Качество"])h.append(node("th",x));table.append(h);
+    for(const [mode,label]of[["before","Без памяти"],["after","С памятью"]]){const rs=v.runs.flatMap(r=>r[mode]||[]).filter(r=>r.grade),row=node("tr");const count=k=>`${rs.filter(r=>r.grade[k]).length}/${rs.length}`;for(const x of [label,rs.length,count("goalRetained"),count("constraintsMet"),count("contextUnderstood"),count("sourcesSupported"),rs.length?(rs.reduce((s,r)=>s+r.grade.correctness,0)/rs.length).toFixed(2)+"/2":"—"])row.append(node("td",x));table.append(row);}const wrap=node("div");wrap.className="monitor-table-wrap";wrap.append(table);out.append(wrap,node("p","По 12 пользовательских запросов + ответы в двух сценариях. Перед каждым ходом агент восстановлен с диска. Оценка отдельным вызовом той же модели; она может ошибаться. Начальные условия выходят за окно последних 4 сообщений."));$("rag25-scenario").replaceChildren(...v.runs.map((r,i)=>{const o=node("option",r.scenario.title);o.value=i;return o;}));scenario();}catch(e){$("rag25-status").textContent=e.message;}}
+  $("rag25-refresh").addEventListener("click",load);$("rag25-scenario").addEventListener("change",scenario);$("rag25-turn").addEventListener("change",renderTurn);
+  window.CodexRAG25={load,memory};
+})();

@@ -124,6 +124,7 @@
 
       <div id="chat-panel" role="tabpanel" aria-labelledby="tab-chat">
       <div id="chat-task-state" class="chat-task-state" aria-live="polite"></div>
+      <details id="dialogue-memory-panel" class="dialogue-memory" hidden><summary>Контекст диалога</summary><div id="dialogue-memory-content"></div></details>
       <section class="chat" id="chat" aria-label="Диалог">
         <div class="empty-state" id="empty-state">
           <div class="hero-mark" aria-hidden="true">&gt;_</div>
@@ -194,6 +195,7 @@
             </div>
           </details>
           <label class="rag-mode"><input id="rag-enabled" type="checkbox"> Искать в документах (RAG)</label>
+          <label><input type="checkbox" id="rag-chat-dialogue"> Диалог с RAG и памятью задачи</label>
           <details class="rag-chat-settings"><summary>Настройки RAG</summary><label><input type="checkbox" id="rag-chat-grounded" checked> Проверять утверждения и цитаты (фильтр, порог ≥ 2)</label><div class="rag23-settings"><label>Режим<select id="rag-chat-mode"><option value="baseline">Базовый RAG</option><option value="filter" selected>Реранкинг + фильтр</option><option value="rewrite">Query rewrite</option><option value="full">Rewrite + фильтр</option></select></label><label>K до<input id="rag-chat-before" type="number" min="1" max="20" value="20" required></label><label>K после<input id="rag-chat-after" type="number" min="1" max="10" value="5" required></label><label>Порог (0–3)<input id="rag-chat-threshold" type="number" min="0" max="3" value="2" required></label></div></details>
           <p class="rag-hint">С RAG вопрос отправляется в OpenAI Embeddings, а найденные фрагменты — модели. Без RAG новая выборка не выполняется; история чата сохраняется.</p>
           <div class="composer-bar">
@@ -212,11 +214,17 @@
       </footer>
       </div>
       <section id="rag-panel" class="tasks-panel" role="tabpanel" aria-labelledby="tab-rag" hidden>
+        <header class="memory-header"><div><h1>Диалог с RAG и памятью задачи</h1><p>Два сценария по 12 запросов · история, цель и источники</p></div><button id="rag25-refresh" type="button" class="memory-button">Обновить сценарии</button></header>
+        <p id="rag25-status" role="status"></p><div id="rag25-summary"></div>
+        <label class="rag-question-label">Сценарий<select id="rag25-scenario"></select></label>
+        <label class="rag-question-label">Шаг сценария<select id="rag25-turn"></select></label><div id="rag25-result"></div>
+        <details class="rag-previous"><summary>Задание 24: цитаты и анти-галлюцинации</summary>
         <header class="memory-header"><div><h1>Цитаты, источники и анти-галлюцинации</h1><p>Ответ → точные цитаты → проверка утверждений</p></div><button id="rag24-refresh" type="button" class="memory-button">Обновить проверку</button></header>
         <p id="rag24-status" role="status" aria-live="polite"></p><div id="rag24-summary"></div>
         <p class="rag-method">10 вопросов · одинаковые чанки для двух режимов · фильтр 20 → 5, порог 2/3. Проверка смысла отдельным вызовом той же модели; она может ошибаться. Для «не знаю» цитаты не требуются.</p>
         <label class="rag-question-label">Вопрос проверки<select id="rag24-question" aria-label="Вопрос проверки"></select></label><div id="rag24-pair"></div>
         <section class="rag-live"><h2>Спросить с проверкой цитат</h2><p>Платные запросы OpenAI: поиск, ответ и проверка. При слабом контексте — «не знаю» и уточнение.</p><form id="rag24-form"><label class="rag-question-label">Ваш вопрос<input id="rag24-query" required maxlength="2000" placeholder="Через какое время неактивные агенты удаляются из памяти?"></label><button id="rag24-run" type="submit" class="memory-button memory-primary">Ответить с цитатами</button></form><p id="rag24-live-status" role="status" aria-live="polite"></p><div id="rag24-output"></div></section>
+        </details>
         <details class="rag-previous"><summary>Задание 23: реранкинг, фильтрация и query rewrite</summary>
         <header class="memory-header"><div><h1>Реранкинг и фильтрация</h1><p>Query rewrite → поиск → оценка релевантности → ответ</p></div><button id="rag23-refresh" type="button" class="memory-button">Обновить сравнение</button></header>
         <p id="rag23-status" role="status" aria-live="polite"></p><div id="rag23-summary"></div>
@@ -494,6 +502,7 @@
   <script src="/rag.js" defer></script>
   <script src="/rag23.js" defer></script>
   <script src="/rag24.js" defer></script>
+  <script src="/rag25.js" defer></script>
   <script src="/app.js" defer></script>
 </body>
 </html>

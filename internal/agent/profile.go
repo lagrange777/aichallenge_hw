@@ -109,6 +109,7 @@ func (a *Agent) SwitchProfile(expectedID, targetID string) (ProfileView, error) 
 		return ProfileView{}, err
 	}
 	a.conversationID, a.taskID = candidate.conversationID, candidate.taskID
+	a.dialogue = cloneDialogue(candidate.dialogue)
 	a.previousResponseID, a.activeModel, a.messages = candidate.previousResponseID, candidate.activeModel, candidate.messages
 	a.summary, a.compression, a.strategy = candidate.summary, candidate.compression, candidate.strategy
 	a.facts, a.memory, a.branches = candidate.facts, candidate.memory, candidate.branches

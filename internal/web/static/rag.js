@@ -8,8 +8,9 @@
     box.append(node("summary", r.mode === "rag" ? `С RAG · ${r.sources?.length || 0} источников · ${r.strategy} · ${r.durationMs ? "поиск " + r.durationMs + " мс" : "общая выборка"}` : "Без RAG · поиск по документам выключен"));
     if (r.mode !== "rag") return box;
     if(r.grounding){const g=r.grounding;box.append(node("p",`Проверка цитат: ${g.status} · утверждений ${g.claims.length} · цитат ${g.quotes.length} · попыток ${g.attempts}`));for(const c of g.checks)box.append(node("p",`${c.index+1}. ${c.verdict}: ${c.reason}`));}
+    if(r.resolvedQuery) box.append(node("p",`Уточнённый вопрос: ${r.resolvedQuery}`),node("p",`Контекст задачи: версия ${r.dialogue?.version}, записей ${r.dialogue?.entries?.length || 0}`));
     if (r.options) box.append(node("p", `Режим: ${window.CodexRAG23?.labels[r.options.mode] || r.options.mode} · K ${r.options.topKBefore} → ${r.options.topKAfter} · порог ${r.options.relevanceThreshold}/3`));
-    if (r.query) box.append(node("p", `Исходный запрос: ${r.query}`));
+    if (r.query) box.append(node("p", `Исходный запрос: ${r.originalQuery || r.query}`));
     if (r.rewrittenQuery) box.append(node("p", `Поисковый запрос: ${r.rewrittenQuery}`));
     if (r.warning) box.append(node("p", r.warning, "rag-warning"));
     if (r.empty) box.append(node("p", "Источники не отобраны. Ответ модели не генерировался."));

@@ -69,6 +69,7 @@ type BranchInfo struct {
 
 // StrategySnapshot contains the current strategy state shown by interfaces.
 type StrategySnapshot struct {
+	Dialogue       *DialogueState    `json:"dialogue,omitempty"`
 	Strategy       StrategyConfig    `json:"strategy"`
 	Facts          map[string]string `json:"facts,omitempty"`
 	Branches       []BranchInfo      `json:"branches,omitempty"`
@@ -276,6 +277,7 @@ func (a *Agent) snapshotLocked() StrategySnapshot {
 	}
 	sort.Slice(branches, func(i, j int) bool { return branches[i].ID < branches[j].ID })
 	return StrategySnapshot{
+		Dialogue:       cloneDialogue(a.dialogue),
 		Strategy:       a.strategy,
 		Facts:          cloneFacts(a.facts),
 		Branches:       branches,
@@ -424,6 +426,7 @@ func (a *Agent) saveStateLocked(
 		return nil
 	}
 	state := ConversationState{
+		Dialogue:           cloneDialogue(a.dialogue),
 		PreviousResponseID: previousResponseID,
 		ActiveModel:        activeModel,
 		Messages:           cloneMessages(messages),

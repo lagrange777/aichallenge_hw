@@ -35,7 +35,7 @@ const (
 	maxSessions     = 256
 )
 
-//go:embed static/index.html static/app.css static/app.js static/memory.js static/task-state.js static/invariants.js static/profiles.js static/mcp.js static/monitors.js static/documents.js static/rag.js static/rag23.js static/rag24.js static/markdown.js static/favicon.svg
+//go:embed static/index.html static/app.css static/app.js static/memory.js static/task-state.js static/invariants.js static/profiles.js static/mcp.js static/monitors.js static/documents.js static/rag.js static/rag23.js static/rag24.js static/rag25.js static/markdown.js static/favicon.svg
 var staticFiles embed.FS
 
 type sessionEntry struct {
@@ -171,6 +171,10 @@ func NewHandlerWithDocuments(llm agent.LLM, model string, history agent.History,
 	mux.HandleFunc("/rag24.js", func(w http.ResponseWriter, r *http.Request) {
 		app.serveStatic(w, r, "rag24.js", "text/javascript; charset=utf-8")
 	})
+	mux.HandleFunc("/rag25.js", func(w http.ResponseWriter, r *http.Request) {
+		app.serveStatic(w, r, "rag25.js", "text/javascript; charset=utf-8")
+	})
+	mux.HandleFunc("/api/rag/dialogues", app.handleRAGDialogues)
 	mux.HandleFunc("/api/rag/grounding", app.handleRAGGrounding)
 	mux.HandleFunc("/api/rag/experiment", app.handleRAGExperiment)
 	mux.HandleFunc("/api/rag/run", app.handleRAGRun)
@@ -355,6 +359,10 @@ func (s *server) handleChat(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if request.RAGOptions != nil {
+		if request.RAGOptions.Dialogue && !request.RAG {
+			writeJSON(w, 400, apiResponse{Error: "Диалог с памятью требует включённого RAG"})
+			return
+		}
 		if err := request.RAGOptions.Validate(); err != nil {
 			writeJSON(w, 400, apiResponse{Error: err.Error()})
 			return
