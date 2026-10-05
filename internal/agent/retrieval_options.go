@@ -4,6 +4,7 @@ import "fmt"
 
 // RetrievalOptions are per-turn settings; they never mutate the shared retriever.
 type RetrievalOptions struct {
+	Grounded           bool   `json:"grounded,omitempty"`
 	Mode               string `json:"mode"`
 	TopKBefore         int    `json:"topKBefore"`
 	TopKAfter          int    `json:"topKAfter"`
@@ -14,6 +15,9 @@ func DefaultRetrievalOptions() RetrievalOptions {
 	return RetrievalOptions{Mode: "baseline", TopKBefore: 20, TopKAfter: 5, RelevanceThreshold: 2}
 }
 func (o RetrievalOptions) Validate() error {
+	if o.Grounded && ((o.Mode != "filter" && o.Mode != "full") || o.RelevanceThreshold < 2) {
+		return fmt.Errorf("строгий RAG требует фильтр и порог не ниже 2/3")
+	}
 	if o.Mode != "baseline" && o.Mode != "filter" && o.Mode != "rewrite" && o.Mode != "full" {
 		return fmt.Errorf("режим RAG: baseline, filter, rewrite или full")
 	}

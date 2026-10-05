@@ -132,3 +132,24 @@ func (s *server) handleRAGRun(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, 200, result)
 }
+
+func (s *server) handleRAGGrounding(w http.ResponseWriter, r *http.Request) {
+	if !allowAPIRequest(w, r, http.MethodGet) {
+		return
+	}
+	path := os.Getenv("RAG_GROUNDING_PATH")
+	if path == "" {
+		path = "artifacts/rag24/comparison.json"
+	}
+	b, err := os.ReadFile(path)
+	if err != nil {
+		writeJSON(w, 404, apiResponse{Error: "Отчёт ещё не создан. Запустите rag-grounding."})
+		return
+	}
+	var report rag.GroundingExperiment
+	if json.Unmarshal(b, &report) != nil {
+		writeJSON(w, 500, apiResponse{Error: "Некорректный отчёт"})
+		return
+	}
+	writeJSON(w, 200, report)
+}

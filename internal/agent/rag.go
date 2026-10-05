@@ -25,6 +25,7 @@ type Source struct {
 	Score   float64 `json:"score"`
 }
 type Retrieval struct {
+	Grounding        *Grounding        `json:"grounding,omitempty"`
 	Options          *RetrievalOptions `json:"options,omitempty"`
 	Query            string            `json:"query,omitempty"`
 	RewrittenQuery   string            `json:"rewrittenQuery,omitempty"`
@@ -124,6 +125,12 @@ func cloneRetrieval(r *Retrieval) *Retrieval {
 		return nil
 	}
 	c := *r
+	if r.Grounding != nil {
+		data, _ := json.Marshal(r.Grounding)
+		var g Grounding
+		_ = json.Unmarshal(data, &g)
+		c.Grounding = &g
+	}
 	if r.Options != nil {
 		o := *r.Options
 		c.Options = &o

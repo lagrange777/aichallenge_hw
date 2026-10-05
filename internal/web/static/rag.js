@@ -5,8 +5,9 @@
   let report;
   function trace(r) {
     const box = node("details", undefined, "rag-trace");
-    box.append(node("summary", r.mode === "rag" ? `С RAG · ${r.sources?.length || 0} источников · ${r.strategy} · поиск ${r.durationMs} мс` : "Без RAG · поиск по документам выключен"));
+    box.append(node("summary", r.mode === "rag" ? `С RAG · ${r.sources?.length || 0} источников · ${r.strategy} · ${r.durationMs ? "поиск " + r.durationMs + " мс" : "общая выборка"}` : "Без RAG · поиск по документам выключен"));
     if (r.mode !== "rag") return box;
+    if(r.grounding){const g=r.grounding;box.append(node("p",`Проверка цитат: ${g.status} · утверждений ${g.claims.length} · цитат ${g.quotes.length} · попыток ${g.attempts}`));for(const c of g.checks)box.append(node("p",`${c.index+1}. ${c.verdict}: ${c.reason}`));}
     if (r.options) box.append(node("p", `Режим: ${window.CodexRAG23?.labels[r.options.mode] || r.options.mode} · K ${r.options.topKBefore} → ${r.options.topKAfter} · порог ${r.options.relevanceThreshold}/3`));
     if (r.query) box.append(node("p", `Исходный запрос: ${r.query}`));
     if (r.rewrittenQuery) box.append(node("p", `Поисковый запрос: ${r.rewrittenQuery}`));
@@ -24,7 +25,7 @@
       }
       box.append(candidates);
     }
-    box.append(node("p", `Эмбеддинг: ${r.embeddingModel} · ${r.embeddingTokens} токенов. Ссылки: ${(r.citations || []).join(", ") || "нет"}. Наличие ссылки ещё не гарантирует, что она подтверждает утверждение.`));
+    box.append(node("p", `Эмбеддинг: ${r.embeddingModel} · ${r.embeddingTokens || 0} токенов. Ссылки: ${(r.citations || []).join(", ") || "нет"}. Наличие ссылки ещё не гарантирует, что она подтверждает утверждение.`));
     if (r.invalidCitations?.length) box.append(node("p", `Неизвестные ссылки: ${r.invalidCitations.join(", ")}`, "rag-warning"));
     for (const s of r.sources || []) {
       const card = node("details", undefined, "document-chunk");
