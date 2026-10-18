@@ -1,0 +1,81 @@
+name: AI code review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ai-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    # Secrets are available only for same-repository PRs. Contributors with write
+    # access are trusted to edit workflows. Forks/Dependabot are not supported.
+    if: >-
+      !github.event.pull_request.draft &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout trusted base, never PR code
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check analyzer availability
+        id: prepare
+        run: |
+          if test -f cmd/pr-review/main.go; then
+            echo 'ready=true' >> "$GITHUB_OUTPUT"
+          else
+            mkdir -p artifacts/review32
+            echo 'Bootstrap: analyzer is not in the target base revision. Validate using a demo PR targeting the implementation branch; regular PR reviews activate after merge.' > artifacts/review32/bootstrap.md
+            cat artifacts/review32/bootstrap.md >> "$GITHUB_STEP_SUMMARY"
+            echo 'ready=false' >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Go
+        if: steps.prepare.outputs.ready == 'true'
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Test and build trusted analyzer
+        if: steps.prepare.outputs.ready == 'true'
+        run: |
+          go test ./...
+          go build -trimpath -o /tmp/pr-review ./cmd/pr-review
+
+      - name: RAG review and update PR comment
+        if: steps.prepare.outputs.ready == 'true'
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: ${{ vars.OPENAI_MODEL || 'gpt-5.3-codex' }}
+          GITHUB_TOKEN: ${{ github.token }}
+          REVIEW_BASE: ${{ github.event.pull_request.base.sha }}
+          REVIEW_HEAD: ${{ github.event.pull_request.head.sha }}
+          REVIEW_REPO: ${{ github.repository }}
+          REVIEW_PR: ${{ github.event.pull_request.number }}
+        run: |
+          /tmp/pr-review --base "$REVIEW_BASE" --head "$REVIEW_HEAD" --repo "$REVIEW_REPO" --pr "$REVIEW_PR" --out artifacts/review32 --publish
+          cat artifacts/review32/review.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Save JSON and Markdown reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ai-review-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+          path: artifacts/review32/
+          if-no-files-found: warn
+          retention-days: 14
