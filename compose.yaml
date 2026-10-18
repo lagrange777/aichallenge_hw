@@ -14,6 +14,7 @@ services:
       PROFILE_PATH: /data/profiles
       MCP_PATH: /data/mcp.json
       PROJECT_ROOT: /project
+      WORKSPACE_ROOT: /workspace
       PROJECT_INDEX_PATH: /data/project-index.json
       PROJECT_MCP_URL: http://project-mcp:8094/mcp
       SCHEDULER_PATH: /data/scheduler.db
@@ -33,6 +34,8 @@ services:
       - chat-history:/data
       - ./README.md:/project/README.md:ro
       - ./docs:/project/docs:ro
+      # Public, isolated snapshot. Prepare once with scripts/prepare-workspace.py.
+      - ./.workspaces/project:/workspace
     cap_drop:
       - ALL
     security_opt:

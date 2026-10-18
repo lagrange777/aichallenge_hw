@@ -251,6 +251,10 @@
 
   async function sendMessage(rawMessage) {
     const message = rawMessage.trim();
+    if (/^\/work(?:\s|$)/.test(message)) {
+      location.assign('/work?goal=' + encodeURIComponent(message));
+      return;
+    }
     if (!message || sending || memoryBusy || profileBusy || taskBlocked) {
       return;
     }

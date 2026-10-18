@@ -1,0 +1,30 @@
+?   	codex-chat-cli/cmd/broker-demo	[no test files]
+?   	codex-chat-cli/cmd/codex-chat	[no test files]
+ok  	codex-chat-cli/cmd/doc-index	(cached)
+?   	codex-chat-cli/cmd/invariant-eval	[no test files]
+?   	codex-chat-cli/cmd/pr-review	[no test files]
+?   	codex-chat-cli/cmd/profile-eval	[no test files]
+?   	codex-chat-cli/cmd/project-mcp	[no test files]
+?   	codex-chat-cli/cmd/rag-bench	[no test files]
+?   	codex-chat-cli/cmd/rag-dialogue	[no test files]
+?   	codex-chat-cli/cmd/rag-eval	[no test files]
+?   	codex-chat-cli/cmd/rag-grounding	[no test files]
+?   	codex-chat-cli/cmd/task-state-eval	[no test files]
+ok  	codex-chat-cli/internal/agent	(cached)
+ok  	codex-chat-cli/internal/brokerdemo	(cached)
+ok  	codex-chat-cli/internal/config	(cached)
+ok  	codex-chat-cli/internal/docindex	(cached)
+ok  	codex-chat-cli/internal/filework	0.891s
+ok  	codex-chat-cli/internal/history	(cached)
+ok  	codex-chat-cli/internal/mcpclient	(cached)
+ok  	codex-chat-cli/internal/memory	(cached)
+ok  	codex-chat-cli/internal/models	(cached)
+ok  	codex-chat-cli/internal/openai	(cached)
+ok  	codex-chat-cli/internal/profile	(cached)
+ok  	codex-chat-cli/internal/projecthelp	(cached)
+ok  	codex-chat-cli/internal/projectmcp	(cached)
+ok  	codex-chat-cli/internal/prreview	(cached)
+ok  	codex-chat-cli/internal/rag	(cached)
+ok  	codex-chat-cli/internal/scheduler	(cached)
+ok  	codex-chat-cli/internal/web	(cached)
+ok  	codex-chat-cli/internal/filework	(cached)
