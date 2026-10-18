@@ -1,0 +1,82 @@
+{
+  "implementationHash": "9a69bc640644f4ed7d2f7e5fd010d6d72e062580604c90bb1ae987d3cb3c4864",
+  "gitHead": "c1f624105385794df13bc972ec049623c4145196",
+  "gitBranch": "codex/ai-challenge-task-31",
+  "workingTreeChanges": true,
+  "corpusHash": "0e62ddf8612c205ca1028c4d2b07c80dd60456b4a7f7e11dc2f7855a4ccc11b9",
+  "documents": 14,
+  "chunks": 135,
+  "containers": [
+    {
+      "Service": "codex-chat",
+      "State": "running",
+      "Health": "",
+      "Publishers": [
+        {
+          "URL": "127.0.0.1",
+          "TargetPort": 8080,
+          "PublishedPort": 8080,
+          "Protocol": "tcp"
+        }
+      ]
+    },
+    {
+      "Service": "demo-broker-mcp",
+      "State": "running",
+      "Health": "",
+      "Publishers": [
+        {
+          "URL": "127.0.0.1",
+          "TargetPort": 8090,
+          "PublishedPort": 8093,
+          "Protocol": "tcp"
+        }
+      ]
+    },
+    {
+      "Service": "demo-order-mcp",
+      "State": "running",
+      "Health": "",
+      "Publishers": [
+        {
+          "URL": "127.0.0.1",
+          "TargetPort": 8090,
+          "PublishedPort": 8091,
+          "Protocol": "tcp"
+        }
+      ]
+    },
+    {
+      "Service": "demo-validation-mcp",
+      "State": "running",
+      "Health": "",
+      "Publishers": [
+        {
+          "URL": "127.0.0.1",
+          "TargetPort": 8090,
+          "PublishedPort": 8092,
+          "Protocol": "tcp"
+        }
+      ]
+    },
+    {
+      "Service": "project-mcp",
+      "State": "running",
+      "Health": "healthy",
+      "Publishers": []
+    }
+  ],
+  "projectMCP": {
+    "readOnlyRoot": true,
+    "user": "65532:65532",
+    "mounts": [
+      {
+        "Destination": "/project/.git",
+        "RW": false,
+        "Type": "bind"
+      }
+    ],
+    "hasOpenAIKey": false,
+    "publishedPorts": {}
+  }
+}

@@ -1,0 +1,217 @@
+[
+  {
+    "id": "H01",
+    "query": "Как устроен проект: где точка входа, HTTP-интерфейс, агент и клиент модели?",
+    "expectations": [
+      "Назвать cmd/codex-chat, internal/web, internal/agent, internal/openai"
+    ],
+    "requiredFacts": [
+      [
+        "cmd/codex-chat"
+      ],
+      [
+        "internal/web"
+      ],
+      [
+        "internal/agent"
+      ],
+      [
+        "internal/openai"
+      ]
+    ],
+    "sources": [
+      "docs/architecture.md"
+    ]
+  },
+  {
+    "id": "H02",
+    "query": "Как запустить проект в Docker и на каком адресе открыть веб-чат?",
+    "expectations": [
+      "Указать .env с OPENAI_API_KEY, docker compose up, адрес 127.0.0.1:8080"
+    ],
+    "requiredFacts": [
+      [
+        ".env"
+      ],
+      [
+        "OPENAI_API_KEY"
+      ],
+      [
+        "docker compose"
+      ],
+      [
+        "8080"
+      ]
+    ],
+    "sources": [
+      "docs/development.md",
+      "README.md"
+    ]
+  },
+  {
+    "id": "H03",
+    "query": "Какой HTTP API принимает вопрос чата, какое поле JSON обязательно и что возвращается в ответе?",
+    "expectations": [
+      "POST /api/chat, обязательное message, answer и messages"
+    ],
+    "requiredFacts": [
+      [
+        "/api/chat"
+      ],
+      [
+        "message"
+      ],
+      [
+        "answer"
+      ],
+      [
+        "messages"
+      ]
+    ],
+    "sources": [
+      "docs/api.md",
+      "README.md"
+    ]
+  },
+  {
+    "id": "H04",
+    "query": "Генерация в codex_chat_cli локальная или облачная, и получает ли браузер API-ключ?",
+    "expectations": [
+      "OpenAI Responses API, ключ только на сервере, не путать с соседним сервисом Qwen"
+    ],
+    "requiredFacts": [
+      [
+        "OpenAI"
+      ],
+      [
+        "сервер"
+      ],
+      [
+        "браузер"
+      ]
+    ],
+    "sources": [
+      "docs/architecture.md",
+      "README.md"
+    ]
+  },
+  {
+    "id": "H05",
+    "query": "Где реализованы индексация документов и обычный RAG, в каком формате хранится старый индекс?",
+    "expectations": [
+      "internal/docindex, internal/rag, SQLite; отличить старый индекс от /help"
+    ],
+    "requiredFacts": [
+      [
+        "internal/docindex"
+      ],
+      [
+        "internal/rag"
+      ],
+      [
+        "SQLite"
+      ]
+    ],
+    "sources": [
+      "docs/architecture.md"
+    ]
+  },
+  {
+    "id": "H06",
+    "query": "Какие три слоя памяти использует приложение и что происходит при новой задаче?",
+    "expectations": [
+      "История, рабочая память, долговременный профиль; рабочий контекст новой задачи отдельный, профиль сохраняется"
+    ],
+    "requiredFacts": [
+      [
+        "истори"
+      ],
+      [
+        "рабоч"
+      ],
+      [
+        "профил"
+      ],
+      [
+        "нов"
+      ]
+    ],
+    "sources": [
+      "docs/memory.md",
+      "README.md"
+    ]
+  },
+  {
+    "id": "H07",
+    "query": "Какие стратегии контекста доступны и сколько последних сообщений берётся по умолчанию в sliding_window?",
+    "expectations": [
+      "none, sliding_window, sticky_facts, branching; N=10"
+    ],
+    "requiredFacts": [
+      [
+        "none"
+      ],
+      [
+        "sliding_window"
+      ],
+      [
+        "sticky_facts"
+      ],
+      [
+        "branching"
+      ],
+      [
+        "10"
+      ]
+    ],
+    "sources": [
+      "docs/memory.md",
+      "README.md"
+    ]
+  },
+  {
+    "id": "H08",
+    "query": "На какой git-ветке проект прямо сейчас и какой HEAD-коммит?",
+    "expectations": [
+      "Только актуальные branch/commit из MCP git_branch, совпадающие с checkout"
+    ],
+    "requiredFacts": [],
+    "sources": [
+      "mcp://codex-project-mcp/git_branch"
+    ],
+    "liveGit": true
+  },
+  {
+    "id": "H09",
+    "query": "Какие инструменты Project MCP доступны и могут ли они менять файлы или выполнять произвольные команды?",
+    "expectations": [
+      "git_branch и project_files, только чтение, нет произвольных команд и записи"
+    ],
+    "requiredFacts": [
+      [
+        "git_branch"
+      ],
+      [
+        "project_files"
+      ],
+      [
+        "чтен",
+        "read-only",
+        "произвольн"
+      ]
+    ],
+    "sources": [
+      "docs/architecture.md"
+    ]
+  },
+  {
+    "id": "H10",
+    "query": "Какой SLA production Kubernetes-кластера гарантирован для этого проекта?",
+    "expectations": [
+      "Не знаю, в документации нет данных; запросить уточнение, не выдумывать SLA"
+    ],
+    "requiredFacts": [],
+    "sources": [],
+    "unknown": true
+  }
+]

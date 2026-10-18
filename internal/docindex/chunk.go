@@ -60,6 +60,18 @@ func (c ChunkConfig) Validate() error {
 }
 func digest(s string) string { return fmt.Sprintf("%x", sha256.Sum256([]byte(s))) }
 
+// MarkdownDocument parses an explicitly selected file without walking a repository.
+func MarkdownDocument(source, text string) (Document, error) {
+	if !utf8.ValidString(text) {
+		return Document{}, fmt.Errorf("requires UTF-8")
+	}
+	text = strings.ReplaceAll(strings.TrimPrefix(text, "\ufeff"), "\r\n", "\n")
+	d := Document{Source: source, Title: filepath.Base(source), Hash: digest(text), Text: text, Characters: utf8.RuneCountInString(text), Words: len(strings.Fields(text))}
+	var err error
+	d.Sections, err = sections(text, ".md")
+	return d, err
+}
+
 // LoadCorpus reads only UTF-8 Markdown, text and Go files. Symbolic links are
 // rejected; the explicit corpus directory must not contain secrets or data stores.
 func LoadCorpus(root string) ([]Document, error) {

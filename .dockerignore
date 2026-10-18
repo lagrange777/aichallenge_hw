@@ -7,4 +7,6 @@
 .idea
 .vscode
 bin
+tools
+*.mov
 codex-chat

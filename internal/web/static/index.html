@@ -199,7 +199,7 @@
           <details class="rag-chat-settings"><summary>Настройки RAG</summary><label><input type="checkbox" id="rag-chat-grounded" checked> Проверять утверждения и цитаты (фильтр, порог ≥ 2)</label><div class="rag23-settings"><label>Режим<select id="rag-chat-mode"><option value="baseline">Базовый RAG</option><option value="filter" selected>Реранкинг + фильтр</option><option value="rewrite">Query rewrite</option><option value="full">Rewrite + фильтр</option></select></label><label>K до<input id="rag-chat-before" type="number" min="1" max="20" value="20" required></label><label>K после<input id="rag-chat-after" type="number" min="1" max="10" value="5" required></label><label>Порог (0–3)<input id="rag-chat-threshold" type="number" min="0" max="3" value="2" required></label></div></details>
           <p class="rag-hint">С RAG вопрос отправляется в OpenAI Embeddings, а найденные фрагменты — модели. Без RAG новая выборка не выполняется; история чата сохраняется.</p>
           <div class="composer-bar">
-            <span class="composer-hint"><kbd>Shift</kbd> + <kbd>Enter</kbd> — новая строка</span>
+            <span class="composer-hint"><kbd>Shift</kbd> + <kbd>Enter</kbd> — новая строка · <code>/help вопрос</code> — о проекте</span>
             <div class="composer-actions">
               <button id="composer-task-next" type="button" class="memory-button" disabled>Следующий этап</button>
               <button id="composer-task-pause" type="button" class="memory-button" disabled>Пауза</button>

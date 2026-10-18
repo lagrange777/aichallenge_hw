@@ -163,6 +163,10 @@ func (a *Agent) completeGrounded(ctx context.Context, request CompletionRequest,
 	}
 	evidence := append([]Source(nil), r.Sources...)
 	answerPrompt, checkPrompt := GroundingPrompt, GroundingCheckPrompt
+	if r.Project != nil {
+		answerPrompt += ` This is the codex_chat_cli developer assistant. README/docs describe this project. Sources whose path starts with mcp:// contain observations made for THIS request; use them for current branch, commit and tracked file facts, never infer live state from docs or old history. A file list proves only that a path is tracked, not its behavior. If a requested live fact has no successful MCP source, say unknown for that part. Explain structure concisely with source-backed claims.`
+		checkPrompt += ` Documentation describes the project, not its current Git state. Current branch/commit/files require a matching mcp:// source. A tracked path alone does not prove implementation behavior.`
+	}
 	if r.Dialogue != nil {
 		evidence = append(evidence, r.Dialogue.Sources...)
 		answerPrompt += DialogueGroundingInstructions
