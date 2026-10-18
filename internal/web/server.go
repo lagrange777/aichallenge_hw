@@ -10,7 +10,6 @@ import (
 	"mime"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 	"sync"
 	"time"
@@ -76,7 +75,6 @@ type chatRequest struct {
 }
 
 type apiResponse struct {
-	APIKey   string                  `json:"apiKey,omitempty"`
 	MCP      *mcpView                `json:"mcp,omitempty"`
 	Profiles *agent.ProfileView      `json:"profiles,omitempty"`
 	Memory   *agent.MemoryView       `json:"memory,omitempty"`
@@ -539,7 +537,7 @@ func (s *server) handleStatus(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusMethodNotAllowed, apiResponse{Error: "Метод не поддерживается"})
 		return
 	}
-	writeJSON(w, http.StatusOK, apiResponse{Model: s.model, Models: s.models, APIKey: os.Getenv("OPENAI_API_KEY")})
+	writeJSON(w, http.StatusOK, apiResponse{Model: s.model, Models: s.models})
 }
 
 func (s *server) handleHealth(w http.ResponseWriter, r *http.Request) {
