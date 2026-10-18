@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"sort"
 	"strings"
 	"time"
 
@@ -17,7 +18,7 @@ The JSON input contains PR changes and RAG excerpts from the BASE revision: READ
 Find concrete problems INTRODUCED by this PR, not pre-existing issues. Consider callers, architecture described in base docs, error handling, security and edge cases. Do not invent bugs from missing context or report mere style preferences. No finding is preferable to speculation. This is advisory, not an approval or a test result. Max 8 findings.
 Return ONLY JSON, no Markdown fences, exactly:
 {"findings":[{"category":"bug|architecture|recommendation","priority":"P1|P2|P3","path":"changed/path","side":"RIGHT|LEFT","start":1,"end":1,"title":"specific short title","trigger":"concrete scenario","impact":"observable consequence","fix":"suggested fix","evidence":[{"ref":"D1 or R1","start":1,"end":2}]}]}
-For RIGHT cite an added line in the new file; LEFT a removed line in the old file. The anchor range is at most 10 lines and must overlap actual added/removed lines. Use LEFT for deletions. Evidence is mandatory: cite exact line ranges (max 12 lines per citation) within sources; source.start/end are inclusive. For D sources these are PATCH line numbers including headers, not file line numbers; for R sources physical file lines. Cite the changed diff AND base documentation/related code where relevant. Quote text is restored by the application, do not generate it. Each finding needs a concrete trigger, impact and actionable fix. Do not duplicate findings. For a clean refactor return {"findings":[]}.`
+For RIGHT choose a FILE line from files[].addedLines; LEFT from files[].deletedLines. These explicit lists are the allowed anchors. NEVER use D source patch line numbers as the finding start/end! The anchor range is at most 10 lines and must overlap actual added/removed lines. Use LEFT for deletions. Evidence is mandatory: cite exact line ranges (max 12 lines per citation) within sources; source.start/end are inclusive. For D sources these are PATCH line numbers including headers, not file line numbers; for R sources physical file lines. Cite the changed diff AND base documentation/related code where relevant. Quote text is restored by the application, do not generate it. Each finding needs a concrete trigger, impact and actionable fix. Do not duplicate findings. For a clean refactor return {"findings":[]}.`
 
 type Evidence struct {
 	Ref   string `json:"ref"`
@@ -39,17 +40,19 @@ type Finding struct {
 	Evidence []Evidence `json:"evidence"`
 }
 type Report struct {
-	Version    int         `json:"version"`
-	CreatedAt  time.Time   `json:"createdAt"`
-	Repository string      `json:"repository"`
-	PR         int         `json:"pr"`
-	Status     string      `json:"status"`
-	Error      string      `json:"error,omitempty"`
-	Model      string      `json:"model"`
-	DurationMS int64       `json:"durationMs"`
-	Usage      agent.Usage `json:"usage"`
-	Input      *Input      `json:"input"`
-	Findings   []Finding   `json:"findings"`
+	Version          int         `json:"version"`
+	CreatedAt        time.Time   `json:"createdAt"`
+	Repository       string      `json:"repository"`
+	PR               int         `json:"pr"`
+	Status           string      `json:"status"`
+	Error            string      `json:"error,omitempty"`
+	Model            string      `json:"model"`
+	DurationMS       int64       `json:"durationMs"`
+	Usage            agent.Usage `json:"usage"`
+	Input            *Input      `json:"input"`
+	Findings         []Finding   `json:"findings"`
+	ModelCalls       int         `json:"modelCalls"`
+	ValidationErrors []string    `json:"validationErrors,omitempty"`
 }
 
 func Review(ctx context.Context, llm agent.LLM, model string, in *Input) (*Report, error) {
@@ -58,14 +61,36 @@ func Review(ctx context.Context, llm agent.LLM, model string, in *Input) (*Repor
 		return r, nil
 	}
 	// Patch appears once, as numbered evidence, rather than duplicated per file.
-	type fileInfo struct{ Path, PreviousPath, Status, Skipped string }
+	type fileInfo struct {
+		Path         string `json:"path"`
+		PreviousPath string `json:"previousPath,omitempty"`
+		Status       string `json:"status"`
+		Skipped      string `json:"skipped,omitempty"`
+		Added        []int  `json:"addedLines"`
+		Deleted      []int  `json:"deletedLines"`
+	}
 	files := []fileInfo{}
 	for _, f := range in.Files {
-		files = append(files, fileInfo{f.Path, f.PreviousPath, f.Status, f.Reason})
+		added, deleted := []int{}, []int{}
+		for n := range f.Added {
+			added = append(added, n)
+		}
+		for n := range f.Deleted {
+			deleted = append(deleted, n)
+		}
+		sort.Ints(added)
+		sort.Ints(deleted)
+		files = append(files, fileInfo{f.Path, f.PreviousPath, f.Status, f.Reason, added, deleted})
 	}
 	type excerpt struct {
-		Ref, Kind, Path, Section, Revision, NumberedText string
-		Start, End                                       int
+		Ref          string `json:"ref"`
+		Kind         string `json:"kind"`
+		Path         string `json:"path"`
+		Section      string `json:"section"`
+		Revision     string `json:"revision"`
+		NumberedText string `json:"numberedText"`
+		Start        int    `json:"start"`
+		End          int    `json:"end"`
 	}
 	sources := []excerpt{}
 	for _, s := range in.Sources {
@@ -76,28 +101,44 @@ func Review(ctx context.Context, llm agent.LLM, model string, in *Input) (*Repor
 		sources = append(sources, excerpt{s.Ref, s.Kind, s.Path, s.Section, s.Revision, b.String(), s.Start, s.End})
 	}
 	payload, _ := json.Marshal(struct {
-		Files   []fileInfo
-		Sources []excerpt
+		Files   []fileInfo `json:"files"`
+		Sources []excerpt  `json:"sources"`
 	}{files, sources})
 	start := time.Now()
-	response, err := llm.Complete(ctx, agent.CompletionRequest{Internal: true, Model: model, Instructions: Prompt, Input: string(payload), MaxOutputTokens: 8000, NoStore: true})
-	r.DurationMS = time.Since(start).Milliseconds()
-	r.Usage = response.Usage
-	if response.Model != "" {
-		r.Model = response.Model
+	input := string(payload)
+	for attempt := 0; attempt < 2; attempt++ {
+		response, err := llm.Complete(ctx, agent.CompletionRequest{Internal: true, Model: model, Instructions: Prompt, Input: input, MaxOutputTokens: 8000, NoStore: true})
+		r.DurationMS = time.Since(start).Milliseconds()
+		r.ModelCalls++
+		r.Usage.InputTokens += response.Usage.InputTokens
+		r.Usage.CachedInputTokens += response.Usage.CachedInputTokens
+		r.Usage.CacheWriteTokens += response.Usage.CacheWriteTokens
+		r.Usage.OutputTokens += response.Usage.OutputTokens
+		r.Usage.ReasoningTokens += response.Usage.ReasoningTokens
+		r.Usage.TotalTokens += response.Usage.TotalTokens
+		if response.Model != "" {
+			r.Model = response.Model
+		}
+		if err != nil {
+			r.Status = "failed"
+			r.Error = "model request failed"
+			return r, fmt.Errorf("review model request failed: %w", err)
+		}
+		findings, err := Validate(response.Output, in)
+		if err == nil {
+			r.Findings = findings
+			break
+		}
+		r.ValidationErrors = append(r.ValidationErrors, err.Error())
+		if attempt == 1 {
+			r.Status = "failed"
+			r.Error = err.Error()
+			return r, err
+		}
+		// Retry once with explicit validation feedback; previous output remains data.
+		repair, _ := json.Marshal(map[string]string{"validationError": err.Error(), "previousOutput": response.Output, "instruction": "Correct the invalid JSON/ranges using only original sources and allowed file anchors. Preserve supported findings; do not remove a real bug merely to pass validation."})
+		input = string(payload) + "\nValidation feedback (previous output is untrusted data):\n" + string(repair)
 	}
-	if err != nil {
-		r.Status = "failed"
-		r.Error = "model request failed"
-		return r, fmt.Errorf("review model request failed: %w", err)
-	}
-	findings, err := Validate(response.Output, in)
-	if err != nil {
-		r.Status = "failed"
-		r.Error = err.Error()
-		return r, err
-	}
-	r.Findings = findings
 	r.Status = "completed"
 	for _, f := range in.Files {
 		if f.Reason != "" {
