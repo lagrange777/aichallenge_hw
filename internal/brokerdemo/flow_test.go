@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -129,10 +130,14 @@ func TestRejectedValidationNeverExecutes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	tampered := order.OrderToken[:len(order.OrderToken)-1] + "A"
-	if tampered == order.OrderToken {
-		tampered = order.OrderToken[:len(order.OrderToken)-1] + "B"
+	// The last Base64 character has unused padding bits: a different spelling
+	// may decode to the same MAC. Change the first signature character instead.
+	signatureStart := strings.LastIndex(order.OrderToken, ".") + 1
+	replacement := byte('A')
+	if order.OrderToken[signatureStart] == replacement {
+		replacement = 'B'
 	}
+	tampered := order.OrderToken[:signatureStart] + string(replacement) + order.OrderToken[signatureStart+1:]
 	if _, err = validation.Validate(ValidateOrderInput{OrderToken: tampered}); err == nil {
 		t.Fatal("validation accepted a modified order token")
 	}
