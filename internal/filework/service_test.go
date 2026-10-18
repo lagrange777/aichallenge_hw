@@ -255,3 +255,41 @@ func TestAnOfferIsNotSuccessfulCompletion(t *testing.T) {
 	}
 	t.Fatal("agent did not finish")
 }
+
+// ServeMux matches URL.Path, so a query must not break /work navigation.
+func TestWorkPageAcceptsGoalQuery(t *testing.T) {
+	s, _ := fixture(t)
+	r := httptest.NewRequest(http.MethodGet, "/work?goal=%2Fwork+Update+API+documentation", nil)
+	w := httptest.NewRecorder()
+	s.Handler().ServeHTTP(w, r)
+	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), "/work/app.js") {
+		t.Fatalf("status=%d body=%s", w.Code, w.Body.String())
+	}
+}
+
+type unavailableLLM struct{}
+
+func (unavailableLLM) Complete(context.Context, agent.CompletionRequest) (agent.CompletionResponse, error) {
+	// CompletionResponse is a value struct; its zero Usage is safe to read.
+	return agent.CompletionResponse{}, context.DeadlineExceeded
+}
+func TestLLMErrorCompletesTaskAsFailed(t *testing.T) {
+	s, _ := fixture(t)
+	s.llm = unavailableLLM{}
+	ts, e := s.Start("owner", "Update API documentation from source")
+	if e != nil {
+		t.Fatal(e)
+	}
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		got, _ := s.Get("owner", ts.ID)
+		if got.Status != "running" {
+			if got.Status != "failed" || got.Calls != 1 || !strings.Contains(got.Error, "deadline exceeded") {
+				t.Fatalf("%+v", got)
+			}
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatal("LLM failure left task running")
+}

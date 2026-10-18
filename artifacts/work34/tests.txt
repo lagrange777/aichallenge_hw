@@ -28,3 +28,4 @@ ok  	codex-chat-cli/internal/rag	(cached)
 ok  	codex-chat-cli/internal/scheduler	(cached)
 ok  	codex-chat-cli/internal/web	(cached)
 ok  	codex-chat-cli/internal/filework	(cached)
+ok  	codex-chat-cli/internal/filework	1.996s
