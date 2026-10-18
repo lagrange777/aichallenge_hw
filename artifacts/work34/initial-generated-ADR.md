@@ -1,0 +1,125 @@
+# ADR: Архитектура подключения MCP в проекте
+
+## Статус
+
+Принято.
+
+## Контекст
+
+Проект использует MCP в двух ролях:
+
+1. как источник внешних инструментов для чата (настраиваемые подключения в UI);
+2. как встроенный read-only `project-mcp` для доступа к Git-контексту проекта (`git_branch`, `project_files`) в сценариях помощи по проекту.
+
+По Compose основной сервис `codex-chat` хранит конфигурацию MCP отдельно (`MCP_PATH=/data/mcp.json`), подключается к `project-mcp` по внутреннему адресу `http://project-mcp:8094/mcp` и одновременно разрешает ограниченный список HTTP endpoint-ов через `MCP_HTTP_ENDPOINTS` (`compose.yaml`).
+
+## Решение
+
+### 1) Транспорт и инициализация
+
+Для всех внешних MCP-серверов используется официальный Go SDK и Streamable HTTP-клиент:
+
+- подключение через `mcp.NewClient(...).Connect(...StreamableClientTransport...)`;
+- отключён standalone SSE (`DisableStandaloneSSE: true`);
+- таймаут проверки 30 секунд;
+- при проверке выполняются `initialize` и полный проход `tools/list` с пагинацией.
+
+Реализация: `internal/mcpclient/client.go` (`Discover`, `connect`).
+
+### 2) Валидация endpoint и безопасная сетевой политика
+
+Перед подключением endpoint валидируется:
+
+- запрещены credentials в URL, query и fragment;
+- длина ограничена;
+- по умолчанию допускается только `https`;
+- `http` разрешён только для loopback (`localhost`, `127.0.0.1`, `::1`) и точных адресов из `MCP_HTTP_ENDPOINTS`.
+
+Реализация: `internal/mcpclient/client.go` (`ValidateEndpoint`).
+
+### 3) Ограничение доверия к удалённому серверу
+
+При discovery применяются ограничения:
+
+- максимум 100 страниц `tools/list`;
+- максимум 2000 инструментов;
+- защита от циклических cursor-ов;
+- каждый инструмент обязан иметь имя и `inputSchema`;
+- тела ошибок удалённого сервера пользователю не проксируются (во избежание утечки токенов).
+
+Реализация: `internal/mcpclient/client.go` (`Discover`, `connectionError`, `authTransport`).
+
+### 4) Политика доступа инструментов для чата
+
+Чату разрешается только узкий набор инструментов:
+
+- по умолчанию — read-only инструменты (`ReadOnlyHint=true`);
+- мутации разрешены только для предопределённых demo/mock серверов и конкретных имён инструментов;
+- для мутаций дополнительно требуется closed-world (`OpenWorldHint=false`);
+- destructive-инструменты блокируются правилами для `mock-issue-mcp` и `demo-*`.
+
+Реализация: `internal/mcpclient/client.go` (`ChatToolAccess`, `chatMutationAllowed`).
+
+### 5) Управление подключениями через Web API
+
+Сервер предоставляет маршруты:
+
+- `GET /api/mcp`;
+- `POST /api/mcp/save`;
+- `POST /api/mcp/delete`;
+- `POST /api/mcp/check`;
+- `POST /api/mcp/permissions`.
+
+При `permissions` сервер повторно делает discovery и проверяет, что `allowedTools` соответствуют политике `ChatToolAccess`, только после этого сохраняет права.
+
+Реализация: `internal/web/mcp.go`.
+
+### 6) Отдельный встроенный Project MCP
+
+`project-mcp` — отдельный сервис с Streamable HTTP handler-ом и двумя read-only инструментами:
+
+- `git_branch` — текущая ветка/commit/detached;
+- `project_files` — список публичных отслеживаемых файлов (до 160), с фильтрацией приватных/служебных путей.
+
+Сервис:
+
+- запускает git-команды с жёсткой средой (`GIT_CONFIG_NOSYSTEM`, `GIT_CONFIG_GLOBAL=/dev/null`, `GIT_TERMINAL_PROMPT=0`);
+- ограничивает размер вывода git;
+- запрещает `Origin` на `/mcp`;
+- ограничивает body запроса;
+- запускается в Compose с `read_only: true` и только с mount `./.git:/project/.git:ro`.
+
+Реализация: `internal/projectmcp/server.go`, `compose.yaml`.
+
+## Ограничения
+
+- Discovery ограничен Streamable HTTP-совместимыми MCP-серверами.
+- Проверка инструментов зависит от корректности аннотаций MCP (`ReadOnlyHint`, `OpenWorldHint`, `DestructiveHint`); при отсутствии/некорректности инструмент отклоняется политикой.
+- Локальное хранилище подключений (`MCP_PATH`) содержит токены и требует доверенного локального окружения.
+- Для внешних не-HTTPS endpoint нужен явный allowlist через `MCP_HTTP_ENDPOINTS`.
+- `project-mcp` предоставляет только Git-метаданные и список путей, а не чтение содержимого файлов.
+
+## Последствия
+
+Положительные:
+
+- снижена поверхность риска: endpoint-валидация, таймауты, лимиты страниц/инструментов, фильтрация ошибок и строгая политика tool-access;
+- отделены роли: внешний MCP (настраиваемый) и внутренний `project-mcp` (фиксированный read-only);
+- в Compose `project-mcp` изолирован и не получает пользовательские секреты приложения.
+
+Негативные/компромиссы:
+
+- политика мутаций жёстко зашита в коде (`chatMutationAllowed`) и требует релиза при расширении списка исключений;
+- часть MCP-серверов может быть несовместима из-за требований к HTTPS/Streamable HTTP/аннотациям;
+- возможны ложные отказы при неполных аннотациях инструментов на стороне провайдера.
+
+## Ссылки на исследованные исходники
+
+- `internal/mcpclient/client.go`
+- `internal/web/mcp.go`
+- `internal/projectmcp/server.go`
+- `compose.yaml`
+- `ARCHITECTURE.md`
+- `README.md`
+- `docs/api.md`
+- `docs/development.md`

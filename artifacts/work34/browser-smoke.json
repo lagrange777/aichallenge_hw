@@ -1,0 +1,17 @@
+{
+  "directGoalLink": {
+    "result": "Goal prefilled; explicit Run required",
+    "tasksBefore": 4,
+    "tasksAfter": 4,
+    "paidTaskStarted": false
+  },
+  "chatCommand": {
+    "input": "/work x",
+    "result": "Transferred intent reached backend goal validation: Опишите цель задачи: от 8 до 4000 байт",
+    "paidTaskStarted": false
+  },
+  "restoreAfterRestart": {
+    "result": "Existing tasks and applied files restored"
+  },
+  "transport": "Real Docker web UI controlled through browser API"
+}

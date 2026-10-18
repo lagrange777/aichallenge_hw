@@ -7,6 +7,7 @@
 /bin/
 /codex-chat
 /data/
+/.workspaces/
 
 # Transient SQLite journals (the reproducible document index itself is retained).
 /artifacts/docindex/*.sqlite-journal

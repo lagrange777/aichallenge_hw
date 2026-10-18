@@ -1,0 +1,65 @@
+--- a/docs/api.md
++++ b/docs/api.md
+@@ -1,31 +1,31 @@
+-# HTTP API и данные
+-
+-## Диалог
+-
+-`POST /api/chat` принимает JSON с обязательным `message` и необязательным `model`. Для вызовов из интерфейса используется заголовок `X-Codex-Chat: 1`; обработчик проверяет метод, Content-Type и Origin. Успешный JSON-ответ включает `answer`, `messages`, `model`, `metrics` и `context`. Метрики содержат длительность, токены и расчётную стоимость. API не является OpenAI-совместимым `/v1/chat/completions`.
+-
+-Пример команды ассистента проекта:
+-
+-```json
+-{"message":"/help Как устроен проект?"}
+-```
+-
+-Пример обычного RAG-вопроса:
+-
+-```json
+-{"message":"Вопрос по учебному корпусу","rag":true}
+-```
+-
+-У /help свой корпус и строгая проверка источников: `rag` и `ragOptions` обычного чата не определяют его поведение. `/help` без вопроса показывает справку без обращения к модели.
+-
+-## История и состояние
+-
+-`POST /api/history` восстанавливает сообщения текущего браузерного диалога. `POST /api/reset` сбрасывает его контекст. Диалоги разделяются cookie `codex_chat_session`. `GET /api/status` возвращает модели и настройки, `GET /health` проверяет готовность HTTP-приложения.
+-
+-`GET /api/memory` возвращает память и задачи. `POST /api/tasks/new` создаёт задачу; `POST /api/tasks/switch` переключает задачу. Профили доступны через `/api/profiles` и маршруты `/api/profiles/new`, `/api/profiles/edit`, `/api/profiles/switch`.
+-
+-История хранится в JSON по `HISTORY_PATH`. Сохранённое сообщение ассистента включает `role`, `text`, `time`, `model`, `metrics`; RAG-ответ дополнительно содержит `retrieval`, а операции MCP — `toolRuns`. В источнике retrieval есть `ref`, `source`, `section`, `chunkId`, `text`, `score`. Поле `grounding` содержит утверждения, проверенные цитаты и результаты проверки поддержки. Данные текущей ветки имеют источник `mcp://codex-project-mcp/git_branch`.
+-
+-## MCP
+-
+-`GET /api/mcp` показывает подключения. Настройки изменяются через `/api/mcp/save`, `/api/mcp/delete`, `/api/mcp/permissions`; `/api/mcp/check` выполняет обнаружение инструментов. Endpoint Project MCP — `http://127.0.0.1:8094/mcp` при нативном запуске и `http://project-mcp:8094/mcp` внутри Compose. Это настоящий MCP Streamable HTTP endpoint с инструментами `git_branch` и `project_files`, а не обычный REST GET для ветки.
++# HTTP API и данные
++
++## Диалог
++
++`POST /api/chat` принимает JSON с обязательным `message` и необязательным `model`. Для вызовов из интерфейса используется заголовок `X-Codex-Chat: 1`; обработчик проверяет метод, Content-Type и Origin. Успешный JSON-ответ включает `answer`, `messages`, `model`, `metrics` и `context`. Метрики содержат длительность, токены и расчётную стоимость. API не является OpenAI-совместимым `/v1/chat/completions`.
++
++Пример команды ассистента проекта:
++
++```json
++{"message":"/help Как устроен проект?"}
++```
++
++Пример обычного RAG-вопроса:
++
++```json
++{"message":"Вопрос по учебному корпусу","rag":true}
++```
++
++У /help свой корпус и строгая проверка источников: `rag` и `ragOptions` обычного чата не определяют его поведение. `/help` без вопроса показывает справку без обращения к модели.
++
++## История и состояние
++
++`GET /api/history` восстанавливает сообщения текущего браузерного диалога. `POST /api/reset` сбрасывает его контекст. Диалоги разделяются cookie `codex_chat_session`. `GET /api/status` возвращает модели и настройки, `GET /healthz` проверяет готовность HTTP-приложения.
++
++`GET /api/memory` возвращает память и задачи. `POST /api/tasks/new` создаёт задачу; `POST /api/tasks/switch` переключает задачу. Профили доступны через `/api/profiles` и маршруты `/api/profiles/new`, `/api/profiles/edit`, `/api/profiles/switch`.
++
++История хранится в JSON по `HISTORY_PATH`. Сохранённое сообщение ассистента включает `role`, `text`, `time`, `model`, `metrics`; RAG-ответ дополнительно содержит `retrieval`, а операции MCP — `toolRuns`. В источнике retrieval есть `ref`, `source`, `section`, `chunkId`, `text`, `score`. Поле `grounding` содержит утверждения, проверенные цитаты и результаты проверки поддержки. Данные текущей ветки имеют источник `mcp://codex-project-mcp/git_branch`.
++
++## MCP
++
++`GET /api/mcp` показывает подключения. Настройки изменяются через `/api/mcp/save`, `/api/mcp/delete`, `/api/mcp/permissions`; `/api/mcp/check` выполняет обнаружение инструментов. Endpoint Project MCP — `http://127.0.0.1:8094/mcp` при нативном запуске и `http://project-mcp:8094/mcp` внутри Compose. Это настоящий MCP Streamable HTTP endpoint с инструментами `git_branch` и `project_files`, а не обычный REST GET для ветки.

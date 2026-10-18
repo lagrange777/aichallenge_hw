@@ -251,6 +251,13 @@
 
   async function sendMessage(rawMessage) {
     const message = rawMessage.trim();
+    if (/^\/work(?:\s|$)/.test(message)) {
+      try {
+        sessionStorage.setItem('codex.file.pending', JSON.stringify({goal: message, at: Date.now()}));
+      } catch (_) { /* The destination still allows an explicit manual run. */ }
+      location.assign('/work?goal=' + encodeURIComponent(message));
+      return;
+    }
     if (!message || sending || memoryBusy || profileBusy || taskBlocked) {
       return;
     }

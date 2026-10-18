@@ -1,0 +1,20 @@
+{
+  "source": "Only viewport screenshots of http://127.0.0.1:8080/work captured through browser API",
+  "frames": 259,
+  "captureErrors": [],
+  "durationSeconds": 83.67,
+  "fps": 12,
+  "audio": false,
+  "editing": "Gaps over 1.25 seconds between recording segments shortened to 0.25 seconds. No overlays, terminal, desktop, fabricated responses or audio.",
+  "scenarios": [
+    "API documentation correction and apply",
+    "MCP architecture ADR creation and apply",
+    "Repeat ADR analysis with no changes"
+  ],
+  "bytes": 1755346,
+  "fullDecode": "passed",
+  "mediaInfo": [
+    "Duration: 00:01:24.00, start: 0.000000, bitrate: 167 kb/s",
+    "Stream #0:0[0x1](und): Video: h264 (High) (avc1 / 0x31637661), yuvj420p(pc, bt470bg/unknown/unknown, progressive), 1484x1224 [SAR 1:1 DAR 371:306], 165 kb/s, 12 fps, 12 tbr, 12288 tbn (default)"
+  ]
+}

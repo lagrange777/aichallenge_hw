@@ -1,4 +1,5 @@
 .git
+.workspaces
 .gitignore
 .env
 .env.*

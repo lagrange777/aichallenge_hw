@@ -7,6 +7,8 @@ Responses API. API-ключ остаётся на сервере и никогд
 
 ## Возможности
 
+- файловый ассистент: `/work цель` самостоятельно исследует несколько исходников через MCP, готовит diff и сохраняет документацию после применения в интерфейсе ([день 34](docs/file-assistant.md));
+
 - автоматическое AI-ревью PR: GitHub Actions получает diff, использует BM25 по документации и коду, публикует замечания с источниками и цитатами ([настройка](docs/ai-review.md));
 
 - ассистент разработчика: `/help вопрос` ищет по README и `docs/`, получает текущую Git-ветку и список файлов через MCP и отвечает с проверяемыми источниками ([инструкция](docs/development.md), [контрольный прогон](artifacts/help31/REPORT.md));
@@ -106,6 +108,7 @@ go run ./cmd/codex-chat
 
 ```sh
 cp .env.example .env
+python3 scripts/prepare-workspace.py
 docker compose up --build
 ```
 

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -15,6 +16,7 @@ import (
 	"codex-chat-cli/internal/agent"
 	"codex-chat-cli/internal/config"
 	"codex-chat-cli/internal/docindex"
+	"codex-chat-cli/internal/filework"
 	"codex-chat-cli/internal/history"
 	"codex-chat-cli/internal/mcpclient"
 	"codex-chat-cli/internal/memory"
@@ -112,12 +114,32 @@ func run(logger *log.Logger) error {
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return fmt.Errorf("индекс документов: %w", err)
 	}
+	chatHandler := chatweb.NewHandlerWithDocuments(apiClient, cfg.Model, historyStore, mcpStore, monitors, documents, agent.WithContextStrategy(agent.StrategyConfig{
+		Type: agent.ContextStrategy(cfg.ContextStrategy), KeepLast: cfg.ContextKeepLast,
+	}), agent.WithMemory(memoryStore), agent.WithProfiles(profileStore), agent.WithProjectRetriever(projectRetriever))
+	workMux := http.NewServeMux()
+	workMux.Handle("/", chatHandler)
+	if root := strings.TrimSpace(os.Getenv("WORKSPACE_ROOT")); root != "" {
+		state := filepath.Join(filepath.Dir(cfg.HistoryPath), "file-tasks")
+		files, err := filework.New(root, state, apiClient, cfg.Model)
+		if err != nil {
+			return fmt.Errorf("файловый workspace: %w", err)
+		}
+		defer files.Close()
+		fileHandler := files.Handler()
+		for _, route := range []string{"/work", "/work/", "/api/work/"} {
+			workMux.Handle(route, fileHandler)
+		}
+	} else {
+		for _, route := range []string{"/work", "/work/", "/api/work/"} {
+			workMux.HandleFunc(route, func(w http.ResponseWriter, r *http.Request) {
+				http.Error(w, "Файловый режим выключен: задайте WORKSPACE_ROOT. См. docs/file-assistant.md", http.StatusServiceUnavailable)
+			})
+		}
+	}
 	server := &http.Server{
-		Addr: cfg.WebAddr,
-		Handler: chatweb.NewHandlerWithDocuments(apiClient, cfg.Model, historyStore, mcpStore, monitors, documents, agent.WithContextStrategy(agent.StrategyConfig{
-			Type:     agent.ContextStrategy(cfg.ContextStrategy),
-			KeepLast: cfg.ContextKeepLast,
-		}), agent.WithMemory(memoryStore), agent.WithProfiles(profileStore), agent.WithProjectRetriever(projectRetriever)),
+		Addr:              cfg.WebAddr,
+		Handler:           workMux,
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      3*cfg.Timeout + 4*time.Minute,
