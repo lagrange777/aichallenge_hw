@@ -49,6 +49,7 @@ func functionTools(r agent.CompletionRequest) []functionTool {
 }
 
 type responseRequest struct {
+	MaxOutputTokens    int            `json:"max_output_tokens,omitempty"`
 	Tools              []functionTool `json:"tools,omitempty"`
 	Model              string         `json:"model"`
 	Instructions       string         `json:"instructions,omitempty"`
@@ -231,7 +232,8 @@ func (c *Client) Complete(ctx context.Context, request agent.CompletionRequest) 
 		Input:              responseInput(request),
 		PreviousResponseID: request.PreviousResponseID,
 		Temperature:        request.Temperature,
-		Store:              true,
+		Store:              !request.NoStore,
+		MaxOutputTokens:    request.MaxOutputTokens,
 	})
 	if err != nil {
 		return agent.CompletionResponse{}, fmt.Errorf("encode request: %w", err)

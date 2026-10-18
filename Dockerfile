@@ -46,6 +46,8 @@ RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build -trimpath -ldflags="-s -w" -o /ou
 
 RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build -trimpath -ldflags="-s -w" -o /out/project-mcp ./cmd/project-mcp
 
+RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build -trimpath -ldflags="-s -w" -o /out/pr-review ./cmd/pr-review
+
 RUN mkdir -p /out/data && chown 65532:65532 /out/data
 
 FROM alpine:3.23 AS project-mcp
@@ -53,6 +55,14 @@ RUN apk add --no-cache git && mkdir /project
 COPY --from=build /out/project-mcp /project-mcp
 USER 65532:65532
 ENTRYPOINT ["/project-mcp"]
+
+# Optional standalone reviewer: mount the repository read-only and /reports writable.
+FROM alpine:3.23 AS pr-review
+RUN apk add --no-cache git ca-certificates && mkdir /reports && chown 65532:65532 /reports
+COPY --from=build /out/pr-review /pr-review
+USER 65532:65532
+WORKDIR /repo
+ENTRYPOINT ["/pr-review"]
 
 FROM scratch AS runtime
 

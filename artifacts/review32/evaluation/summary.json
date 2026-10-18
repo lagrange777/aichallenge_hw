@@ -1,0 +1,92 @@
+[
+  {
+    "case": "cost-bug",
+    "base": "05b157b35e36e100466efa10b8daf96a92e2ca36",
+    "head": "cbe4c7c6b58af91ee36cb9e222dc55eb363588f2",
+    "expectedFindingPath": "internal/models/catalog.go",
+    "status": "completed",
+    "findings": 1,
+    "durationMs": 4340,
+    "usage": {
+      "InputTokens": 2976,
+      "CachedInputTokens": 0,
+      "CacheWriteTokens": 0,
+      "OutputTokens": 230,
+      "ReasoningTokens": 0,
+      "TotalTokens": 3206
+    },
+    "narrowCheckPassed": true
+  },
+  {
+    "case": "key-leak",
+    "base": "05b157b35e36e100466efa10b8daf96a92e2ca36",
+    "head": "d9c8d19a4a67c17104b7e65de7c8d311f894e4dc",
+    "expectedFindingPath": "internal/web/server.go",
+    "status": "completed",
+    "findings": 1,
+    "durationMs": 3566,
+    "usage": {
+      "InputTokens": 3939,
+      "CachedInputTokens": 0,
+      "CacheWriteTokens": 0,
+      "OutputTokens": 229,
+      "ReasoningTokens": 0,
+      "TotalTokens": 4168
+    },
+    "narrowCheckPassed": true
+  },
+  {
+    "case": "clean-refactor",
+    "base": "05b157b35e36e100466efa10b8daf96a92e2ca36",
+    "head": "e0cc40bdf83bf7f901880667331c5ea6bae7ad8e",
+    "expectedFindingPath": null,
+    "status": "completed",
+    "findings": 0,
+    "durationMs": 1900,
+    "usage": {
+      "InputTokens": 3844,
+      "CachedInputTokens": 0,
+      "CacheWriteTokens": 0,
+      "OutputTokens": 9,
+      "ReasoningTokens": 0,
+      "TotalTokens": 3853
+    },
+    "narrowCheckPassed": true
+  },
+  {
+    "case": "rename-delete",
+    "base": "df9171b5ede0c328e432cfd47f882a725f206124",
+    "head": "202cbeeaa49913faf97a02bb1515c9c73bd9a9c3",
+    "expectedFindingPath": null,
+    "status": "completed",
+    "findings": 0,
+    "durationMs": 1905,
+    "usage": {
+      "InputTokens": 6353,
+      "CachedInputTokens": 0,
+      "CacheWriteTokens": 0,
+      "OutputTokens": 9,
+      "ReasoningTokens": 0,
+      "TotalTokens": 6362
+    },
+    "narrowCheckPassed": true
+  },
+  {
+    "case": "large-pr",
+    "base": "05b157b35e36e100466efa10b8daf96a92e2ca36",
+    "head": "5e1b243cd955e108bd09d6faae6ddbf1908761a2",
+    "expectedFindingPath": null,
+    "status": "partial",
+    "findings": 0,
+    "durationMs": 1551,
+    "usage": {
+      "InputTokens": 9009,
+      "CachedInputTokens": 0,
+      "CacheWriteTokens": 0,
+      "OutputTokens": 9,
+      "ReasoningTokens": 0,
+      "TotalTokens": 9018
+    },
+    "narrowCheckPassed": true
+  }
+]

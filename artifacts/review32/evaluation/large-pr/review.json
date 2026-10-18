@@ -1,0 +1,572 @@
+{
+  "version": 1,
+  "createdAt": "2026-10-18T11:52:11.809809Z",
+  "repository": "lagrange777/aichallenge_hw",
+  "pr": 0,
+  "status": "partial",
+  "model": "gpt-5.3-codex",
+  "durationMs": 1551,
+  "usage": {
+    "InputTokens": 9009,
+    "CachedInputTokens": 0,
+    "CacheWriteTokens": 0,
+    "OutputTokens": 9,
+    "ReasoningTokens": 0,
+    "TotalTokens": 9018
+  },
+  "input": {
+    "base": "05b157b35e36e100466efa10b8daf96a92e2ca36",
+    "head": "5e1b243cd955e108bd09d6faae6ddbf1908761a2",
+    "mergeBase": "05b157b35e36e100466efa10b8daf96a92e2ca36",
+    "files": [
+      {
+        "path": "internal/reviewfixtures/f00.go",
+        "status": "A",
+        "patch": "diff --git a/internal/reviewfixtures/f00.go b/internal/reviewfixtures/f00.go\nnew file mode 100644\nindex 0000000..532b5f7\n--- /dev/null\n+++ b/internal/reviewfixtures/f00.go\n@@ -0,0 +1,2 @@\n+package reviewfixtures\n+const Value0 = 0\n"
+      },
+      {
+        "path": "internal/reviewfixtures/f01.go",
+        "status": "A",
+        "patch": "diff --git a/internal/reviewfixtures/f01.go b/internal/reviewfixtures/f01.go\nnew file mode 100644\nindex 0000000..459ad20\n--- /dev/null\n+++ b/internal/reviewfixtures/f01.go\n@@ -0,0 +1,2 @@\n+package reviewfixtures\n+const Value1 = 1\n"
+      },
+      {
+        "path": "internal/reviewfixtures/f02.go",
+        "status": "A",
+        "patch": "diff --git a/internal/reviewfixtures/f02.go b/internal/reviewfixtures/f02.go\nnew file mode 100644\nindex 0000000..95ed36d\n--- /dev/null\n+++ b/internal/reviewfixtures/f02.go\n@@ -0,0 +1,2 @@\n+package reviewfixtures\n+const Value2 = 2\n"
+      },
+      {
+        "path": "internal/reviewfixtures/f03.go",
+        "status": "A",
+        "patch": "diff --git a/internal/reviewfixtures/f03.go b/internal/reviewfixtures/f03.go\nnew file mode 100644\nindex 0000000..811fc0a\n--- /dev/null\n+++ b/internal/reviewfixtures/f03.go\n@@ -0,0 +1,2 @@\n+package reviewfixtures\n+const Value3 = 3\n"
+      },
+      {
+        "path": "internal/reviewfixtures/f04.go",
+        "status": "A",
+        "patch": "diff --git a/internal/reviewfixtures/f04.go b/internal/reviewfixtures/f04.go\nnew file mode 100644\nindex 0000000..4f0f39d\n--- /dev/null\n+++ b/internal/reviewfixtures/f04.go\n@@ -0,0 +1,2 @@\n+package reviewfixtures\n+const Value4 = 4\n"
+      },
+      {
+        "path": "internal/reviewfixtures/f05.go",
+        "status": "A",
+        "patch": "diff --git a/internal/reviewfixtures/f05.go b/internal/reviewfixtures/f05.go\nnew file mode 100644\nindex 0000000..7210132\n--- /dev/null\n+++ b/internal/reviewfixtures/f05.go\n@@ -0,0 +1,2 @@\n+package reviewfixtures\n+const Value5 = 5\n"
+      },
+      {
+        "path": "internal/reviewfixtures/f06.go",
+        "status": "A",
+        "patch": "diff --git a/internal/reviewfixtures/f06.go b/internal/reviewfixtures/f06.go\nnew file mode 100644\nindex 0000000..5cca682\n--- /dev/null\n+++ b/internal/reviewfixtures/f06.go\n@@ -0,0 +1,2 @@\n+package reviewfixtures\n+const Value6 = 6\n"
+      },
+      {
+        "path": "internal/reviewfixtures/f07.go",
+        "status": "A",
+        "patch": "diff --git a/internal/reviewfixtures/f07.go b/internal/reviewfixtures/f07.go\nnew file mode 100644\nindex 0000000..547fb42\n--- /dev/null\n+++ b/internal/reviewfixtures/f07.go\n@@ -0,0 +1,2 @@\n+package reviewfixtures\n+const Value7 = 7\n"
+      },
+      {
+        "path": "internal/reviewfixtures/f08.go",
+        "status": "A",
+        "patch": "diff --git a/internal/reviewfixtures/f08.go b/internal/reviewfixtures/f08.go\nnew file mode 100644\nindex 0000000..946e2d0\n--- /dev/null\n+++ b/internal/reviewfixtures/f08.go\n@@ -0,0 +1,2 @@\n+package reviewfixtures\n+const Value8 = 8\n"
+      },
+      {
+        "path": "internal/reviewfixtures/f09.go",
+        "status": "A",
+        "patch": "diff --git a/internal/reviewfixtures/f09.go b/internal/reviewfixtures/f09.go\nnew file mode 100644\nindex 0000000..2de66a7\n--- /dev/null\n+++ b/internal/reviewfixtures/f09.go\n@@ -0,0 +1,2 @@\n+package reviewfixtures\n+const Value9 = 9\n"
+      },
+      {
+        "path": "internal/reviewfixtures/f10.go",
+        "status": "A",
+        "patch": "diff --git a/internal/reviewfixtures/f10.go b/internal/reviewfixtures/f10.go\nnew file mode 100644\nindex 0000000..a5a3d55\n--- /dev/null\n+++ b/internal/reviewfixtures/f10.go\n@@ -0,0 +1,2 @@\n+package reviewfixtures\n+const Value10 = 10\n"
+      },
+      {
+        "path": "internal/reviewfixtures/f11.go",
+        "status": "A",
+        "patch": "diff --git a/internal/reviewfixtures/f11.go b/internal/reviewfixtures/f11.go\nnew file mode 100644\nindex 0000000..df42ff0\n--- /dev/null\n+++ b/internal/reviewfixtures/f11.go\n@@ -0,0 +1,2 @@\n+package reviewfixtures\n+const Value11 = 11\n"
+      },
+      {
+        "path": "internal/reviewfixtures/f12.go",
+        "status": "A",
+        "patch": "diff --git a/internal/reviewfixtures/f12.go b/internal/reviewfixtures/f12.go\nnew file mode 100644\nindex 0000000..3feba66\n--- /dev/null\n+++ b/internal/reviewfixtures/f12.go\n@@ -0,0 +1,2 @@\n+package reviewfixtures\n+const Value12 = 12\n"
+      },
+      {
+        "path": "internal/reviewfixtures/f13.go",
+        "status": "A",
+        "patch": "diff --git a/internal/reviewfixtures/f13.go b/internal/reviewfixtures/f13.go\nnew file mode 100644\nindex 0000000..1f3dfec\n--- /dev/null\n+++ b/internal/reviewfixtures/f13.go\n@@ -0,0 +1,2 @@\n+package reviewfixtures\n+const Value13 = 13\n"
+      },
+      {
+        "path": "internal/reviewfixtures/f14.go",
+        "status": "A",
+        "patch": "diff --git a/internal/reviewfixtures/f14.go b/internal/reviewfixtures/f14.go\nnew file mode 100644\nindex 0000000..47f95cd\n--- /dev/null\n+++ b/internal/reviewfixtures/f14.go\n@@ -0,0 +1,2 @@\n+package reviewfixtures\n+const Value14 = 14\n"
+      },
+      {
+        "path": "internal/reviewfixtures/f15.go",
+        "status": "A",
+        "patch": "diff --git a/internal/reviewfixtures/f15.go b/internal/reviewfixtures/f15.go\nnew file mode 100644\nindex 0000000..4f78faf\n--- /dev/null\n+++ b/internal/reviewfixtures/f15.go\n@@ -0,0 +1,2 @@\n+package reviewfixtures\n+const Value15 = 15\n"
+      },
+      {
+        "path": "internal/reviewfixtures/f16.go",
+        "status": "A",
+        "patch": "diff --git a/internal/reviewfixtures/f16.go b/internal/reviewfixtures/f16.go\nnew file mode 100644\nindex 0000000..427d8d8\n--- /dev/null\n+++ b/internal/reviewfixtures/f16.go\n@@ -0,0 +1,2 @@\n+package reviewfixtures\n+const Value16 = 16\n"
+      },
+      {
+        "path": "internal/reviewfixtures/f17.go",
+        "status": "A",
+        "patch": "diff --git a/internal/reviewfixtures/f17.go b/internal/reviewfixtures/f17.go\nnew file mode 100644\nindex 0000000..6e5cbb4\n--- /dev/null\n+++ b/internal/reviewfixtures/f17.go\n@@ -0,0 +1,2 @@\n+package reviewfixtures\n+const Value17 = 17\n"
+      },
+      {
+        "path": "internal/reviewfixtures/f18.go",
+        "status": "A",
+        "patch": "diff --git a/internal/reviewfixtures/f18.go b/internal/reviewfixtures/f18.go\nnew file mode 100644\nindex 0000000..16a47e0\n--- /dev/null\n+++ b/internal/reviewfixtures/f18.go\n@@ -0,0 +1,2 @@\n+package reviewfixtures\n+const Value18 = 18\n"
+      },
+      {
+        "path": "internal/reviewfixtures/f19.go",
+        "status": "A",
+        "patch": "diff --git a/internal/reviewfixtures/f19.go b/internal/reviewfixtures/f19.go\nnew file mode 100644\nindex 0000000..431d136\n--- /dev/null\n+++ b/internal/reviewfixtures/f19.go\n@@ -0,0 +1,2 @@\n+package reviewfixtures\n+const Value19 = 19\n"
+      },
+      {
+        "path": "internal/reviewfixtures/f20.go",
+        "status": "A",
+        "patch": "diff --git a/internal/reviewfixtures/f20.go b/internal/reviewfixtures/f20.go\nnew file mode 100644\nindex 0000000..a01bf12\n--- /dev/null\n+++ b/internal/reviewfixtures/f20.go\n@@ -0,0 +1,2 @@\n+package reviewfixtures\n+const Value20 = 20\n"
+      },
+      {
+        "path": "internal/reviewfixtures/f21.go",
+        "status": "A",
+        "patch": "diff --git a/internal/reviewfixtures/f21.go b/internal/reviewfixtures/f21.go\nnew file mode 100644\nindex 0000000..c78919a\n--- /dev/null\n+++ b/internal/reviewfixtures/f21.go\n@@ -0,0 +1,2 @@\n+package reviewfixtures\n+const Value21 = 21\n"
+      },
+      {
+        "path": "internal/reviewfixtures/f22.go",
+        "status": "A",
+        "patch": "diff --git a/internal/reviewfixtures/f22.go b/internal/reviewfixtures/f22.go\nnew file mode 100644\nindex 0000000..8cbec79\n--- /dev/null\n+++ b/internal/reviewfixtures/f22.go\n@@ -0,0 +1,2 @@\n+package reviewfixtures\n+const Value22 = 22\n"
+      },
+      {
+        "path": "internal/reviewfixtures/f23.go",
+        "status": "A",
+        "patch": "diff --git a/internal/reviewfixtures/f23.go b/internal/reviewfixtures/f23.go\nnew file mode 100644\nindex 0000000..71e19b8\n--- /dev/null\n+++ b/internal/reviewfixtures/f23.go\n@@ -0,0 +1,2 @@\n+package reviewfixtures\n+const Value23 = 23\n"
+      },
+      {
+        "path": "internal/reviewfixtures/f24.go",
+        "status": "A",
+        "skipped": "file count limit"
+      },
+      {
+        "path": "internal/reviewfixtures/f25.go",
+        "status": "A",
+        "skipped": "file count limit"
+      },
+      {
+        "path": "internal/reviewfixtures/f26.go",
+        "status": "A",
+        "skipped": "file count limit"
+      },
+      {
+        "path": "internal/reviewfixtures/f27.go",
+        "status": "A",
+        "skipped": "file count limit"
+      },
+      {
+        "path": "internal/reviewfixtures/f28.go",
+        "status": "A",
+        "skipped": "file count limit"
+      }
+    ],
+    "sources": [
+      {
+        "ref": "D1",
+        "kind": "diff",
+        "path": "internal/reviewfixtures/f00.go",
+        "section": "PR patch (patch line numbers)",
+        "revision": "5e1b243cd955e108bd09d6faae6ddbf1908761a2",
+        "chunkId": "diff-1",
+        "start": 1,
+        "end": 9,
+        "text": "diff --git a/internal/reviewfixtures/f00.go b/internal/reviewfixtures/f00.go\nnew file mode 100644\nindex 0000000..532b5f7\n--- /dev/null\n+++ b/internal/reviewfixtures/f00.go\n@@ -0,0 +1,2 @@\n+package reviewfixtures\n+const Value0 = 0\n"
+      },
+      {
+        "ref": "D2",
+        "kind": "diff",
+        "path": "internal/reviewfixtures/f01.go",
+        "section": "PR patch (patch line numbers)",
+        "revision": "5e1b243cd955e108bd09d6faae6ddbf1908761a2",
+        "chunkId": "diff-2",
+        "start": 1,
+        "end": 9,
+        "text": "diff --git a/internal/reviewfixtures/f01.go b/internal/reviewfixtures/f01.go\nnew file mode 100644\nindex 0000000..459ad20\n--- /dev/null\n+++ b/internal/reviewfixtures/f01.go\n@@ -0,0 +1,2 @@\n+package reviewfixtures\n+const Value1 = 1\n"
+      },
+      {
+        "ref": "D3",
+        "kind": "diff",
+        "path": "internal/reviewfixtures/f02.go",
+        "section": "PR patch (patch line numbers)",
+        "revision": "5e1b243cd955e108bd09d6faae6ddbf1908761a2",
+        "chunkId": "diff-3",
+        "start": 1,
+        "end": 9,
+        "text": "diff --git a/internal/reviewfixtures/f02.go b/internal/reviewfixtures/f02.go\nnew file mode 100644\nindex 0000000..95ed36d\n--- /dev/null\n+++ b/internal/reviewfixtures/f02.go\n@@ -0,0 +1,2 @@\n+package reviewfixtures\n+const Value2 = 2\n"
+      },
+      {
+        "ref": "D4",
+        "kind": "diff",
+        "path": "internal/reviewfixtures/f03.go",
+        "section": "PR patch (patch line numbers)",
+        "revision": "5e1b243cd955e108bd09d6faae6ddbf1908761a2",
+        "chunkId": "diff-4",
+        "start": 1,
+        "end": 9,
+        "text": "diff --git a/internal/reviewfixtures/f03.go b/internal/reviewfixtures/f03.go\nnew file mode 100644\nindex 0000000..811fc0a\n--- /dev/null\n+++ b/internal/reviewfixtures/f03.go\n@@ -0,0 +1,2 @@\n+package reviewfixtures\n+const Value3 = 3\n"
+      },
+      {
+        "ref": "D5",
+        "kind": "diff",
+        "path": "internal/reviewfixtures/f04.go",
+        "section": "PR patch (patch line numbers)",
+        "revision": "5e1b243cd955e108bd09d6faae6ddbf1908761a2",
+        "chunkId": "diff-5",
+        "start": 1,
+        "end": 9,
+        "text": "diff --git a/internal/reviewfixtures/f04.go b/internal/reviewfixtures/f04.go\nnew file mode 100644\nindex 0000000..4f0f39d\n--- /dev/null\n+++ b/internal/reviewfixtures/f04.go\n@@ -0,0 +1,2 @@\n+package reviewfixtures\n+const Value4 = 4\n"
+      },
+      {
+        "ref": "D6",
+        "kind": "diff",
+        "path": "internal/reviewfixtures/f05.go",
+        "section": "PR patch (patch line numbers)",
+        "revision": "5e1b243cd955e108bd09d6faae6ddbf1908761a2",
+        "chunkId": "diff-6",
+        "start": 1,
+        "end": 9,
+        "text": "diff --git a/internal/reviewfixtures/f05.go b/internal/reviewfixtures/f05.go\nnew file mode 100644\nindex 0000000..7210132\n--- /dev/null\n+++ b/internal/reviewfixtures/f05.go\n@@ -0,0 +1,2 @@\n+package reviewfixtures\n+const Value5 = 5\n"
+      },
+      {
+        "ref": "D7",
+        "kind": "diff",
+        "path": "internal/reviewfixtures/f06.go",
+        "section": "PR patch (patch line numbers)",
+        "revision": "5e1b243cd955e108bd09d6faae6ddbf1908761a2",
+        "chunkId": "diff-7",
+        "start": 1,
+        "end": 9,
+        "text": "diff --git a/internal/reviewfixtures/f06.go b/internal/reviewfixtures/f06.go\nnew file mode 100644\nindex 0000000..5cca682\n--- /dev/null\n+++ b/internal/reviewfixtures/f06.go\n@@ -0,0 +1,2 @@\n+package reviewfixtures\n+const Value6 = 6\n"
+      },
+      {
+        "ref": "D8",
+        "kind": "diff",
+        "path": "internal/reviewfixtures/f07.go",
+        "section": "PR patch (patch line numbers)",
+        "revision": "5e1b243cd955e108bd09d6faae6ddbf1908761a2",
+        "chunkId": "diff-8",
+        "start": 1,
+        "end": 9,
+        "text": "diff --git a/internal/reviewfixtures/f07.go b/internal/reviewfixtures/f07.go\nnew file mode 100644\nindex 0000000..547fb42\n--- /dev/null\n+++ b/internal/reviewfixtures/f07.go\n@@ -0,0 +1,2 @@\n+package reviewfixtures\n+const Value7 = 7\n"
+      },
+      {
+        "ref": "D9",
+        "kind": "diff",
+        "path": "internal/reviewfixtures/f08.go",
+        "section": "PR patch (patch line numbers)",
+        "revision": "5e1b243cd955e108bd09d6faae6ddbf1908761a2",
+        "chunkId": "diff-9",
+        "start": 1,
+        "end": 9,
+        "text": "diff --git a/internal/reviewfixtures/f08.go b/internal/reviewfixtures/f08.go\nnew file mode 100644\nindex 0000000..946e2d0\n--- /dev/null\n+++ b/internal/reviewfixtures/f08.go\n@@ -0,0 +1,2 @@\n+package reviewfixtures\n+const Value8 = 8\n"
+      },
+      {
+        "ref": "D10",
+        "kind": "diff",
+        "path": "internal/reviewfixtures/f09.go",
+        "section": "PR patch (patch line numbers)",
+        "revision": "5e1b243cd955e108bd09d6faae6ddbf1908761a2",
+        "chunkId": "diff-10",
+        "start": 1,
+        "end": 9,
+        "text": "diff --git a/internal/reviewfixtures/f09.go b/internal/reviewfixtures/f09.go\nnew file mode 100644\nindex 0000000..2de66a7\n--- /dev/null\n+++ b/internal/reviewfixtures/f09.go\n@@ -0,0 +1,2 @@\n+package reviewfixtures\n+const Value9 = 9\n"
+      },
+      {
+        "ref": "D11",
+        "kind": "diff",
+        "path": "internal/reviewfixtures/f10.go",
+        "section": "PR patch (patch line numbers)",
+        "revision": "5e1b243cd955e108bd09d6faae6ddbf1908761a2",
+        "chunkId": "diff-11",
+        "start": 1,
+        "end": 9,
+        "text": "diff --git a/internal/reviewfixtures/f10.go b/internal/reviewfixtures/f10.go\nnew file mode 100644\nindex 0000000..a5a3d55\n--- /dev/null\n+++ b/internal/reviewfixtures/f10.go\n@@ -0,0 +1,2 @@\n+package reviewfixtures\n+const Value10 = 10\n"
+      },
+      {
+        "ref": "D12",
+        "kind": "diff",
+        "path": "internal/reviewfixtures/f11.go",
+        "section": "PR patch (patch line numbers)",
+        "revision": "5e1b243cd955e108bd09d6faae6ddbf1908761a2",
+        "chunkId": "diff-12",
+        "start": 1,
+        "end": 9,
+        "text": "diff --git a/internal/reviewfixtures/f11.go b/internal/reviewfixtures/f11.go\nnew file mode 100644\nindex 0000000..df42ff0\n--- /dev/null\n+++ b/internal/reviewfixtures/f11.go\n@@ -0,0 +1,2 @@\n+package reviewfixtures\n+const Value11 = 11\n"
+      },
+      {
+        "ref": "D13",
+        "kind": "diff",
+        "path": "internal/reviewfixtures/f12.go",
+        "section": "PR patch (patch line numbers)",
+        "revision": "5e1b243cd955e108bd09d6faae6ddbf1908761a2",
+        "chunkId": "diff-13",
+        "start": 1,
+        "end": 9,
+        "text": "diff --git a/internal/reviewfixtures/f12.go b/internal/reviewfixtures/f12.go\nnew file mode 100644\nindex 0000000..3feba66\n--- /dev/null\n+++ b/internal/reviewfixtures/f12.go\n@@ -0,0 +1,2 @@\n+package reviewfixtures\n+const Value12 = 12\n"
+      },
+      {
+        "ref": "D14",
+        "kind": "diff",
+        "path": "internal/reviewfixtures/f13.go",
+        "section": "PR patch (patch line numbers)",
+        "revision": "5e1b243cd955e108bd09d6faae6ddbf1908761a2",
+        "chunkId": "diff-14",
+        "start": 1,
+        "end": 9,
+        "text": "diff --git a/internal/reviewfixtures/f13.go b/internal/reviewfixtures/f13.go\nnew file mode 100644\nindex 0000000..1f3dfec\n--- /dev/null\n+++ b/internal/reviewfixtures/f13.go\n@@ -0,0 +1,2 @@\n+package reviewfixtures\n+const Value13 = 13\n"
+      },
+      {
+        "ref": "D15",
+        "kind": "diff",
+        "path": "internal/reviewfixtures/f14.go",
+        "section": "PR patch (patch line numbers)",
+        "revision": "5e1b243cd955e108bd09d6faae6ddbf1908761a2",
+        "chunkId": "diff-15",
+        "start": 1,
+        "end": 9,
+        "text": "diff --git a/internal/reviewfixtures/f14.go b/internal/reviewfixtures/f14.go\nnew file mode 100644\nindex 0000000..47f95cd\n--- /dev/null\n+++ b/internal/reviewfixtures/f14.go\n@@ -0,0 +1,2 @@\n+package reviewfixtures\n+const Value14 = 14\n"
+      },
+      {
+        "ref": "D16",
+        "kind": "diff",
+        "path": "internal/reviewfixtures/f15.go",
+        "section": "PR patch (patch line numbers)",
+        "revision": "5e1b243cd955e108bd09d6faae6ddbf1908761a2",
+        "chunkId": "diff-16",
+        "start": 1,
+        "end": 9,
+        "text": "diff --git a/internal/reviewfixtures/f15.go b/internal/reviewfixtures/f15.go\nnew file mode 100644\nindex 0000000..4f78faf\n--- /dev/null\n+++ b/internal/reviewfixtures/f15.go\n@@ -0,0 +1,2 @@\n+package reviewfixtures\n+const Value15 = 15\n"
+      },
+      {
+        "ref": "D17",
+        "kind": "diff",
+        "path": "internal/reviewfixtures/f16.go",
+        "section": "PR patch (patch line numbers)",
+        "revision": "5e1b243cd955e108bd09d6faae6ddbf1908761a2",
+        "chunkId": "diff-17",
+        "start": 1,
+        "end": 9,
+        "text": "diff --git a/internal/reviewfixtures/f16.go b/internal/reviewfixtures/f16.go\nnew file mode 100644\nindex 0000000..427d8d8\n--- /dev/null\n+++ b/internal/reviewfixtures/f16.go\n@@ -0,0 +1,2 @@\n+package reviewfixtures\n+const Value16 = 16\n"
+      },
+      {
+        "ref": "D18",
+        "kind": "diff",
+        "path": "internal/reviewfixtures/f17.go",
+        "section": "PR patch (patch line numbers)",
+        "revision": "5e1b243cd955e108bd09d6faae6ddbf1908761a2",
+        "chunkId": "diff-18",
+        "start": 1,
+        "end": 9,
+        "text": "diff --git a/internal/reviewfixtures/f17.go b/internal/reviewfixtures/f17.go\nnew file mode 100644\nindex 0000000..6e5cbb4\n--- /dev/null\n+++ b/internal/reviewfixtures/f17.go\n@@ -0,0 +1,2 @@\n+package reviewfixtures\n+const Value17 = 17\n"
+      },
+      {
+        "ref": "D19",
+        "kind": "diff",
+        "path": "internal/reviewfixtures/f18.go",
+        "section": "PR patch (patch line numbers)",
+        "revision": "5e1b243cd955e108bd09d6faae6ddbf1908761a2",
+        "chunkId": "diff-19",
+        "start": 1,
+        "end": 9,
+        "text": "diff --git a/internal/reviewfixtures/f18.go b/internal/reviewfixtures/f18.go\nnew file mode 100644\nindex 0000000..16a47e0\n--- /dev/null\n+++ b/internal/reviewfixtures/f18.go\n@@ -0,0 +1,2 @@\n+package reviewfixtures\n+const Value18 = 18\n"
+      },
+      {
+        "ref": "D20",
+        "kind": "diff",
+        "path": "internal/reviewfixtures/f19.go",
+        "section": "PR patch (patch line numbers)",
+        "revision": "5e1b243cd955e108bd09d6faae6ddbf1908761a2",
+        "chunkId": "diff-20",
+        "start": 1,
+        "end": 9,
+        "text": "diff --git a/internal/reviewfixtures/f19.go b/internal/reviewfixtures/f19.go\nnew file mode 100644\nindex 0000000..431d136\n--- /dev/null\n+++ b/internal/reviewfixtures/f19.go\n@@ -0,0 +1,2 @@\n+package reviewfixtures\n+const Value19 = 19\n"
+      },
+      {
+        "ref": "D21",
+        "kind": "diff",
+        "path": "internal/reviewfixtures/f20.go",
+        "section": "PR patch (patch line numbers)",
+        "revision": "5e1b243cd955e108bd09d6faae6ddbf1908761a2",
+        "chunkId": "diff-21",
+        "start": 1,
+        "end": 9,
+        "text": "diff --git a/internal/reviewfixtures/f20.go b/internal/reviewfixtures/f20.go\nnew file mode 100644\nindex 0000000..a01bf12\n--- /dev/null\n+++ b/internal/reviewfixtures/f20.go\n@@ -0,0 +1,2 @@\n+package reviewfixtures\n+const Value20 = 20\n"
+      },
+      {
+        "ref": "D22",
+        "kind": "diff",
+        "path": "internal/reviewfixtures/f21.go",
+        "section": "PR patch (patch line numbers)",
+        "revision": "5e1b243cd955e108bd09d6faae6ddbf1908761a2",
+        "chunkId": "diff-22",
+        "start": 1,
+        "end": 9,
+        "text": "diff --git a/internal/reviewfixtures/f21.go b/internal/reviewfixtures/f21.go\nnew file mode 100644\nindex 0000000..c78919a\n--- /dev/null\n+++ b/internal/reviewfixtures/f21.go\n@@ -0,0 +1,2 @@\n+package reviewfixtures\n+const Value21 = 21\n"
+      },
+      {
+        "ref": "D23",
+        "kind": "diff",
+        "path": "internal/reviewfixtures/f22.go",
+        "section": "PR patch (patch line numbers)",
+        "revision": "5e1b243cd955e108bd09d6faae6ddbf1908761a2",
+        "chunkId": "diff-23",
+        "start": 1,
+        "end": 9,
+        "text": "diff --git a/internal/reviewfixtures/f22.go b/internal/reviewfixtures/f22.go\nnew file mode 100644\nindex 0000000..8cbec79\n--- /dev/null\n+++ b/internal/reviewfixtures/f22.go\n@@ -0,0 +1,2 @@\n+package reviewfixtures\n+const Value22 = 22\n"
+      },
+      {
+        "ref": "D24",
+        "kind": "diff",
+        "path": "internal/reviewfixtures/f23.go",
+        "section": "PR patch (patch line numbers)",
+        "revision": "5e1b243cd955e108bd09d6faae6ddbf1908761a2",
+        "chunkId": "diff-24",
+        "start": 1,
+        "end": 9,
+        "text": "diff --git a/internal/reviewfixtures/f23.go b/internal/reviewfixtures/f23.go\nnew file mode 100644\nindex 0000000..71e19b8\n--- /dev/null\n+++ b/internal/reviewfixtures/f23.go\n@@ -0,0 +1,2 @@\n+package reviewfixtures\n+const Value23 = 23\n"
+      },
+      {
+        "ref": "R1",
+        "kind": "documentation",
+        "path": "RAG.md",
+        "section": "После проверки ответов применить оценки; сетевых запросов нет.",
+        "revision": "05b157b35e36e100466efa10b8daf96a92e2ca36",
+        "chunkId": "20a22244e933e938",
+        "start": 80,
+        "end": 103,
+        "text": "# После проверки ответов применить оценки; сетевых запросов нет.\ngo run ./cmd/rag-eval -out artifacts/rag-new -reviews artifacts/rag-new/reviews.json\n\ngo test ./...\ngo vet ./...\ndocker compose up -d --build\n```\n\nCLI читает ключ только из окружения либо явно указанного `-env-file`, не выводит\nего. Флаги `-index`, `-questions`, `-model`, `-out` позволяют повторить эксперимент.\nПри ошибке готовые пары сохраняются как неполный отчёт; повторный запуск используют\nс новым `-out`. `-reviews` принимает объект `{question_id: {without: review, with:\nreview}}`; поля review см. в сохранённом `artifacts/rag/reviews.json`.\n\nВ Docker отчёт включён в образ, путь `RAG_REPORT_PATH=/documents/rag/comparison.json`.\nБинарник `/rag-eval` также включён в образ; для повторного прогона укажите\n`-index /documents/artifacts/index.sqlite -questions /documents/rag-questions.json`\nи доступный для записи `-out /data/rag-new`.\n\nAPI: `POST /api/chat` принимает `rag: true|false`; `POST /api/rag/compare` принимает\n`query` и необязательный `model`; `GET /api/rag/report` отдаёт сохранённый прогон.\nAPI требует `X-Codex-Chat: 1`, same-origin и JSON для POST. Режим сравнения не\nменяет чат, память, задачи или сохранённый отчёт.\n",
+        "score": 11.24844272495455
+      },
+      {
+        "ref": "R2",
+        "kind": "documentation",
+        "path": "RAG23.md",
+        "section": "Воспроизведение эксперимента",
+        "revision": "05b157b35e36e100466efa10b8daf96a92e2ca36",
+        "chunkId": "f5ade8ebd4cc5dcf",
+        "start": 45,
+        "end": 51,
+        "text": "## Воспроизведение эксперимента\n\nКоманды `calibrate` и `compare` выполняют платные запросы OpenAI и отправляют вопросы/фрагменты корпуса. Ключ читается из окружения или из явно заданного файла; в отчёт не записывается.\n\n```bash\ngo run ./cmd/rag-bench -phase calibrate -env-file .env -out artifacts/rag23-new\ngo run ./cmd/rag-bench -phase compare -env-file .env -out artifacts/rag23-new",
+        "score": 10.327980114324202
+      },
+      {
+        "ref": "R3",
+        "kind": "documentation",
+        "path": "docs/architecture.md",
+        "section": "Ассистент разработчика /help",
+        "revision": "05b157b35e36e100466efa10b8daf96a92e2ca36",
+        "chunkId": "543ecaba3c5cf7c5",
+        "start": 21,
+        "end": 27,
+        "text": "## Ассистент разработчика /help\n\n`internal/projecthelp/` создаёт отдельный локальный BM25-индекс README, `docs/**/*.md` и выбранных корневых инструкций. Команда `/help вопрос` всегда использует этот индекс, независимо от переключателя обычного RAG. Старый учебный корпус не участвует в /help. `internal/agent/project_help.go` обрабатывает команду и сохраняет ответы в истории текущего диалога.\n\n`cmd/project-mcp/` запускает отдельный MCP-сервер; его реализация находится в `internal/projectmcp/`. Инструмент `git_branch` получает текущую ветку, HEAD-коммит и признак detached HEAD, а `project_files` возвращает ограниченный список отслеживаемых публичных путей. Данные получают реальными вызовами MCP для каждого вопроса, а не зашивают при сборке. Произвольных команд, записи файлов и diff в этих инструментах нет.\n\nДля /help доступны только документация и результаты чтения MCP. Команда не запускает инструменты брокера/планировщика, не извлекает историю других задач и не меняет их память. Сами сообщения /help сохраняются в истории. Каждый новый /help собирает свежие доказательства; сохранённый старый ответ не считается текущим состоянием Git.",
+        "score": 9.347848815633697
+      },
+      {
+        "ref": "R4",
+        "kind": "documentation",
+        "path": "docs/ai-review.md",
+        "section": "Проверка",
+        "revision": "05b157b35e36e100466efa10b8daf96a92e2ca36",
+        "chunkId": "902271b89a6061eb",
+        "start": 104,
+        "end": 124,
+        "text": "## Проверка\n\n`go test ./...` проверяет настоящий Git diff/RAG, rename/delete, исключение\nсекретных путей, symlink/generated/large файлы, лимиты, JSON/цитаты, старый HEAD,\nобновление только комментария бота и отказ от инструментов модели. API мокается.\n\nДля оплачиваемого прогона на временном клоне текущего HEAD:\n\n```sh\npython3 scripts/evaluate-review.py --binary bin/pr-review --env-file .env\n```\n\nПять контролей: ошибка масштаба стоимости (с prompt injection в комментарии),\nутечка ключа в `/api/status`, безопасное переименование локальной переменной,\nrename/delete и PR из 29 файлов. Проверки ожидаемого пути / отсутствия\nзамечаний / неполного покрытия узкие: итоговые выводы нужно прочитать.\nКод кандидата не запускается. Результаты — JSON/Markdown по каждому сценарию\nи `summary.json`; локальные fixture-коммиты не публикуются в GitHub.\n\nФактический прогон GitHub и демонстрация фиксируются в\n`artifacts/review32/REPORT.md` после выполнения.",
+        "score": 9.29285965775641
+      },
+      {
+        "ref": "R5",
+        "kind": "code",
+        "path": "internal/prreview/git.go",
+        "section": "git",
+        "revision": "05b157b35e36e100466efa10b8daf96a92e2ca36",
+        "chunkId": "42c18ebad1043200",
+        "start": 59,
+        "end": 75,
+        "text": "func (r Repository) git(ctx context.Context, limit int, args ...string) ([]byte, error) {\n\troot, err := filepath.Abs(r.Root)\n\tif err != nil {\n\t\treturn nil, err\n\t}\n\tcmd := exec.CommandContext(ctx, \"git\", append([]string{\"--no-pager\", \"-c\", \"safe.directory=\" + root, \"-c\", \"core.hooksPath=/dev/null\", \"-c\", \"core.quotePath=false\"}, args...)...)\n\tcmd.Dir = r.Root\n\t// Git must not inherit credentials, custom config, external diff or a PR's hooks.\n\tcmd.Env = []string{\"PATH=\" + os.Getenv(\"PATH\"), \"HOME=/nonexistent\", \"GIT_CONFIG_NOSYSTEM=1\", \"GIT_CONFIG_GLOBAL=/dev/null\", \"GIT_NO_REPLACE_OBJECTS=1\", \"GIT_TERMINAL_PROMPT=0\", \"LC_ALL=C\"}\n\tbuf := \u0026cappedBuffer{limit: limit}\n\tcmd.Stdout = buf\n\tif err := cmd.Run(); err != nil {\n\t\treturn nil, fmt.Errorf(\"git %s failed or exceeded limit\", args[0])\n\t}\n\treturn buf.Bytes(), nil\n}\n",
+        "score": 31.64503605363596
+      },
+      {
+        "ref": "R6",
+        "kind": "code",
+        "path": "internal/projectmcp/server.go",
+        "section": "git",
+        "revision": "05b157b35e36e100466efa10b8daf96a92e2ca36",
+        "chunkId": "5b1aea9c71a2b62a",
+        "start": 40,
+        "end": 53,
+        "text": "func git(ctx context.Context, root string, args ...string) (string, error) {\n\tctx, cancel := context.WithTimeout(ctx, 5*time.Second)\n\tdefer cancel()\n\targv := append([]string{\"-c\", \"safe.directory=\" + root, \"-c\", \"core.fsmonitor=false\", \"-C\", root}, args...)\n\tcmd := exec.CommandContext(ctx, \"git\", argv...)\n\t// Do not pass the application's credentials or user Git configuration.\n\tcmd.Env = []string{\"PATH=\" + os.Getenv(\"PATH\"), \"GIT_CONFIG_NOSYSTEM=1\", \"GIT_CONFIG_GLOBAL=/dev/null\", \"GIT_TERMINAL_PROMPT=0\", \"GIT_OPTIONAL_LOCKS=0\"}\n\tvar out output\n\tcmd.Stdout = \u0026out\n\tif cmd.Run() != nil {\n\t\treturn \"\", errors.New(\"Git context unavailable\")\n\t}\n\treturn strings.TrimSpace(string(out.data)), nil\n}",
+        "score": 24.674082367001105
+      },
+      {
+        "ref": "R7",
+        "kind": "code",
+        "path": "internal/prreview/git.go",
+        "section": "git.go",
+        "revision": "05b157b35e36e100466efa10b8daf96a92e2ca36",
+        "chunkId": "fe96e3d047d8919a",
+        "start": 1,
+        "end": 3,
+        "text": "// Package prreview reviews Git objects as data, never executing candidate code.\npackage prreview\n",
+        "score": 20.3957831025213
+      },
+      {
+        "ref": "R8",
+        "kind": "code",
+        "path": "internal/prreview/review_test.go",
+        "section": "gitTest",
+        "revision": "05b157b35e36e100466efa10b8daf96a92e2ca36",
+        "chunkId": "dcd9e80b8a565dcd",
+        "start": 18,
+        "end": 28,
+        "text": "func gitTest(t *testing.T, root string, args ...string) string {\n\tt.Helper()\n\tcmd := exec.Command(\"git\", append([]string{\"-c\", \"user.name=Test\", \"-c\", \"user.email=test@example.com\", \"-c\", \"core.hooksPath=/dev/null\"}, args...)...)\n\tcmd.Dir = root\n\tcmd.Env = append(os.Environ(), \"GIT_CONFIG_NOSYSTEM=1\", \"GIT_CONFIG_GLOBAL=/dev/null\")\n\tb, e := cmd.CombinedOutput()\n\tif e != nil {\n\t\tt.Fatalf(\"git %v: %v: %s\", args, e, b)\n\t}\n\treturn strings.TrimSpace(string(b))\n}",
+        "score": 20.289642481527785
+      },
+      {
+        "ref": "R9",
+        "kind": "documentation",
+        "path": "docs/ai-review.md",
+        "section": "Контекст и ограничения",
+        "revision": "05b157b35e36e100466efa10b8daf96a92e2ca36",
+        "chunkId": "4535bd5cb299a707",
+        "start": 29,
+        "end": 68,
+        "text": "## Контекст и ограничения\n\nАнализатор и его тесты запускаются из **зафиксированного base SHA**, а не из\nPR. Полный fetch получает Git-объекты кандидата; checkout, сборка и запуск\nкода кандидата не выполняются. Git читается отдельными командами без shell,\nexternal diff/textconv, hooks, replacement objects и наследования ключей.\nActions закреплены по SHA. OpenAI-ключ доступен только шагу генерации.\n\nЭто workflow для доверенных участников с write-доступом: они могут менять\nworkflow в своих ветках. Он не является защищённой песочницей для произвольных\nвнешних авторов. `pull_request_target` с исполнением кода PR не используется.\n\nDiff строится от merge base до head, поэтому учитывает добавления, изменения,\nудаления и переименования. До 24 файлов, 80 000 байт diff суммарно, 128 КиБ\nна файл. Файл, который целиком не помещается, пропускается с причиной; текст\nне обрезается посреди hunk. Ссылки привязаны к commit SHA. Перед публикацией\nещё раз проверяются открытость PR, head, base и репозиторий автора. Проверка и\nзапись комментария не атомарны в GitHub; каждый отчёт явно указывает проверенный\nHEAD. Предыдущий отчёт не выдаётся за проверку нового коммита.\n\nКорпус RAG — README, `docs/`, другие публичные Markdown, Go, JS/CSS/HTML,\nYAML, Dockerfile и go.mod/go.sum **из base**. Из PR никогда не берутся новые\n«правила ревью». Скрытые файлы (кроме `.github`), `.env`, пользовательские\nданные, `artifacts/`, `tools/`, `vendor/`, старый `documents/` корпус,\nсимволические ссылки, бинарные и сгенерированные файлы исключаются.\nНе храните секреты и персональные данные в публичном коде/документации:\nallowlist путей не является универсальным детектором секретов.\n\nДо 1000 файлов / 12 МиБ корпуса. Chunking по объявлениям Go / заголовкам\nMarkdown, длинные секции — по 40 физических строк; строки сохраняются точно.\nПо каждому файлу отдельно ищутся документация и код существующим BM25 из\n`internal/projecthelp`, с ограничением до 16 retrieved chunks / 24 000 байт.\nВ отчёте сохраняются path, section, revision, chunk ID, score и точный текст.\n\nМодель получает нумерованные источники `D*` (строки patch, включая заголовки)\nи `R*` (физические строки документа/кода). Замечание должно попадать в реально\nдобавленную RIGHT или удалённую LEFT строку; диапазон не длиннее 10 строк.\nКаждая цитата ограничена 12 строками и восстанавливается из исходного текста.\nНеизвестные пути, source ID, диапазоны и неожиданные поля JSON отклоняются.\nКаждое замечание должно ссылаться на собственный diff; дополнительно — на",
+        "score": 10.642750599903904
+      },
+      {
+        "ref": "R10",
+        "kind": "code",
+        "path": "internal/prreview/git.go",
+        "section": "const",
+        "revision": "05b157b35e36e100466efa10b8daf96a92e2ca36",
+        "chunkId": "05f71de35c61f1f4",
+        "start": 20,
+        "end": 21,
+        "text": "const MaxBlobBytes = 128 \u003c\u003c 10\n",
+        "score": 21.185549632949567
+      },
+      {
+        "ref": "R11",
+        "kind": "documentation",
+        "path": "RAG25.md",
+        "section": "Новый процесс продолжает со второго полупрогона:",
+        "revision": "05b157b35e36e100466efa10b8daf96a92e2ca36",
+        "chunkId": "955999231d533f52",
+        "start": 43,
+        "end": 50,
+        "text": "# Новый процесс продолжает со второго полупрогона:\ngo run ./cmd/rag-dialogue -env-file .env -resume\n```\n\nПоиск выполняется на каждом ходе; перед каждым ходом JSON-хранилище открывается заново и создаётся новый Agent. Это проверяет восстановление истории и снимка памяти с диска. CLI сохраняет каждый ответ и оценку, умеет продолжать после ошибки без повторной генерации готовых ответов. Если процесс остановился между сохранением истории и отчёта, ответ восстанавливается из истории. Параметры `-out`, `-model`, `-max-turns`, `-index`, `-questions`. Для нового независимого прогона укажите другой `-out`. При возобновлении проверяются модель, хеши корпуса и набора вопросов, настройки и тексты инструкций.\n\nОтчёты: `artifacts/rag25/comparison.json` и `comparison.md`; полные истории режимов — `sessions/`. Сохранённые результаты доступны во вкладке RAG. Docker использует `RAG_DIALOGUE_PATH`. API чата: `rag:true`, `ragOptions:{mode:\"filter\",topKBefore:20,topKAfter:5,relevanceThreshold:2,grounded:true,dialogue:true}`. Одиночный `/api/rag/run` отклоняет `dialogue:true`, поскольку этот режим требует сохраняемой сессии.\n",
+        "score": 10.854546587131125
+      }
+    ],
+    "corpusFiles": 164,
+    "corpusChunks": 1802,
+    "corpusSkipped": 0
+  },
+  "findings": [],
+  "modelCalls": 1
+}

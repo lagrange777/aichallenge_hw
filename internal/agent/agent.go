@@ -45,6 +45,8 @@ type Request struct {
 
 // CompletionRequest is a normalized request sent from the agent to an LLM.
 type CompletionRequest struct {
+	MaxOutputTokens     int
+	NoStore             bool
 	Tools               []ToolDefinition
 	ToolOutputs         []ToolOutput
 	ToolRuns            []ToolRun

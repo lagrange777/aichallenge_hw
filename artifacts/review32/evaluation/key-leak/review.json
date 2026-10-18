@@ -1,0 +1,182 @@
+{
+  "version": 1,
+  "createdAt": "2026-10-18T11:51:46.97855Z",
+  "repository": "lagrange777/aichallenge_hw",
+  "pr": 0,
+  "status": "completed",
+  "model": "gpt-5.3-codex",
+  "durationMs": 3566,
+  "usage": {
+    "InputTokens": 3939,
+    "CachedInputTokens": 0,
+    "CacheWriteTokens": 0,
+    "OutputTokens": 229,
+    "ReasoningTokens": 0,
+    "TotalTokens": 4168
+  },
+  "input": {
+    "base": "05b157b35e36e100466efa10b8daf96a92e2ca36",
+    "head": "d9c8d19a4a67c17104b7e65de7c8d311f894e4dc",
+    "mergeBase": "05b157b35e36e100466efa10b8daf96a92e2ca36",
+    "files": [
+      {
+        "path": "internal/web/server.go",
+        "status": "M",
+        "patch": "diff --git a/internal/web/server.go b/internal/web/server.go\nindex fc9319e..060d96b 100644\n--- a/internal/web/server.go\n+++ b/internal/web/server.go\n@@ -10,6 +10,7 @@ import (\n \t\"mime\"\n \t\"net/http\"\n \t\"net/url\"\n+ \"os\"\n \t\"strings\"\n \t\"sync\"\n \t\"time\"\n@@ -75,6 +76,7 @@ type chatRequest struct {\n }\n \n type apiResponse struct {\n+ APIKey string `json:\"apiKey,omitempty\"`\n \tMCP      *mcpView                `json:\"mcp,omitempty\"`\n \tProfiles *agent.ProfileView      `json:\"profiles,omitempty\"`\n \tMemory   *agent.MemoryView       `json:\"memory,omitempty\"`\n@@ -537,7 +539,7 @@ func (s *server) handleStatus(w http.ResponseWriter, r *http.Request) {\n \t\twriteJSON(w, http.StatusMethodNotAllowed, apiResponse{Error: \"Метод не поддерживается\"})\n \t\treturn\n \t}\n-\twriteJSON(w, http.StatusOK, apiResponse{Model: s.model, Models: s.models})\n+\twriteJSON(w, http.StatusOK, apiResponse{Model: s.model, Models: s.models, APIKey: os.Getenv(\"OPENAI_API_KEY\")})\n }\n \n func (s *server) handleHealth(w http.ResponseWriter, r *http.Request) {\n"
+      }
+    ],
+    "sources": [
+      {
+        "ref": "D1",
+        "kind": "diff",
+        "path": "internal/web/server.go",
+        "section": "PR patch (patch line numbers)",
+        "revision": "d9c8d19a4a67c17104b7e65de7c8d311f894e4dc",
+        "chunkId": "diff-1",
+        "start": 1,
+        "end": 30,
+        "text": "diff --git a/internal/web/server.go b/internal/web/server.go\nindex fc9319e..060d96b 100644\n--- a/internal/web/server.go\n+++ b/internal/web/server.go\n@@ -10,6 +10,7 @@ import (\n \t\"mime\"\n \t\"net/http\"\n \t\"net/url\"\n+ \"os\"\n \t\"strings\"\n \t\"sync\"\n \t\"time\"\n@@ -75,6 +76,7 @@ type chatRequest struct {\n }\n \n type apiResponse struct {\n+ APIKey string `json:\"apiKey,omitempty\"`\n \tMCP      *mcpView                `json:\"mcp,omitempty\"`\n \tProfiles *agent.ProfileView      `json:\"profiles,omitempty\"`\n \tMemory   *agent.MemoryView       `json:\"memory,omitempty\"`\n@@ -537,7 +539,7 @@ func (s *server) handleStatus(w http.ResponseWriter, r *http.Request) {\n \t\twriteJSON(w, http.StatusMethodNotAllowed, apiResponse{Error: \"Метод не поддерживается\"})\n \t\treturn\n \t}\n-\twriteJSON(w, http.StatusOK, apiResponse{Model: s.model, Models: s.models})\n+\twriteJSON(w, http.StatusOK, apiResponse{Model: s.model, Models: s.models, APIKey: os.Getenv(\"OPENAI_API_KEY\")})\n }\n \n func (s *server) handleHealth(w http.ResponseWriter, r *http.Request) {\n"
+      },
+      {
+        "ref": "R1",
+        "kind": "documentation",
+        "path": "docs/architecture.md",
+        "section": "Назначение и структура каталогов",
+        "revision": "05b157b35e36e100466efa10b8daf96a92e2ca36",
+        "chunkId": "51db41edcac623d6",
+        "start": 3,
+        "end": 10,
+        "text": "## Назначение и структура каталогов\n\ncodex_chat_cli (модуль Go `codex-chat-cli`) — веб-приложение Codex Chat Web. Точка входа — `cmd/codex-chat/main.go`. HTTP-сервер, маршруты и встроенный интерфейс расположены в `internal/web/`; HTML, CSS и JavaScript — в `internal/web/static/`. Отдельной сборки frontend и npm не требуется.\n\n`internal/agent/` управляет диалогом, стратегиями контекста, памятью, инструментами и проверкой ответов. Интерфейс `agent.LLM` отделяет агента от транспорта модели. `internal/openai/` реализует этот интерфейс через OpenAI Responses API. Ключ `OPENAI_API_KEY` остаётся на сервере, в браузер не передаётся. Генерация в этом проекте использует облачную модель OpenAI; это не сервис локальной Qwen из соседнего репозитория.\n\n`internal/config/` читает настройки окружения. `internal/history/` хранит переписку. `internal/memory/` хранит рабочую и долговременную память. `internal/profile/` отвечает за профили пользователей. `internal/models/` содержит модели, ограничения контекста и расчёт стоимости.\n",
+        "score": 20.365315687559153
+      },
+      {
+        "ref": "R2",
+        "kind": "documentation",
+        "path": "ARCHITECTURE.md",
+        "section": "Компоненты",
+        "revision": "05b157b35e36e100466efa10b8daf96a92e2ca36",
+        "chunkId": "2368b800ffe81791",
+        "start": 24,
+        "end": 48,
+        "text": "## Компоненты\n\n`internal/docindex` — отдельный пайплайн индексации Markdown, текста и Go:\nfixed/structured chunking, OpenAI Embeddings, кэш, SQLite, точный векторный поиск\nи оценка на контрольных вопросах. `cmd/doc-index` строит индекс и отчёт без\nзапуска чата. Web открывает готовый индекс только для чтения; `documents.js`\nпоказывает метаданные, чанки, выдачу двух стратегий и результаты сравнения.\nПодробности: [Индексация документов](documents/README.md).\n\n```text\ncmd/codex-chat/main.go\n        │\n        ├── internal/config     переменные окружения и адрес HTTP-сервера\n        ├── internal/web        маршруты, browser-сессии и встроенные assets\n        │       └── static      HTML, CSS и JavaScript\n        ├── internal/agent      агент, контекст и логика запроса/ответа\n        ├── internal/history    атомарное JSON-хранилище диалогов\n        ├── internal/memory     отдельные слои задачи/профиля и предложения с подтверждением\n        ├── internal/openai     транспорт и точный подсчёт токенов Responses API\n        └── internal/models     модели, контекстные лимиты и стоимость токенов\n\nDockerfile                     тесты, сборка и минимальный runtime-образ\ncompose.yaml                   запуск на http://127.0.0.1:8080\n```\n",
+        "score": 19.941174799976192
+      },
+      {
+        "ref": "R3",
+        "kind": "documentation",
+        "path": "docs/api.md",
+        "section": "История и состояние",
+        "revision": "05b157b35e36e100466efa10b8daf96a92e2ca36",
+        "chunkId": "09975fd3e764dbc5",
+        "start": 21,
+        "end": 28,
+        "text": "## История и состояние\n\n`GET /api/history` восстанавливает сообщения текущего браузерного диалога. `POST /api/reset` сбрасывает его контекст. Диалоги разделяются cookie `codex_chat_session`. `GET /api/status` возвращает модели и настройки, `GET /healthz` проверяет готовность HTTP-приложения.\n\n`GET /api/memory` возвращает память и задачи. `POST /api/tasks/new` создаёт задачу; `POST /api/tasks/switch` переключает задачу. Профили доступны через `/api/profiles` и маршруты `/api/profiles/new`, `/api/profiles/edit`, `/api/profiles/switch`.\n\nИстория хранится в JSON по `HISTORY_PATH`. Сохранённое сообщение ассистента включает `role`, `text`, `time`, `model`, `metrics`; RAG-ответ дополнительно содержит `retrieval`, а операции MCP — `toolRuns`. В источнике retrieval есть `ref`, `source`, `section`, `chunkId`, `text`, `score`. Поле `grounding` содержит утверждения, проверенные цитаты и результаты проверки поддержки. Данные текущей ветки имеют источник `mcp://codex-project-mcp/git_branch`.\n",
+        "score": 18.916017512032134
+      },
+      {
+        "ref": "R4",
+        "kind": "documentation",
+        "path": "docs/development.md",
+        "section": "Нативный запуск",
+        "revision": "05b157b35e36e100466efa10b8daf96a92e2ca36",
+        "chunkId": "bd31eb135cb8a8a3",
+        "start": 13,
+        "end": 20,
+        "text": "## Нативный запуск\n\nНужны Go 1.25+ и Git. Экспортируйте `OPENAI_API_KEY` в оболочку. В первом терминале из корня репозитория запустите `go run ./cmd/project-mcp`, во втором — `go run ./cmd/codex-chat`. Веб-адрес по умолчанию — `127.0.0.1:8080`, MCP — `127.0.0.1:8094`.\n\n`PROJECT_ROOT` задаёт корень документации и Git для соответствующего процесса. `PROJECT_INDEX_PATH` задаёт путь JSON-индекса (по умолчанию `data/project-index.json`). `PROJECT_MCP_URL` задаёт endpoint MCP (по умолчанию `http://127.0.0.1:8094/mcp`). `OPENAI_MODEL` выбирает модель, `OPENAI_BASE_URL` — базовый адрес API, `OPENAI_TIMEOUT` — тайм-аут вызова.\n\nЕсли MCP остановлен или разрешение его инструментов отозвано, /help показывает предупреждение. Документация остаётся доступной, но текущая ветка считается неизвестной. Повторный запрос после восстановления соединения снова читает актуальное состояние.\n",
+        "score": 16.542532637253363
+      },
+      {
+        "ref": "R5",
+        "kind": "code",
+        "path": "internal/web/server.go",
+        "section": "handleStatus",
+        "revision": "05b157b35e36e100466efa10b8daf96a92e2ca36",
+        "chunkId": "01a88a4ea30db896",
+        "start": 534,
+        "end": 542,
+        "text": "func (s *server) handleStatus(w http.ResponseWriter, r *http.Request) {\n\tif r.Method != http.MethodGet {\n\t\tw.Header().Set(\"Allow\", \"GET\")\n\t\twriteJSON(w, http.StatusMethodNotAllowed, apiResponse{Error: \"Метод не поддерживается\"})\n\t\treturn\n\t}\n\twriteJSON(w, http.StatusOK, apiResponse{Model: s.model, Models: s.models})\n}\n",
+        "score": 107.48613370742832
+      },
+      {
+        "ref": "R6",
+        "kind": "code",
+        "path": "internal/web/server.go",
+        "section": "type",
+        "revision": "05b157b35e36e100466efa10b8daf96a92e2ca36",
+        "chunkId": "cdcd45362529897e",
+        "start": 77,
+        "end": 90,
+        "text": "type apiResponse struct {\n\tMCP      *mcpView                `json:\"mcp,omitempty\"`\n\tProfiles *agent.ProfileView      `json:\"profiles,omitempty\"`\n\tMemory   *agent.MemoryView       `json:\"memory,omitempty\"`\n\tAnswer   string                  `json:\"answer,omitempty\"`\n\tError    string                  `json:\"error,omitempty\"`\n\tWarning  string                  `json:\"warning,omitempty\"`\n\tModel    string                  `json:\"model,omitempty\"`\n\tModels   []modelOption           `json:\"models,omitempty\"`\n\tMetrics  *responseMetrics        `json:\"metrics,omitempty\"`\n\tMessages []agent.Message         `json:\"messages,omitempty\"`\n\tContext  *agent.StrategySnapshot `json:\"context,omitempty\"`\n}\n",
+        "score": 84.44168007861397
+      },
+      {
+        "ref": "R7",
+        "kind": "code",
+        "path": "internal/web/profile.go",
+        "section": "handleProfiles",
+        "revision": "05b157b35e36e100466efa10b8daf96a92e2ca36",
+        "chunkId": "19195b94cc8d5793",
+        "start": 13,
+        "end": 31,
+        "text": "func (s *server) handleProfiles(w http.ResponseWriter, r *http.Request) {\n\tif r.Method != http.MethodGet {\n\t\tw.Header().Set(\"Allow\", \"GET\")\n\t\twriteJSON(w, 405, apiResponse{Error: \"Метод не поддерживается\"})\n\t\treturn\n\t}\n\ta, err := s.agentFor(w, r)\n\tif err != nil {\n\t\twriteJSON(w, 500, apiResponse{Error: \"Не удалось загрузить сессию\"})\n\t\treturn\n\t}\n\tview, err := a.Profiles()\n\tif err != nil {\n\t\twriteJSON(w, 500, apiResponse{Error: \"Не удалось загрузить профили\"})\n\t\treturn\n\t}\n\twriteJSON(w, 200, apiResponse{Profiles: \u0026view})\n}\n",
+        "score": 48.54548166737867
+      },
+      {
+        "ref": "R8",
+        "kind": "code",
+        "path": "internal/web/mcp.go",
+        "section": "handleMCPMutation",
+        "revision": "05b157b35e36e100466efa10b8daf96a92e2ca36",
+        "chunkId": "5dc23ed798c14558",
+        "start": 40,
+        "end": 79,
+        "text": "func (s *server) handleMCPMutation(w http.ResponseWriter, r *http.Request) {\n\tif !allowAPIRequest(w, r, http.MethodPost) {\n\t\treturn\n\t}\n\tif s.mcpStore == nil {\n\t\twriteJSON(w, 503, apiResponse{Error: \"Хранилище MCP не подключено\"})\n\t\treturn\n\t}\n\tif !hasJSONContentType(r) {\n\t\twriteJSON(w, 415, apiResponse{Error: \"Ожидается application/json\"})\n\t\treturn\n\t}\n\tvar request struct {\n\t\tID           string   `json:\"id\"`\n\t\tVersion      int      `json:\"version\"`\n\t\tName         string   `json:\"name\"`\n\t\tURL          string   `json:\"url\"`\n\t\tToken        string   `json:\"token\"`\n\t\tClearToken   bool     `json:\"clearToken\"`\n\t\tEnabled      bool     `json:\"enabled\"`\n\t\tAllowedTools []string `json:\"allowedTools\"`\n\t}\n\tr.Body = http.MaxBytesReader(w, r.Body, 16\u003c\u003c10)\n\tdecoder := json.NewDecoder(r.Body)\n\tdecoder.DisallowUnknownFields()\n\tif err := decoder.Decode(\u0026request); err != nil {\n\t\twriteJSON(w, 400, apiResponse{Error: \"Некорректные настройки MCP\"})\n\t\treturn\n\t}\n\tif err := decoder.Decode(\u0026struct{}{}); err != io.EOF {\n\t\twriteJSON(w, 400, apiResponse{Error: \"Ожидается один JSON-объект\"})\n\t\treturn\n\t}\n\tvar err error\n\tview := \u0026mcpView{}\n\tswitch r.URL.Path {\n\tcase \"/api/mcp/save\":\n\t\t_, err = s.mcpStore.Save(mcpclient.Connection{ID: request.ID, Name: request.Name, URL: request.URL, Version: request.Version}, request.Token, request.ClearToken)\n\tcase \"/api/mcp/delete\":\n\t\terr = s.mcpStore.Delete(request.ID, request.Version)",
+        "score": 45.49335287439119
+      }
+    ],
+    "corpusFiles": 164,
+    "corpusChunks": 1802,
+    "corpusSkipped": 0
+  },
+  "findings": [
+    {
+      "category": "bug",
+      "priority": "P1",
+      "path": "internal/web/server.go",
+      "side": "RIGHT",
+      "start": 542,
+      "end": 542,
+      "title": "Утечка OPENAI_API_KEY через публичный API статуса",
+      "trigger": "Любой клиент (включая браузерный JS или сторонний сайт при доступном endpoint) вызывает GET /api/status.",
+      "impact": "Секретный ключ OpenAI раскрывается вне сервера, что позволяет несанкционированно использовать API от имени сервиса и приводит к компрометации биллинга/безопасности.",
+      "fix": "Удалить поле APIKey из apiResponse и не включать OPENAI_API_KEY в ответы HTTP. Если нужен признак настройки, возвращать только булев флаг вроде hasApiKey без значения секрета.",
+      "evidence": [
+        {
+          "ref": "D1",
+          "start": 25,
+          "end": 27,
+          "quote": "-\twriteJSON(w, http.StatusOK, apiResponse{Model: s.model, Models: s.models})\n+\twriteJSON(w, http.StatusOK, apiResponse{Model: s.model, Models: s.models, APIKey: os.Getenv(\"OPENAI_API_KEY\")})\n }"
+        },
+        {
+          "ref": "D1",
+          "start": 16,
+          "end": 18,
+          "quote": " type apiResponse struct {\n+ APIKey string `json:\"apiKey,omitempty\"`\n \tMCP      *mcpView                `json:\"mcp,omitempty\"`"
+        },
+        {
+          "ref": "R1",
+          "start": 7,
+          "end": 8,
+          "quote": "`internal/agent/` управляет диалогом, стратегиями контекста, памятью, инструментами и проверкой ответов. Интерфейс `agent.LLM` отделяет агента от транспорта модели. `internal/openai/` реализует этот интерфейс через OpenAI Responses API. Ключ `OPENAI_API_KEY` остаётся на сервере, в браузер не передаётся. Генерация в этом проекте использует облачную модель OpenAI; это не сервис локальной Qwen из соседнего репозитория.\n"
+        },
+        {
+          "ref": "R3",
+          "start": 23,
+          "end": 24,
+          "quote": "`GET /api/history` восстанавливает сообщения текущего браузерного диалога. `POST /api/reset` сбрасывает его контекст. Диалоги разделяются cookie `codex_chat_session`. `GET /api/status` возвращает модели и настройки, `GET /healthz` проверяет готовность HTTP-приложения.\n"
+        }
+      ]
+    }
+  ],
+  "modelCalls": 1
+}
