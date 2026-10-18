@@ -1,0 +1,2992 @@
+{
+  "startedAt": "2026-10-18T10:30:03.047164+00:00",
+  "complete": true,
+  "datasetHash": "d2b1707f4e4dd420ad6e179e7f7dc0e5e483abf945edf110cb1d095bf4f2bb99",
+  "branch": "codex/ai-challenge-task-31",
+  "commit": "c1f624105385794df13bc972ec049623c4145196",
+  "url": "http://127.0.0.1:8080",
+  "requestedModel": "",
+  "cases": [
+    {
+      "question": {
+        "id": "H01",
+        "query": "Как устроен проект: где точка входа, HTTP-интерфейс, агент и клиент модели?",
+        "expectations": [
+          "Назвать cmd/codex-chat, internal/web, internal/agent, internal/openai"
+        ],
+        "requiredFacts": [
+          [
+            "cmd/codex-chat"
+          ],
+          [
+            "internal/web"
+          ],
+          [
+            "internal/agent"
+          ],
+          [
+            "internal/openai"
+          ]
+        ],
+        "sources": [
+          "docs/architecture.md"
+        ]
+      },
+      "seconds": 7.973,
+      "model": "gpt-5.3-codex",
+      "answer": "Точка входа веб-приложения — cmd/codex-chat/main.go. [S1]\n\nHTTP-интерфейс реализован в internal/web, а основной диалоговый API использует POST /api/chat с обязательным полем message в JSON. [S1] [S2]\n\nАгент находится в internal/agent, управляет полным циклом запроса-ответа и отделён от транспорта модели интерфейсом agent.LLM. [S1] [S3]\n\nКлиент модели расположен в internal/openai: он реализует agent.LLM и преобразует запрос в HTTP-вызов OpenAI Responses API. [S1] [S4]\n\nИсточники и цитаты:\n\n[S1] docs/architecture.md · Архитектура codex_chat_cli > Назначение и структура каталогов · chunk_id: `3b53597d54ecbdba1621d6991ee30ec8ed510043ba081162e0b991883dcd74e1` · строки 3–3\n\n> codex_chat_cli (модуль Go `codex-chat-cli`) — веб-приложение Codex Chat Web. Точка входа — `cmd/codex-chat/main.go`. HTTP-сервер, маршруты и встроенный интерфейс расположены в `internal/web/`; HTML, CSS и JavaScript — в `internal/web/static/`. Отдельной сборки frontend и npm не требуется.\n\n[S2] docs/api.md · HTTP API и данные > Диалог · chunk_id: `8f3d47ec1270840cc54f4d85a48e6002133cd91c39b27bde1a05472faf44b77f` · строки 3–3\n\n> `POST /api/chat` принимает JSON с обязательным `message` и необязательным `model`. Для вызовов из интерфейса используется заголовок `X-Codex-Chat: 1`; обработчик проверяет метод, Content-Type и Origin. Успешный JSON-ответ включает `answer`, `messages`, `model`, `metrics` и `context`. Метрики содержат длительность, токены и расчётную стоимость. API не является OpenAI-совместимым `/v1/chat/completions`.\n\n[S1] docs/architecture.md · Архитектура codex_chat_cli > Назначение и структура каталогов · chunk_id: `3b53597d54ecbdba1621d6991ee30ec8ed510043ba081162e0b991883dcd74e1` · строки 5–5\n\n> `internal/agent/` управляет диалогом, стратегиями контекста, памятью, инструментами и проверкой ответов. Интерфейс `agent.LLM` отделяет агента от транспорта модели. `internal/openai/` реализует этот интерфейс через OpenAI Responses API. Ключ `OPENAI_API_KEY` остаётся на сервере, в браузер не передаётся. Генерация в этом проекте использует облачную модель OpenAI; это не сервис локальной Qwen из соседнего репозитория.\n\n[S3] ARCHITECTURE.md · Архитектура Codex Chat Web > Цель · chunk_id: `710c99c6e1e6b410e869fed031133d64e80f983329947304c4c4ced4b0cf8f34` · строки 4–5\n\n> отдельной сущности `agent.Agent`. Агент инкапсулирует полный цикл запроса и\n> ответа LLM, а HTTP-клиент только взаимодействует с OpenAI Responses API.\n\n[S4] ARCHITECTURE.md · Архитектура Codex Chat Web > Поток сообщения · chunk_id: `0ca6edfc009d66198e3c1204892d2b0ef79966399a1fdb897b177a946a41ab84` · строки 13–14\n\n> 8. OpenAI-клиент преобразует запрос в HTTP-вызов Responses API и возвращает\n>    транспортно-независимый результат.",
+      "metrics": {
+        "durationMs": 7907,
+        "inputTokens": 4157,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 457,
+        "reasoningTokens": 0,
+        "totalTokens": 4614,
+        "costUsd": 0.01367275,
+        "proposalTokens": 0,
+        "contextStrategy": "sliding_window",
+        "windowMessages": 0,
+        "factsCount": 0,
+        "memoryUpdates": 0,
+        "memoryInputTokens": 0,
+        "memoryOutputTokens": 0,
+        "memoryTotalTokens": 0,
+        "tokenCountAvailable": false,
+        "currentRequestTokens": 0,
+        "historyTokens": 0,
+        "projectedInputTokens": 0,
+        "contextWindow": 400000,
+        "maxInputTokens": 272000,
+        "maxOutputTokens": 128000,
+        "contextUsagePercent": 0,
+        "cumulativeInputTokens": 4157,
+        "cumulativeOutputTokens": 457,
+        "cumulativeTotalTokens": 4614,
+        "cumulativeCostUsd": 0.01367275,
+        "compressionEnabled": false,
+        "compressionApplied": false,
+        "summaryMessages": 0,
+        "retainedMessages": 2,
+        "compressionRuns": 0,
+        "summaryInputTokens": 0,
+        "summaryOutputTokens": 0,
+        "summaryTotalTokens": 0,
+        "uncompressedInputTokens": 0,
+        "compressedInputTokens": 0,
+        "savedInputTokens": 0,
+        "tokenSavingsPercent": 0
+      },
+      "retrieval": {
+        "project": {
+          "documents": 14,
+          "chunks": 135,
+          "indexHash": "84193bc16b3009bf4301bac0a1bba07f409ed5d7eb9a03a480c473f64c85bd1e",
+          "runs": [
+            {
+              "serverName": "codex-project-mcp",
+              "name": "git_branch",
+              "arguments": "{}",
+              "output": "{\n  \"branch\": \"codex/ai-challenge-task-31\",\n  \"commit\": \"c1f624105385794df13bc972ec049623c4145196\",\n  \"detached\": false,\n  \"observedAt\": \"2026-10-18T10:30:03.129384259Z\"\n}",
+              "error": false,
+              "durationMs": 21
+            }
+          ]
+        },
+        "grounding": {
+          "status": "answered",
+          "claims": [
+            {
+              "text": "Точка входа веб-приложения — cmd/codex-chat/main.go.",
+              "evidence": [
+                {
+                  "ref": "S1",
+                  "start": 3,
+                  "end": 3
+                }
+              ]
+            },
+            {
+              "text": "HTTP-интерфейс реализован в internal/web, а основной диалоговый API использует POST /api/chat с обязательным полем message в JSON.",
+              "evidence": [
+                {
+                  "ref": "S1",
+                  "start": 3,
+                  "end": 3
+                },
+                {
+                  "ref": "S2",
+                  "start": 3,
+                  "end": 3
+                }
+              ]
+            },
+            {
+              "text": "Агент находится в internal/agent, управляет полным циклом запроса-ответа и отделён от транспорта модели интерфейсом agent.LLM.",
+              "evidence": [
+                {
+                  "ref": "S1",
+                  "start": 5,
+                  "end": 5
+                },
+                {
+                  "ref": "S3",
+                  "start": 4,
+                  "end": 5
+                }
+              ]
+            },
+            {
+              "text": "Клиент модели расположен в internal/openai: он реализует agent.LLM и преобразует запрос в HTTP-вызов OpenAI Responses API.",
+              "evidence": [
+                {
+                  "ref": "S1",
+                  "start": 5,
+                  "end": 5
+                },
+                {
+                  "ref": "S4",
+                  "start": 13,
+                  "end": 14
+                }
+              ]
+            }
+          ],
+          "sources": [
+            {
+              "ref": "S1",
+              "chunkId": "3b53597d54ecbdba1621d6991ee30ec8ed510043ba081162e0b991883dcd74e1",
+              "source": "docs/architecture.md",
+              "title": "architecture.md",
+              "section": "Архитектура codex_chat_cli > Назначение и структура каталогов",
+              "text": "## Назначение и структура каталогов\n\ncodex_chat_cli (модуль Go `codex-chat-cli`) — веб-приложение Codex Chat Web. Точка входа — `cmd/codex-chat/main.go`. HTTP-сервер, маршруты и встроенный интерфейс расположены в `internal/web/`; HTML, CSS и JavaScript — в `internal/web/static/`. Отдельной сборки frontend и npm не требуется.\n\n`internal/agent/` управляет диалогом, стратегиями контекста, памятью, инструментами и проверкой ответов. Интерфейс `agent.LLM` отделяет агента от транспорта модели. `internal/openai/` реализует этот интерфейс через OpenAI Responses API. Ключ `OPENAI_API_KEY` остаётся на сервере, в браузер не передаётся. Генерация в этом проекте использует облачную модель OpenAI; это не сервис локальной Qwen из соседнего репозитория.\n\n`internal/config/` читает настройки окружения. `internal/history/` хранит переписку. `internal/memory/` хранит рабочую и долговременную память. `internal/profile/` отвечает за профили пользователей. `internal/models/` содержит модели, ограничения контекста и расчёт стоимости.\n\n",
+              "score": 26.40411493979569
+            },
+            {
+              "ref": "S2",
+              "chunkId": "8f3d47ec1270840cc54f4d85a48e6002133cd91c39b27bde1a05472faf44b77f",
+              "source": "docs/api.md",
+              "title": "api.md",
+              "section": "HTTP API и данные > Диалог",
+              "text": "## Диалог\n\n`POST /api/chat` принимает JSON с обязательным `message` и необязательным `model`. Для вызовов из интерфейса используется заголовок `X-Codex-Chat: 1`; обработчик проверяет метод, Content-Type и Origin. Успешный JSON-ответ включает `answer`, `messages`, `model`, `metrics` и `context`. Метрики содержат длительность, токены и расчётную стоимость. API не является OpenAI-совместимым `/v1/chat/completions`.\n\nПример команды ассистента проекта:\n\n```json\n{\"message\":\"/help Как устроен проект?\"}\n```\n\nПример обычного RAG-вопроса:\n\n```json\n{\"message\":\"Вопрос по учебному корпусу\",\"rag\":true}\n```\n\nУ /help свой корпус и строгая проверка источников: `rag` и `ragOptions` обычного чата не определяют его поведение. `/help` без вопроса показывает справку без обращения к модели.\n\n",
+              "score": 12.7381249928679
+            },
+            {
+              "ref": "S3",
+              "chunkId": "710c99c6e1e6b410e869fed031133d64e80f983329947304c4c4ced4b0cf8f34",
+              "source": "ARCHITECTURE.md",
+              "title": "ARCHITECTURE.md",
+              "section": "Архитектура Codex Chat Web > Цель",
+              "text": "## Цель\n\nОднопроцессное веб-приложение на Go передаёт сообщения из локальной страницы\nотдельной сущности `agent.Agent`. Агент инкапсулирует полный цикл запроса и\nответа LLM, а HTTP-клиент только взаимодействует с OpenAI Responses API.\nFrontend встроен в бинарник; отдельный Node.js-процесс, сборщик или CDN не нужны.\n\n",
+              "score": 10.497945336280004
+            },
+            {
+              "ref": "S4",
+              "chunkId": "0ca6edfc009d66198e3c1204892d2b0ef79966399a1fdb897b177a946a41ab84",
+              "source": "ARCHITECTURE.md",
+              "title": "ARCHITECTURE.md",
+              "section": "Архитектура Codex Chat Web > Поток сообщения",
+              "text": "## Поток сообщения\n\n1. JavaScript добавляет сообщение пользователя и индикатор ожидания.\n2. Браузер отправляет JSON в `POST /api/chat`.\n3. Web-слой находит отдельного агента по cookie или создаёт нового.\n4. Web-слой передаёт агенту текст, модель и необязательные параметры.\n5. Агент применяет Sliding Window, обновляет Sticky Facts либо выбирает состояние\n   активной ветки Branching.\n6. Агент считает токены запроса и активной истории, сравнивает их с лимитом\n   модели и при переполнении создаёт предупреждение без блокировки запроса.\n7. Агент передаёт явное окно/facts либо продолжает отдельную API-цепочку ветки;\n   затем вызывает `agent.LLM` независимо от результата сравнения с лимитом.\n8. OpenAI-клиент преобразует запрос в HTTP-вызов Responses API и возвращает\n   транспортно-независимый результат.\n9. Агент рассчитывает длительность, фактические и накопленные токены и стоимость, добавляет пару сообщений и\n   сохраняет сообщения, модель и новый ID в JSON.\n10. Браузер отображает ответ и метрики хода под сообщением, а метрики диалога и\n   предупреждение — в левой панели; после перезапуска `/api/history`\n   восстанавливает тот же транскрипт, а новый запрос продолжает прежнюю цепочку.\n\n",
+              "score": 9.419825025814989
+            }
+          ],
+          "quotes": [
+            {
+              "ref": "S1",
+              "start": 3,
+              "end": 3,
+              "text": "codex_chat_cli (модуль Go `codex-chat-cli`) — веб-приложение Codex Chat Web. Точка входа — `cmd/codex-chat/main.go`. HTTP-сервер, маршруты и встроенный интерфейс расположены в `internal/web/`; HTML, CSS и JavaScript — в `internal/web/static/`. Отдельной сборки frontend и npm не требуется.",
+              "chunkId": "3b53597d54ecbdba1621d6991ee30ec8ed510043ba081162e0b991883dcd74e1",
+              "source": "docs/architecture.md",
+              "section": "Архитектура codex_chat_cli > Назначение и структура каталогов"
+            },
+            {
+              "ref": "S2",
+              "start": 3,
+              "end": 3,
+              "text": "`POST /api/chat` принимает JSON с обязательным `message` и необязательным `model`. Для вызовов из интерфейса используется заголовок `X-Codex-Chat: 1`; обработчик проверяет метод, Content-Type и Origin. Успешный JSON-ответ включает `answer`, `messages`, `model`, `metrics` и `context`. Метрики содержат длительность, токены и расчётную стоимость. API не является OpenAI-совместимым `/v1/chat/completions`.",
+              "chunkId": "8f3d47ec1270840cc54f4d85a48e6002133cd91c39b27bde1a05472faf44b77f",
+              "source": "docs/api.md",
+              "section": "HTTP API и данные > Диалог"
+            },
+            {
+              "ref": "S1",
+              "start": 5,
+              "end": 5,
+              "text": "`internal/agent/` управляет диалогом, стратегиями контекста, памятью, инструментами и проверкой ответов. Интерфейс `agent.LLM` отделяет агента от транспорта модели. `internal/openai/` реализует этот интерфейс через OpenAI Responses API. Ключ `OPENAI_API_KEY` остаётся на сервере, в браузер не передаётся. Генерация в этом проекте использует облачную модель OpenAI; это не сервис локальной Qwen из соседнего репозитория.",
+              "chunkId": "3b53597d54ecbdba1621d6991ee30ec8ed510043ba081162e0b991883dcd74e1",
+              "source": "docs/architecture.md",
+              "section": "Архитектура codex_chat_cli > Назначение и структура каталогов"
+            },
+            {
+              "ref": "S3",
+              "start": 4,
+              "end": 5,
+              "text": "отдельной сущности `agent.Agent`. Агент инкапсулирует полный цикл запроса и\nответа LLM, а HTTP-клиент только взаимодействует с OpenAI Responses API.",
+              "chunkId": "710c99c6e1e6b410e869fed031133d64e80f983329947304c4c4ced4b0cf8f34",
+              "source": "ARCHITECTURE.md",
+              "section": "Архитектура Codex Chat Web > Цель"
+            },
+            {
+              "ref": "S4",
+              "start": 13,
+              "end": 14,
+              "text": "8. OpenAI-клиент преобразует запрос в HTTP-вызов Responses API и возвращает\n   транспортно-независимый результат.",
+              "chunkId": "0ca6edfc009d66198e3c1204892d2b0ef79966399a1fdb897b177a946a41ab84",
+              "source": "ARCHITECTURE.md",
+              "section": "Архитектура Codex Chat Web > Поток сообщения"
+            }
+          ],
+          "checks": [
+            {
+              "index": 0,
+              "verdict": "supported",
+              "reason": "Цитата S1 явно говорит: «Точка входа — `cmd/codex-chat/main.go`»."
+            },
+            {
+              "index": 1,
+              "verdict": "supported",
+              "reason": "S1 подтверждает `internal/web` для HTTP-сервера/маршрутов, S2 подтверждает `POST /api/chat` и обязательное поле `message` в JSON."
+            },
+            {
+              "index": 2,
+              "verdict": "supported",
+              "reason": "S1 указывает расположение `internal/agent` и что `agent.LLM` отделяет агента от транспорта; S3 подтверждает, что агент инкапсулирует полный цикл запроса-ответа."
+            },
+            {
+              "index": 3,
+              "verdict": "supported",
+              "reason": "S1 прямо говорит, что `internal/openai/` реализует `agent.LLM` через OpenAI Responses API; S4 подтверждает преобразование запроса в HTTP-вызов Responses API."
+            }
+          ],
+          "reason": "",
+          "attempts": 1
+        },
+        "query": "Как устроен проект: где точка входа, HTTP-интерфейс, агент и клиент модели?",
+        "steps": [
+          {
+            "attempts": 1,
+            "name": "grounded_answer",
+            "model": "gpt-5.3-codex",
+            "usage": {
+              "InputTokens": 1613,
+              "CachedInputTokens": 0,
+              "CacheWriteTokens": 0,
+              "OutputTokens": 245,
+              "ReasoningTokens": 0,
+              "TotalTokens": 1858
+            },
+            "durationMs": 4872
+          },
+          {
+            "attempts": 1,
+            "name": "grounding_check",
+            "model": "gpt-5.3-codex",
+            "usage": {
+              "InputTokens": 2544,
+              "CachedInputTokens": 0,
+              "CacheWriteTokens": 0,
+              "OutputTokens": 212,
+              "ReasoningTokens": 0,
+              "TotalTokens": 2756
+            },
+            "durationMs": 2988
+          }
+        ],
+        "mode": "rag",
+        "strategy": "project BM25",
+        "corpusHash": "84193bc16b3009bf4301bac0a1bba07f409ed5d7eb9a03a480c473f64c85bd1e",
+        "durationMs": 44,
+        "sources": [
+          {
+            "ref": "S1",
+            "chunkId": "3b53597d54ecbdba1621d6991ee30ec8ed510043ba081162e0b991883dcd74e1",
+            "source": "docs/architecture.md",
+            "title": "architecture.md",
+            "section": "Архитектура codex_chat_cli > Назначение и структура каталогов",
+            "text": "## Назначение и структура каталогов\n\ncodex_chat_cli (модуль Go `codex-chat-cli`) — веб-приложение Codex Chat Web. Точка входа — `cmd/codex-chat/main.go`. HTTP-сервер, маршруты и встроенный интерфейс расположены в `internal/web/`; HTML, CSS и JavaScript — в `internal/web/static/`. Отдельной сборки frontend и npm не требуется.\n\n`internal/agent/` управляет диалогом, стратегиями контекста, памятью, инструментами и проверкой ответов. Интерфейс `agent.LLM` отделяет агента от транспорта модели. `internal/openai/` реализует этот интерфейс через OpenAI Responses API. Ключ `OPENAI_API_KEY` остаётся на сервере, в браузер не передаётся. Генерация в этом проекте использует облачную модель OpenAI; это не сервис локальной Qwen из соседнего репозитория.\n\n`internal/config/` читает настройки окружения. `internal/history/` хранит переписку. `internal/memory/` хранит рабочую и долговременную память. `internal/profile/` отвечает за профили пользователей. `internal/models/` содержит модели, ограничения контекста и расчёт стоимости.\n\n",
+            "score": 26.40411493979569
+          },
+          {
+            "ref": "S2",
+            "chunkId": "8f3d47ec1270840cc54f4d85a48e6002133cd91c39b27bde1a05472faf44b77f",
+            "source": "docs/api.md",
+            "title": "api.md",
+            "section": "HTTP API и данные > Диалог",
+            "text": "## Диалог\n\n`POST /api/chat` принимает JSON с обязательным `message` и необязательным `model`. Для вызовов из интерфейса используется заголовок `X-Codex-Chat: 1`; обработчик проверяет метод, Content-Type и Origin. Успешный JSON-ответ включает `answer`, `messages`, `model`, `metrics` и `context`. Метрики содержат длительность, токены и расчётную стоимость. API не является OpenAI-совместимым `/v1/chat/completions`.\n\nПример команды ассистента проекта:\n\n```json\n{\"message\":\"/help Как устроен проект?\"}\n```\n\nПример обычного RAG-вопроса:\n\n```json\n{\"message\":\"Вопрос по учебному корпусу\",\"rag\":true}\n```\n\nУ /help свой корпус и строгая проверка источников: `rag` и `ragOptions` обычного чата не определяют его поведение. `/help` без вопроса показывает справку без обращения к модели.\n\n",
+            "score": 12.7381249928679
+          },
+          {
+            "ref": "S3",
+            "chunkId": "710c99c6e1e6b410e869fed031133d64e80f983329947304c4c4ced4b0cf8f34",
+            "source": "ARCHITECTURE.md",
+            "title": "ARCHITECTURE.md",
+            "section": "Архитектура Codex Chat Web > Цель",
+            "text": "## Цель\n\nОднопроцессное веб-приложение на Go передаёт сообщения из локальной страницы\nотдельной сущности `agent.Agent`. Агент инкапсулирует полный цикл запроса и\nответа LLM, а HTTP-клиент только взаимодействует с OpenAI Responses API.\nFrontend встроен в бинарник; отдельный Node.js-процесс, сборщик или CDN не нужны.\n\n",
+            "score": 10.497945336280004
+          },
+          {
+            "ref": "S4",
+            "chunkId": "0ca6edfc009d66198e3c1204892d2b0ef79966399a1fdb897b177a946a41ab84",
+            "source": "ARCHITECTURE.md",
+            "title": "ARCHITECTURE.md",
+            "section": "Архитектура Codex Chat Web > Поток сообщения",
+            "text": "## Поток сообщения\n\n1. JavaScript добавляет сообщение пользователя и индикатор ожидания.\n2. Браузер отправляет JSON в `POST /api/chat`.\n3. Web-слой находит отдельного агента по cookie или создаёт нового.\n4. Web-слой передаёт агенту текст, модель и необязательные параметры.\n5. Агент применяет Sliding Window, обновляет Sticky Facts либо выбирает состояние\n   активной ветки Branching.\n6. Агент считает токены запроса и активной истории, сравнивает их с лимитом\n   модели и при переполнении создаёт предупреждение без блокировки запроса.\n7. Агент передаёт явное окно/facts либо продолжает отдельную API-цепочку ветки;\n   затем вызывает `agent.LLM` независимо от результата сравнения с лимитом.\n8. OpenAI-клиент преобразует запрос в HTTP-вызов Responses API и возвращает\n   транспортно-независимый результат.\n9. Агент рассчитывает длительность, фактические и накопленные токены и стоимость, добавляет пару сообщений и\n   сохраняет сообщения, модель и новый ID в JSON.\n10. Браузер отображает ответ и метрики хода под сообщением, а метрики диалога и\n   предупреждение — в левой панели; после перезапуска `/api/history`\n   восстанавливает тот же транскрипт, а новый запрос продолжает прежнюю цепочку.\n\n",
+            "score": 9.419825025814989
+          },
+          {
+            "ref": "S5",
+            "chunkId": "git_branch@2026-10-18T10:30:03.130012426Z",
+            "source": "mcp://codex-project-mcp/git_branch",
+            "title": "Актуальный контекст проекта через MCP",
+            "section": "git_branch",
+            "text": "{\n  \"branch\": \"codex/ai-challenge-task-31\",\n  \"commit\": \"c1f624105385794df13bc972ec049623c4145196\",\n  \"detached\": false,\n  \"observedAt\": \"2026-10-18T10:30:03.129384259Z\"\n}",
+            "score": 0
+          }
+        ],
+        "citations": [
+          "S1",
+          "S2",
+          "S3",
+          "S4"
+        ]
+      },
+      "toolRuns": [
+        {
+          "serverName": "codex-project-mcp",
+          "name": "git_branch",
+          "arguments": "{}",
+          "output": "{\n  \"branch\": \"codex/ai-challenge-task-31\",\n  \"commit\": \"c1f624105385794df13bc972ec049623c4145196\",\n  \"detached\": false,\n  \"observedAt\": \"2026-10-18T10:30:03.129384259Z\"\n}",
+          "error": false,
+          "durationMs": 21
+        }
+      ],
+      "checks": {
+        "projectMode": true,
+        "mcpSuccess": true,
+        "noInvalidCitations": true,
+        "expectedFacts": true,
+        "sourcesPresent": true,
+        "quotesPresent": true,
+        "expectedSource": true,
+        "supportedClaims": true
+      },
+      "passed": true
+    },
+    {
+      "question": {
+        "id": "H02",
+        "query": "Как запустить проект в Docker и на каком адресе открыть веб-чат?",
+        "expectations": [
+          "Указать .env с OPENAI_API_KEY, docker compose up, адрес 127.0.0.1:8080"
+        ],
+        "requiredFacts": [
+          [
+            ".env"
+          ],
+          [
+            "OPENAI_API_KEY"
+          ],
+          [
+            "docker compose"
+          ],
+          [
+            "8080"
+          ]
+        ],
+        "sources": [
+          "docs/development.md",
+          "README.md"
+        ]
+      },
+      "seconds": 4.24,
+      "model": "gpt-5.3-codex",
+      "answer": "Для запуска через Docker сначала поднимите mock-сервис и затем основной проект командами docker compose -f ../mock-issue-mcp/compose.yaml up -d --build и docker compose up -d --build. [S1]\n\nВеб-адрес по умолчанию для открытия чата — 127.0.0.1:8080. [S2]\n\nНе знаю ответа на остальные части вопроса по найденным документам. Уточните, пожалуйста, недостающую часть или укажите документ.\n\nИсточники и цитаты:\n\n[S1] README.md · Codex Chat Web > Персонализация > Mock MCP и вызов из чата · chunk_id: `1e1654775e39f95c17838e30a93942372bfe4a4e3d02891f62c4d9c092487688` · строки 4–9\n\n> контейнер и REST API. Сначала запустите его, чтобы создать сеть `codex-mcp`:\n> \n> ```sh\n> docker compose -f ../mock-issue-mcp/compose.yaml up -d --build\n> docker compose up -d --build\n> ```\n\n[S2] docs/development.md · Запуск и разработка > Нативный запуск · chunk_id: `349e1e31a166809f3d50cf82198270f838cb972b2817a51cfa6e465a51ebb28b` · строки 3–3\n\n> Нужны Go 1.25+ и Git. Экспортируйте `OPENAI_API_KEY` в оболочку. В первом терминале из корня репозитория запустите `go run ./cmd/project-mcp`, во втором — `go run ./cmd/codex-chat`. Веб-адрес по умолчанию — `127.0.0.1:8080`, MCP — `127.0.0.1:8094`.",
+      "metrics": {
+        "durationMs": 4196,
+        "inputTokens": 3413,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 242,
+        "reasoningTokens": 0,
+        "totalTokens": 3655,
+        "costUsd": 0.00936075,
+        "proposalTokens": 0,
+        "contextStrategy": "sliding_window",
+        "windowMessages": 0,
+        "factsCount": 0,
+        "memoryUpdates": 0,
+        "memoryInputTokens": 0,
+        "memoryOutputTokens": 0,
+        "memoryTotalTokens": 0,
+        "tokenCountAvailable": false,
+        "currentRequestTokens": 0,
+        "historyTokens": 0,
+        "projectedInputTokens": 0,
+        "contextWindow": 400000,
+        "maxInputTokens": 272000,
+        "maxOutputTokens": 128000,
+        "contextUsagePercent": 0,
+        "cumulativeInputTokens": 3413,
+        "cumulativeOutputTokens": 242,
+        "cumulativeTotalTokens": 3655,
+        "cumulativeCostUsd": 0.00936075,
+        "compressionEnabled": false,
+        "compressionApplied": false,
+        "summaryMessages": 0,
+        "retainedMessages": 2,
+        "compressionRuns": 0,
+        "summaryInputTokens": 0,
+        "summaryOutputTokens": 0,
+        "summaryTotalTokens": 0,
+        "uncompressedInputTokens": 0,
+        "compressedInputTokens": 0,
+        "savedInputTokens": 0,
+        "tokenSavingsPercent": 0
+      },
+      "retrieval": {
+        "project": {
+          "documents": 14,
+          "chunks": 135,
+          "indexHash": "84193bc16b3009bf4301bac0a1bba07f409ed5d7eb9a03a480c473f64c85bd1e",
+          "runs": [
+            {
+              "serverName": "codex-project-mcp",
+              "name": "git_branch",
+              "arguments": "{}",
+              "output": "{\n  \"branch\": \"codex/ai-challenge-task-31\",\n  \"commit\": \"c1f624105385794df13bc972ec049623c4145196\",\n  \"detached\": false,\n  \"observedAt\": \"2026-10-18T10:30:11.085015138Z\"\n}",
+              "error": false,
+              "durationMs": 7
+            }
+          ]
+        },
+        "grounding": {
+          "status": "partial",
+          "claims": [
+            {
+              "text": "Для запуска через Docker сначала поднимите mock-сервис и затем основной проект командами docker compose -f ../mock-issue-mcp/compose.yaml up -d --build и docker compose up -d --build.",
+              "evidence": [
+                {
+                  "ref": "S1",
+                  "start": 4,
+                  "end": 9
+                }
+              ]
+            },
+            {
+              "text": "Веб-адрес по умолчанию для открытия чата — 127.0.0.1:8080.",
+              "evidence": [
+                {
+                  "ref": "S2",
+                  "start": 3,
+                  "end": 3
+                }
+              ]
+            }
+          ],
+          "sources": [
+            {
+              "ref": "S1",
+              "chunkId": "1e1654775e39f95c17838e30a93942372bfe4a4e3d02891f62c4d9c092487688",
+              "source": "README.md",
+              "title": "README.md",
+              "section": "Codex Chat Web > Персонализация > Mock MCP и вызов из чата",
+              "text": "### Mock MCP и вызов из чата\n\nMock Issue Tracker — отдельный проект `../mock-issue-mcp`, отдельный образ,\nконтейнер и REST API. Сначала запустите его, чтобы создать сеть `codex-mcp`:\n\n```sh\ndocker compose -f ../mock-issue-mcp/compose.yaml up -d --build\ndocker compose up -d --build\n```\n\nЕсли mock не нужен, сеть можно создать отдельно: `docker network create codex-mcp`.\nПриложение подключается к внешней сети; остановка mock не удаляет данные чата.\n\nВ веб-интерфейсе MCP → «Добавить сервер» → **Mock Issue Tracker**:\n\n1. Сохраните адрес `http://mock-issue-mcp:8090/mcp`, ключ оставьте пустым.\n2. Нажмите «Проверить и получить инструменты».\n3. Отметьте `search_issues`, `get_issue`, `get_issue_comments`.\n4. Включите «Использовать в чате», сохраните разрешения.\n5. В чате спросите: **«Почему заблокирована задача DEMO-101 и кто может помочь?»**\n\nДля демонстрации композиции также отметьте `summarize_issues` и\n`save_issue_report`, затем отправьте:\n\n> Найди заблокированные задачи проекта DEMO, собери Markdown-отчёт и сохрани его\n> как blocked-demo.md.\n\nОжидаемая автоматическая цепочка:\n`search_issues` → `summarize_issues` → `save_issue_report`. Результат каждого\nшага возвращается модели через `function_call_output` и становится аргументом\nследующего инструмента. Последний вызов разрешён только после явного выбора\n`save_issue_report` в настройках MCP.\n\n",
+              "score": 7.38183733865351
+            },
+            {
+              "ref": "S2",
+              "chunkId": "349e1e31a166809f3d50cf82198270f838cb972b2817a51cfa6e465a51ebb28b",
+              "source": "docs/development.md",
+              "title": "development.md",
+              "section": "Запуск и разработка > Нативный запуск",
+              "text": "## Нативный запуск\n\nНужны Go 1.25+ и Git. Экспортируйте `OPENAI_API_KEY` в оболочку. В первом терминале из корня репозитория запустите `go run ./cmd/project-mcp`, во втором — `go run ./cmd/codex-chat`. Веб-адрес по умолчанию — `127.0.0.1:8080`, MCP — `127.0.0.1:8094`.\n\n`PROJECT_ROOT` задаёт корень документации и Git для соответствующего процесса. `PROJECT_INDEX_PATH` задаёт путь JSON-индекса (по умолчанию `data/project-index.json`). `PROJECT_MCP_URL` задаёт endpoint MCP (по умолчанию `http://127.0.0.1:8094/mcp`). `OPENAI_MODEL` выбирает модель, `OPENAI_BASE_URL` — базовый адрес API, `OPENAI_TIMEOUT` — тайм-аут вызова.\n\nЕсли MCP остановлен или разрешение его инструментов отозвано, /help показывает предупреждение. Документация остаётся доступной, но текущая ветка считается неизвестной. Повторный запрос после восстановления соединения снова читает актуальное состояние.\n\n",
+              "score": 6.710271048349734
+            }
+          ],
+          "quotes": [
+            {
+              "ref": "S1",
+              "start": 4,
+              "end": 9,
+              "text": "контейнер и REST API. Сначала запустите его, чтобы создать сеть `codex-mcp`:\n\n```sh\ndocker compose -f ../mock-issue-mcp/compose.yaml up -d --build\ndocker compose up -d --build\n```",
+              "chunkId": "1e1654775e39f95c17838e30a93942372bfe4a4e3d02891f62c4d9c092487688",
+              "source": "README.md",
+              "section": "Codex Chat Web > Персонализация > Mock MCP и вызов из чата"
+            },
+            {
+              "ref": "S2",
+              "start": 3,
+              "end": 3,
+              "text": "Нужны Go 1.25+ и Git. Экспортируйте `OPENAI_API_KEY` в оболочку. В первом терминале из корня репозитория запустите `go run ./cmd/project-mcp`, во втором — `go run ./cmd/codex-chat`. Веб-адрес по умолчанию — `127.0.0.1:8080`, MCP — `127.0.0.1:8094`.",
+              "chunkId": "349e1e31a166809f3d50cf82198270f838cb972b2817a51cfa6e465a51ebb28b",
+              "source": "docs/development.md",
+              "section": "Запуск и разработка > Нативный запуск"
+            }
+          ],
+          "checks": [
+            {
+              "index": 0,
+              "verdict": "supported",
+              "reason": "Цитата S1 прямо содержит порядок и обе команды Docker: сначала запуск mock через `docker compose -f ../mock-issue-mcp/compose.yaml up -d --build`, затем `docker compose up -d --build`."
+            },
+            {
+              "index": 1,
+              "verdict": "supported",
+              "reason": "Цитата S2 явно указывает: «Веб-адрес по умолчанию — `127.0.0.1:8080`»."
+            }
+          ],
+          "reason": "",
+          "attempts": 1
+        },
+        "query": "Как запустить проект в Docker и на каком адресе открыть веб-чат?",
+        "steps": [
+          {
+            "attempts": 1,
+            "name": "grounded_answer",
+            "model": "gpt-5.3-codex",
+            "usage": {
+              "InputTokens": 1894,
+              "CachedInputTokens": 0,
+              "CacheWriteTokens": 0,
+              "OutputTokens": 123,
+              "ReasoningTokens": 0,
+              "TotalTokens": 2017
+            },
+            "durationMs": 2093
+          },
+          {
+            "attempts": 1,
+            "name": "grounding_check",
+            "model": "gpt-5.3-codex",
+            "usage": {
+              "InputTokens": 1519,
+              "CachedInputTokens": 0,
+              "CacheWriteTokens": 0,
+              "OutputTokens": 119,
+              "ReasoningTokens": 0,
+              "TotalTokens": 1638
+            },
+            "durationMs": 2076
+          }
+        ],
+        "mode": "rag",
+        "strategy": "project BM25",
+        "corpusHash": "84193bc16b3009bf4301bac0a1bba07f409ed5d7eb9a03a480c473f64c85bd1e",
+        "durationMs": 27,
+        "sources": [
+          {
+            "ref": "S1",
+            "chunkId": "1e1654775e39f95c17838e30a93942372bfe4a4e3d02891f62c4d9c092487688",
+            "source": "README.md",
+            "title": "README.md",
+            "section": "Codex Chat Web > Персонализация > Mock MCP и вызов из чата",
+            "text": "### Mock MCP и вызов из чата\n\nMock Issue Tracker — отдельный проект `../mock-issue-mcp`, отдельный образ,\nконтейнер и REST API. Сначала запустите его, чтобы создать сеть `codex-mcp`:\n\n```sh\ndocker compose -f ../mock-issue-mcp/compose.yaml up -d --build\ndocker compose up -d --build\n```\n\nЕсли mock не нужен, сеть можно создать отдельно: `docker network create codex-mcp`.\nПриложение подключается к внешней сети; остановка mock не удаляет данные чата.\n\nВ веб-интерфейсе MCP → «Добавить сервер» → **Mock Issue Tracker**:\n\n1. Сохраните адрес `http://mock-issue-mcp:8090/mcp`, ключ оставьте пустым.\n2. Нажмите «Проверить и получить инструменты».\n3. Отметьте `search_issues`, `get_issue`, `get_issue_comments`.\n4. Включите «Использовать в чате», сохраните разрешения.\n5. В чате спросите: **«Почему заблокирована задача DEMO-101 и кто может помочь?»**\n\nДля демонстрации композиции также отметьте `summarize_issues` и\n`save_issue_report`, затем отправьте:\n\n> Найди заблокированные задачи проекта DEMO, собери Markdown-отчёт и сохрани его\n> как blocked-demo.md.\n\nОжидаемая автоматическая цепочка:\n`search_issues` → `summarize_issues` → `save_issue_report`. Результат каждого\nшага возвращается модели через `function_call_output` и становится аргументом\nследующего инструмента. Последний вызов разрешён только после явного выбора\n`save_issue_report` в настройках MCP.\n\n",
+            "score": 7.38183733865351
+          },
+          {
+            "ref": "S2",
+            "chunkId": "349e1e31a166809f3d50cf82198270f838cb972b2817a51cfa6e465a51ebb28b",
+            "source": "docs/development.md",
+            "title": "development.md",
+            "section": "Запуск и разработка > Нативный запуск",
+            "text": "## Нативный запуск\n\nНужны Go 1.25+ и Git. Экспортируйте `OPENAI_API_KEY` в оболочку. В первом терминале из корня репозитория запустите `go run ./cmd/project-mcp`, во втором — `go run ./cmd/codex-chat`. Веб-адрес по умолчанию — `127.0.0.1:8080`, MCP — `127.0.0.1:8094`.\n\n`PROJECT_ROOT` задаёт корень документации и Git для соответствующего процесса. `PROJECT_INDEX_PATH` задаёт путь JSON-индекса (по умолчанию `data/project-index.json`). `PROJECT_MCP_URL` задаёт endpoint MCP (по умолчанию `http://127.0.0.1:8094/mcp`). `OPENAI_MODEL` выбирает модель, `OPENAI_BASE_URL` — базовый адрес API, `OPENAI_TIMEOUT` — тайм-аут вызова.\n\nЕсли MCP остановлен или разрешение его инструментов отозвано, /help показывает предупреждение. Документация остаётся доступной, но текущая ветка считается неизвестной. Повторный запрос после восстановления соединения снова читает актуальное состояние.\n\n",
+            "score": 6.710271048349734
+          },
+          {
+            "ref": "S3",
+            "chunkId": "fef62e7b0481db1581e4686ac475999d54b0cee8b6e8206c6b534be986e02ca4",
+            "source": "MEMORY.md",
+            "title": "MEMORY.md",
+            "section": "Модель памяти агента > Управление задачами",
+            "text": "## Управление задачами\n\nВ верхней части приложения есть отдельные вкладки «Чат» и «Задачи».\nНа вкладке «Задачи» показаны текущая задача, число сообщений и записей рабочей\nпамяти, редактор рабочей памяти и форма создания новой задачи. Из панели памяти\nсюда ведёт кнопка «Открыть задачу». Создание новой задачи больше не находится\nв панели памяти. Переключение вкладок сохраняет черновик сообщения; сами\nвкладки доступны с клавиатуры стрелками, Home и End.\n\n",
+            "score": 6.396995058675225
+          },
+          {
+            "ref": "S4",
+            "chunkId": "cf55f2ab4e921197c8959885b3e9c51fe7744831158564cee3eef1866bf6eba2",
+            "source": "README.md",
+            "title": "README.md",
+            "section": "Codex Chat Web > Проверка > Проверка проекта",
+            "text": "### Проверка проекта\n\n```sh\ngo test ./...\ngo vet ./...\ngo build -o bin/codex-chat ./cmd/codex-chat\n```\n\nТесты используют фальшивый API-клиент или локальный тестовый HTTP-сервер и не\nтребуют настоящего API-ключа. При сборке Docker-образа тесты запускаются\nавтоматически.\n\nДля ручной проверки сохранения контекста:\n\n1. Начните диалог, например сообщите агенту своё имя.\n2. Остановите приложение (`Ctrl+C` или `docker compose down`).\n3. Запустите его снова той же командой и откройте страницу в том же браузере.\n4. Спросите имя: прежние сообщения появятся на странице, а агент продолжит\n   разговор с сохранённым контекстом.\n\nНа вкладке «Задачи» можно создать задачу или открыть сохранённую. При переключении\nвосстанавливаются переписка, рабочая память, предложения памяти, стратегия и ветки.\nДолговременная память общая для задач одного браузерного профиля: её изменение\nбудет учтено и после возвращения к другой задаче. Активная задача и список задач\nсохраняются после перезапуска приложения.\n\nКнопка «Новый диалог» очищает переписку только активной задачи, сохраняя её рабочую\nпамять. Другие задачи не затрагиваются. Текущая задача из предыдущей версии\nподхватывается автоматически; задачи, удалённые старой версией при создании новых,\nвосстановить нельзя.\n\n",
+            "score": 5.644166242008929
+          },
+          {
+            "ref": "S5",
+            "chunkId": "git_branch@2026-10-18T10:30:11.085349138Z",
+            "source": "mcp://codex-project-mcp/git_branch",
+            "title": "Актуальный контекст проекта через MCP",
+            "section": "git_branch",
+            "text": "{\n  \"branch\": \"codex/ai-challenge-task-31\",\n  \"commit\": \"c1f624105385794df13bc972ec049623c4145196\",\n  \"detached\": false,\n  \"observedAt\": \"2026-10-18T10:30:11.085015138Z\"\n}",
+            "score": 0
+          }
+        ],
+        "citations": [
+          "S1",
+          "S2"
+        ]
+      },
+      "toolRuns": [
+        {
+          "serverName": "codex-project-mcp",
+          "name": "git_branch",
+          "arguments": "{}",
+          "output": "{\n  \"branch\": \"codex/ai-challenge-task-31\",\n  \"commit\": \"c1f624105385794df13bc972ec049623c4145196\",\n  \"detached\": false,\n  \"observedAt\": \"2026-10-18T10:30:11.085015138Z\"\n}",
+          "error": false,
+          "durationMs": 7
+        }
+      ],
+      "checks": {
+        "projectMode": true,
+        "mcpSuccess": true,
+        "noInvalidCitations": true,
+        "expectedFacts": false,
+        "sourcesPresent": true,
+        "quotesPresent": true,
+        "expectedSource": true,
+        "supportedClaims": true
+      },
+      "passed": false
+    },
+    {
+      "question": {
+        "id": "H03",
+        "query": "Какой HTTP API принимает вопрос чата, какое поле JSON обязательно и что возвращается в ответе?",
+        "expectations": [
+          "POST /api/chat, обязательное message, answer и messages"
+        ],
+        "requiredFacts": [
+          [
+            "/api/chat"
+          ],
+          [
+            "message"
+          ],
+          [
+            "answer"
+          ],
+          [
+            "messages"
+          ]
+        ],
+        "sources": [
+          "docs/api.md",
+          "README.md"
+        ]
+      },
+      "seconds": 5.159,
+      "model": "gpt-5.3-codex",
+      "answer": "Вопрос чата принимает HTTP API `POST /api/chat`. [S1]\n\nОбязательное JSON-поле запроса — `message`. [S1] [S2]\n\nВ успешном JSON-ответе возвращаются поля `answer`, `messages`, `model`, `metrics` и `context`. [S1]\n\nВ `metrics` входят длительность, токены и расчётная стоимость. [S1]\n\nИсточники и цитаты:\n\n[S1] docs/api.md · HTTP API и данные > Диалог · chunk_id: `8f3d47ec1270840cc54f4d85a48e6002133cd91c39b27bde1a05472faf44b77f` · строки 3–3\n\n> `POST /api/chat` принимает JSON с обязательным `message` и необязательным `model`. Для вызовов из интерфейса используется заголовок `X-Codex-Chat: 1`; обработчик проверяет метод, Content-Type и Origin. Успешный JSON-ответ включает `answer`, `messages`, `model`, `metrics` и `context`. Метрики содержат длительность, токены и расчётную стоимость. API не является OpenAI-совместимым `/v1/chat/completions`.\n\n[S2] README.md · Codex Chat Web > HTTP-маршруты · chunk_id: `1d788d6923c18ccf882870bb91aa71f969f71ca461d3a78a918a4bcae2aacf7d` · строки 19–24\n\n> `POST /api/chat` принимает обязательное поле `message`, выбранную модель `model`, три необязательных\n> строковых поля (`responseFormat`, `lengthLimit`, `completionCondition`) и\n> необязательное числовое поле `temperature` от 0 до 2. Непустые строковые\n> значения добавляются к обязательным требованиям текущего ответа, а температура\n> передаётся отдельным параметром Responses API. Если `message` пустое, запрос к\n> модели не выполняется независимо от дополнительных полей.",
+      "metrics": {
+        "durationMs": 5107,
+        "inputTokens": 3569,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 325,
+        "reasoningTokens": 0,
+        "totalTokens": 3894,
+        "costUsd": 0.01079575,
+        "proposalTokens": 0,
+        "contextStrategy": "sliding_window",
+        "windowMessages": 0,
+        "factsCount": 0,
+        "memoryUpdates": 0,
+        "memoryInputTokens": 0,
+        "memoryOutputTokens": 0,
+        "memoryTotalTokens": 0,
+        "tokenCountAvailable": false,
+        "currentRequestTokens": 0,
+        "historyTokens": 0,
+        "projectedInputTokens": 0,
+        "contextWindow": 400000,
+        "maxInputTokens": 272000,
+        "maxOutputTokens": 128000,
+        "contextUsagePercent": 0,
+        "cumulativeInputTokens": 3569,
+        "cumulativeOutputTokens": 325,
+        "cumulativeTotalTokens": 3894,
+        "cumulativeCostUsd": 0.01079575,
+        "compressionEnabled": false,
+        "compressionApplied": false,
+        "summaryMessages": 0,
+        "retainedMessages": 2,
+        "compressionRuns": 0,
+        "summaryInputTokens": 0,
+        "summaryOutputTokens": 0,
+        "summaryTotalTokens": 0,
+        "uncompressedInputTokens": 0,
+        "compressedInputTokens": 0,
+        "savedInputTokens": 0,
+        "tokenSavingsPercent": 0
+      },
+      "retrieval": {
+        "project": {
+          "documents": 14,
+          "chunks": 135,
+          "indexHash": "84193bc16b3009bf4301bac0a1bba07f409ed5d7eb9a03a480c473f64c85bd1e",
+          "runs": [
+            {
+              "serverName": "codex-project-mcp",
+              "name": "git_branch",
+              "arguments": "{}",
+              "output": "{\n  \"branch\": \"codex/ai-challenge-task-31\",\n  \"commit\": \"c1f624105385794df13bc972ec049623c4145196\",\n  \"detached\": false,\n  \"observedAt\": \"2026-10-18T10:30:15.318624917Z\"\n}",
+              "error": false,
+              "durationMs": 7
+            }
+          ]
+        },
+        "grounding": {
+          "status": "answered",
+          "claims": [
+            {
+              "text": "Вопрос чата принимает HTTP API `POST /api/chat`.",
+              "evidence": [
+                {
+                  "ref": "S1",
+                  "start": 3,
+                  "end": 3
+                }
+              ]
+            },
+            {
+              "text": "Обязательное JSON-поле запроса — `message`.",
+              "evidence": [
+                {
+                  "ref": "S1",
+                  "start": 3,
+                  "end": 3
+                },
+                {
+                  "ref": "S2",
+                  "start": 19,
+                  "end": 24
+                }
+              ]
+            },
+            {
+              "text": "В успешном JSON-ответе возвращаются поля `answer`, `messages`, `model`, `metrics` и `context`.",
+              "evidence": [
+                {
+                  "ref": "S1",
+                  "start": 3,
+                  "end": 3
+                }
+              ]
+            },
+            {
+              "text": "В `metrics` входят длительность, токены и расчётная стоимость.",
+              "evidence": [
+                {
+                  "ref": "S1",
+                  "start": 3,
+                  "end": 3
+                }
+              ]
+            }
+          ],
+          "sources": [
+            {
+              "ref": "S1",
+              "chunkId": "8f3d47ec1270840cc54f4d85a48e6002133cd91c39b27bde1a05472faf44b77f",
+              "source": "docs/api.md",
+              "title": "api.md",
+              "section": "HTTP API и данные > Диалог",
+              "text": "## Диалог\n\n`POST /api/chat` принимает JSON с обязательным `message` и необязательным `model`. Для вызовов из интерфейса используется заголовок `X-Codex-Chat: 1`; обработчик проверяет метод, Content-Type и Origin. Успешный JSON-ответ включает `answer`, `messages`, `model`, `metrics` и `context`. Метрики содержат длительность, токены и расчётную стоимость. API не является OpenAI-совместимым `/v1/chat/completions`.\n\nПример команды ассистента проекта:\n\n```json\n{\"message\":\"/help Как устроен проект?\"}\n```\n\nПример обычного RAG-вопроса:\n\n```json\n{\"message\":\"Вопрос по учебному корпусу\",\"rag\":true}\n```\n\nУ /help свой корпус и строгая проверка источников: `rag` и `ragOptions` обычного чата не определяют его поведение. `/help` без вопроса показывает справку без обращения к модели.\n\n",
+              "score": 13.943702621610699
+            },
+            {
+              "ref": "S2",
+              "chunkId": "1d788d6923c18ccf882870bb91aa71f969f71ca461d3a78a918a4bcae2aacf7d",
+              "source": "README.md",
+              "title": "README.md",
+              "section": "Codex Chat Web > HTTP-маршруты",
+              "text": "## HTTP-маршруты\n\n- `GET /` — веб-интерфейс;\n- `POST /api/chat` — отправка сообщения;\n- `GET /api/history` — восстановление сообщений текущего браузерного диалога;\n- `POST /api/reset` — сброс контекста текущего браузера;\n- `GET /api/memory` — память активной задачи, общий профиль и список задач;\n- `POST /api/tasks/new` — создать задачу (`taskId` текущей задачи, `name` новой);\n- `GET /api/profiles` — профили, примеры настроек и состояние активного профиля;\n- `POST /api/profiles/new` — создать профиль;\n- `POST /api/profiles/edit` — обновить профиль;\n- `POST /api/profiles/switch` — переключить профиль и восстановить его данные;\n- `POST /api/tasks/switch` — открыть сохранённую задачу (`taskId` текущей задачи, `id` выбранной);\n- `POST /api/branches/create` — checkpoint и две независимые ветки;\n- `POST /api/branches/switch` — переключение активной ветки;\n- `GET /api/status` — модель по умолчанию и доступный список моделей;\n- `GET /healthz` — проверка готовности сервера.\n\n`POST /api/chat` принимает обязательное поле `message`, выбранную модель `model`, три необязательных\nстроковых поля (`responseFormat`, `lengthLimit`, `completionCondition`) и\nнеобязательное числовое поле `temperature` от 0 до 2. Непустые строковые\nзначения добавляются к обязательным требованиям текущего ответа, а температура\nпередаётся отдельным параметром Responses API. Если `message` пустое, запрос к\nмодели не выполняется независимо от дополнительных полей.\n\n",
+              "score": 13.500057876778843
+            }
+          ],
+          "quotes": [
+            {
+              "ref": "S1",
+              "start": 3,
+              "end": 3,
+              "text": "`POST /api/chat` принимает JSON с обязательным `message` и необязательным `model`. Для вызовов из интерфейса используется заголовок `X-Codex-Chat: 1`; обработчик проверяет метод, Content-Type и Origin. Успешный JSON-ответ включает `answer`, `messages`, `model`, `metrics` и `context`. Метрики содержат длительность, токены и расчётную стоимость. API не является OpenAI-совместимым `/v1/chat/completions`.",
+              "chunkId": "8f3d47ec1270840cc54f4d85a48e6002133cd91c39b27bde1a05472faf44b77f",
+              "source": "docs/api.md",
+              "section": "HTTP API и данные > Диалог"
+            },
+            {
+              "ref": "S2",
+              "start": 19,
+              "end": 24,
+              "text": "`POST /api/chat` принимает обязательное поле `message`, выбранную модель `model`, три необязательных\nстроковых поля (`responseFormat`, `lengthLimit`, `completionCondition`) и\nнеобязательное числовое поле `temperature` от 0 до 2. Непустые строковые\nзначения добавляются к обязательным требованиям текущего ответа, а температура\nпередаётся отдельным параметром Responses API. Если `message` пустое, запрос к\nмодели не выполняется независимо от дополнительных полей.",
+              "chunkId": "1d788d6923c18ccf882870bb91aa71f969f71ca461d3a78a918a4bcae2aacf7d",
+              "source": "README.md",
+              "section": "Codex Chat Web > HTTP-маршруты"
+            }
+          ],
+          "checks": [
+            {
+              "index": 0,
+              "verdict": "supported",
+              "reason": "Цитата S1 прямо говорит: `POST /api/chat` принимает JSON для диалога."
+            },
+            {
+              "index": 1,
+              "verdict": "supported",
+              "reason": "И S1, и S2 явно указывают обязательное поле `message`."
+            },
+            {
+              "index": 2,
+              "verdict": "supported",
+              "reason": "В S1 дословно перечислены поля успешного ответа: `answer`, `messages`, `model`, `metrics`, `context`."
+            },
+            {
+              "index": 3,
+              "verdict": "supported",
+              "reason": "S1 прямо уточняет состав `metrics`: длительность, токены и расчётная стоимость."
+            }
+          ],
+          "reason": "",
+          "attempts": 1
+        },
+        "query": "Какой HTTP API принимает вопрос чата, какое поле JSON обязательно и что возвращается в ответе?",
+        "steps": [
+          {
+            "attempts": 1,
+            "name": "grounded_answer",
+            "model": "gpt-5.3-codex",
+            "usage": {
+              "InputTokens": 1975,
+              "CachedInputTokens": 0,
+              "CacheWriteTokens": 0,
+              "OutputTokens": 176,
+              "ReasoningTokens": 0,
+              "TotalTokens": 2151
+            },
+            "durationMs": 2695
+          },
+          {
+            "attempts": 1,
+            "name": "grounding_check",
+            "model": "gpt-5.3-codex",
+            "usage": {
+              "InputTokens": 1594,
+              "CachedInputTokens": 0,
+              "CacheWriteTokens": 0,
+              "OutputTokens": 149,
+              "ReasoningTokens": 0,
+              "TotalTokens": 1743
+            },
+            "durationMs": 2383
+          }
+        ],
+        "mode": "rag",
+        "strategy": "project BM25",
+        "corpusHash": "84193bc16b3009bf4301bac0a1bba07f409ed5d7eb9a03a480c473f64c85bd1e",
+        "durationMs": 27,
+        "sources": [
+          {
+            "ref": "S1",
+            "chunkId": "8f3d47ec1270840cc54f4d85a48e6002133cd91c39b27bde1a05472faf44b77f",
+            "source": "docs/api.md",
+            "title": "api.md",
+            "section": "HTTP API и данные > Диалог",
+            "text": "## Диалог\n\n`POST /api/chat` принимает JSON с обязательным `message` и необязательным `model`. Для вызовов из интерфейса используется заголовок `X-Codex-Chat: 1`; обработчик проверяет метод, Content-Type и Origin. Успешный JSON-ответ включает `answer`, `messages`, `model`, `metrics` и `context`. Метрики содержат длительность, токены и расчётную стоимость. API не является OpenAI-совместимым `/v1/chat/completions`.\n\nПример команды ассистента проекта:\n\n```json\n{\"message\":\"/help Как устроен проект?\"}\n```\n\nПример обычного RAG-вопроса:\n\n```json\n{\"message\":\"Вопрос по учебному корпусу\",\"rag\":true}\n```\n\nУ /help свой корпус и строгая проверка источников: `rag` и `ragOptions` обычного чата не определяют его поведение. `/help` без вопроса показывает справку без обращения к модели.\n\n",
+            "score": 13.943702621610699
+          },
+          {
+            "ref": "S2",
+            "chunkId": "1d788d6923c18ccf882870bb91aa71f969f71ca461d3a78a918a4bcae2aacf7d",
+            "source": "README.md",
+            "title": "README.md",
+            "section": "Codex Chat Web > HTTP-маршруты",
+            "text": "## HTTP-маршруты\n\n- `GET /` — веб-интерфейс;\n- `POST /api/chat` — отправка сообщения;\n- `GET /api/history` — восстановление сообщений текущего браузерного диалога;\n- `POST /api/reset` — сброс контекста текущего браузера;\n- `GET /api/memory` — память активной задачи, общий профиль и список задач;\n- `POST /api/tasks/new` — создать задачу (`taskId` текущей задачи, `name` новой);\n- `GET /api/profiles` — профили, примеры настроек и состояние активного профиля;\n- `POST /api/profiles/new` — создать профиль;\n- `POST /api/profiles/edit` — обновить профиль;\n- `POST /api/profiles/switch` — переключить профиль и восстановить его данные;\n- `POST /api/tasks/switch` — открыть сохранённую задачу (`taskId` текущей задачи, `id` выбранной);\n- `POST /api/branches/create` — checkpoint и две независимые ветки;\n- `POST /api/branches/switch` — переключение активной ветки;\n- `GET /api/status` — модель по умолчанию и доступный список моделей;\n- `GET /healthz` — проверка готовности сервера.\n\n`POST /api/chat` принимает обязательное поле `message`, выбранную модель `model`, три необязательных\nстроковых поля (`responseFormat`, `lengthLimit`, `completionCondition`) и\nнеобязательное числовое поле `temperature` от 0 до 2. Непустые строковые\nзначения добавляются к обязательным требованиям текущего ответа, а температура\nпередаётся отдельным параметром Responses API. Если `message` пустое, запрос к\nмодели не выполняется независимо от дополнительных полей.\n\n",
+            "score": 13.500057876778843
+          },
+          {
+            "ref": "S3",
+            "chunkId": "1e1654775e39f95c17838e30a93942372bfe4a4e3d02891f62c4d9c092487688",
+            "source": "README.md",
+            "title": "README.md",
+            "section": "Codex Chat Web > Персонализация > Mock MCP и вызов из чата",
+            "text": "### Mock MCP и вызов из чата\n\nMock Issue Tracker — отдельный проект `../mock-issue-mcp`, отдельный образ,\nконтейнер и REST API. Сначала запустите его, чтобы создать сеть `codex-mcp`:\n\n```sh\ndocker compose -f ../mock-issue-mcp/compose.yaml up -d --build\ndocker compose up -d --build\n```\n\nЕсли mock не нужен, сеть можно создать отдельно: `docker network create codex-mcp`.\nПриложение подключается к внешней сети; остановка mock не удаляет данные чата.\n\nВ веб-интерфейсе MCP → «Добавить сервер» → **Mock Issue Tracker**:\n\n1. Сохраните адрес `http://mock-issue-mcp:8090/mcp`, ключ оставьте пустым.\n2. Нажмите «Проверить и получить инструменты».\n3. Отметьте `search_issues`, `get_issue`, `get_issue_comments`.\n4. Включите «Использовать в чате», сохраните разрешения.\n5. В чате спросите: **«Почему заблокирована задача DEMO-101 и кто может помочь?»**\n\nДля демонстрации композиции также отметьте `summarize_issues` и\n`save_issue_report`, затем отправьте:\n\n> Найди заблокированные задачи проекта DEMO, собери Markdown-отчёт и сохрани его\n> как blocked-demo.md.\n\nОжидаемая автоматическая цепочка:\n`search_issues` → `summarize_issues` → `save_issue_report`. Результат каждого\nшага возвращается модели через `function_call_output` и становится аргументом\nследующего инструмента. Последний вызов разрешён только после явного выбора\n`save_issue_report` в настройках MCP.\n\n",
+            "score": 8.534657138132527
+          },
+          {
+            "ref": "S4",
+            "chunkId": "1f24cf638d04e43415ff2b2ae1463350d84f27347c68461677a8277136b9bea5",
+            "source": "docs/development.md",
+            "title": "development.md",
+            "section": "Запуск и разработка > Проверки",
+            "text": "## Проверки\n\n`go test -race ./...` запускает тесты; `go vet ./...` проверяет Go-код. Тесты не требуют настоящего ключа и не делают платных запросов. Для ручной проверки откройте чат и отправьте `/help Как устроен проект?`, затем `/help На какой ветке мы сейчас?`. Под ответом доступны источники, цитаты и операции MCP.\n\nКонтрольные вопросы и ожидания хранятся в `docs/help-questions.json`; JSON с эталонами не входит в RAG-индекс. `python3 scripts/evaluate-help.py` проверяет запущенное приложение на этих вопросах и сохраняет реальные ответы. Прогон использует облачную модель и оплачивается согласно настройкам OpenAI. Автоматические проверки источников и ключевых фактов дополняют чтение ответов человеком.\n",
+            "score": 8.191831284644952
+          },
+          {
+            "ref": "S5",
+            "chunkId": "git_branch@2026-10-18T10:30:15.318980626Z",
+            "source": "mcp://codex-project-mcp/git_branch",
+            "title": "Актуальный контекст проекта через MCP",
+            "section": "git_branch",
+            "text": "{\n  \"branch\": \"codex/ai-challenge-task-31\",\n  \"commit\": \"c1f624105385794df13bc972ec049623c4145196\",\n  \"detached\": false,\n  \"observedAt\": \"2026-10-18T10:30:15.318624917Z\"\n}",
+            "score": 0
+          }
+        ],
+        "citations": [
+          "S1",
+          "S2"
+        ]
+      },
+      "toolRuns": [
+        {
+          "serverName": "codex-project-mcp",
+          "name": "git_branch",
+          "arguments": "{}",
+          "output": "{\n  \"branch\": \"codex/ai-challenge-task-31\",\n  \"commit\": \"c1f624105385794df13bc972ec049623c4145196\",\n  \"detached\": false,\n  \"observedAt\": \"2026-10-18T10:30:15.318624917Z\"\n}",
+          "error": false,
+          "durationMs": 7
+        }
+      ],
+      "checks": {
+        "projectMode": true,
+        "mcpSuccess": true,
+        "noInvalidCitations": true,
+        "expectedFacts": true,
+        "sourcesPresent": true,
+        "quotesPresent": true,
+        "expectedSource": true,
+        "supportedClaims": true
+      },
+      "passed": true
+    },
+    {
+      "question": {
+        "id": "H04",
+        "query": "Генерация в codex_chat_cli локальная или облачная, и получает ли браузер API-ключ?",
+        "expectations": [
+          "OpenAI Responses API, ключ только на сервере, не путать с соседним сервисом Qwen"
+        ],
+        "requiredFacts": [
+          [
+            "OpenAI"
+          ],
+          [
+            "сервер"
+          ],
+          [
+            "браузер"
+          ]
+        ],
+        "sources": [
+          "docs/architecture.md",
+          "README.md"
+        ]
+      },
+      "seconds": 4.459,
+      "model": "gpt-5.3-codex",
+      "answer": "В codex_chat_cli генерация выполняется через облачную модель OpenAI (Responses API), а не локально. [S1] [S4]\n\nAPI-ключ остаётся на сервере и не передаётся в браузер. [S1] [S4]\n\nИсточники и цитаты:\n\n[S1] docs/architecture.md · Архитектура codex_chat_cli > Назначение и структура каталогов · chunk_id: `3b53597d54ecbdba1621d6991ee30ec8ed510043ba081162e0b991883dcd74e1` · строки 5–5\n\n> `internal/agent/` управляет диалогом, стратегиями контекста, памятью, инструментами и проверкой ответов. Интерфейс `agent.LLM` отделяет агента от транспорта модели. `internal/openai/` реализует этот интерфейс через OpenAI Responses API. Ключ `OPENAI_API_KEY` остаётся на сервере, в браузер не передаётся. Генерация в этом проекте использует облачную модель OpenAI; это не сервис локальной Qwen из соседнего репозитория.\n\n[S4] README.md · Codex Chat Web · chunk_id: `9298f3bdb83101acfd171df826ef28e7bc397ed35417fa422673223178d84c98` · строки 3–4\n\n> Локальный веб-интерфейс на Go для диалога с Codex-моделью через OpenAI\n> Responses API. API-ключ остаётся на сервере и никогда не передаётся в браузер.\n\n[S4] README.md · Codex Chat Web · chunk_id: `9298f3bdb83101acfd171df826ef28e7bc397ed35417fa422673223178d84c98` · строки 4–4\n\n> Responses API. API-ключ остаётся на сервере и никогда не передаётся в браузер.",
+      "metrics": {
+        "durationMs": 4406,
+        "inputTokens": 2858,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 213,
+        "reasoningTokens": 0,
+        "totalTokens": 3071,
+        "costUsd": 0.0079835,
+        "proposalTokens": 0,
+        "contextStrategy": "sliding_window",
+        "windowMessages": 0,
+        "factsCount": 0,
+        "memoryUpdates": 0,
+        "memoryInputTokens": 0,
+        "memoryOutputTokens": 0,
+        "memoryTotalTokens": 0,
+        "tokenCountAvailable": false,
+        "currentRequestTokens": 0,
+        "historyTokens": 0,
+        "projectedInputTokens": 0,
+        "contextWindow": 400000,
+        "maxInputTokens": 272000,
+        "maxOutputTokens": 128000,
+        "contextUsagePercent": 0,
+        "cumulativeInputTokens": 2858,
+        "cumulativeOutputTokens": 213,
+        "cumulativeTotalTokens": 3071,
+        "cumulativeCostUsd": 0.0079835,
+        "compressionEnabled": false,
+        "compressionApplied": false,
+        "summaryMessages": 0,
+        "retainedMessages": 2,
+        "compressionRuns": 0,
+        "summaryInputTokens": 0,
+        "summaryOutputTokens": 0,
+        "summaryTotalTokens": 0,
+        "uncompressedInputTokens": 0,
+        "compressedInputTokens": 0,
+        "savedInputTokens": 0,
+        "tokenSavingsPercent": 0
+      },
+      "retrieval": {
+        "project": {
+          "documents": 14,
+          "chunks": 135,
+          "indexHash": "84193bc16b3009bf4301bac0a1bba07f409ed5d7eb9a03a480c473f64c85bd1e",
+          "runs": [
+            {
+              "serverName": "codex-project-mcp",
+              "name": "git_branch",
+              "arguments": "{}",
+              "output": "{\n  \"branch\": \"codex/ai-challenge-task-31\",\n  \"commit\": \"c1f624105385794df13bc972ec049623c4145196\",\n  \"detached\": false,\n  \"observedAt\": \"2026-10-18T10:30:20.48607567Z\"\n}",
+              "error": false,
+              "durationMs": 7
+            }
+          ]
+        },
+        "grounding": {
+          "status": "answered",
+          "claims": [
+            {
+              "text": "В codex_chat_cli генерация выполняется через облачную модель OpenAI (Responses API), а не локально.",
+              "evidence": [
+                {
+                  "ref": "S1",
+                  "start": 5,
+                  "end": 5
+                },
+                {
+                  "ref": "S4",
+                  "start": 3,
+                  "end": 4
+                }
+              ]
+            },
+            {
+              "text": "API-ключ остаётся на сервере и не передаётся в браузер.",
+              "evidence": [
+                {
+                  "ref": "S1",
+                  "start": 5,
+                  "end": 5
+                },
+                {
+                  "ref": "S4",
+                  "start": 4,
+                  "end": 4
+                }
+              ]
+            }
+          ],
+          "sources": [
+            {
+              "ref": "S1",
+              "chunkId": "3b53597d54ecbdba1621d6991ee30ec8ed510043ba081162e0b991883dcd74e1",
+              "source": "docs/architecture.md",
+              "title": "architecture.md",
+              "section": "Архитектура codex_chat_cli > Назначение и структура каталогов",
+              "text": "## Назначение и структура каталогов\n\ncodex_chat_cli (модуль Go `codex-chat-cli`) — веб-приложение Codex Chat Web. Точка входа — `cmd/codex-chat/main.go`. HTTP-сервер, маршруты и встроенный интерфейс расположены в `internal/web/`; HTML, CSS и JavaScript — в `internal/web/static/`. Отдельной сборки frontend и npm не требуется.\n\n`internal/agent/` управляет диалогом, стратегиями контекста, памятью, инструментами и проверкой ответов. Интерфейс `agent.LLM` отделяет агента от транспорта модели. `internal/openai/` реализует этот интерфейс через OpenAI Responses API. Ключ `OPENAI_API_KEY` остаётся на сервере, в браузер не передаётся. Генерация в этом проекте использует облачную модель OpenAI; это не сервис локальной Qwen из соседнего репозитория.\n\n`internal/config/` читает настройки окружения. `internal/history/` хранит переписку. `internal/memory/` хранит рабочую и долговременную память. `internal/profile/` отвечает за профили пользователей. `internal/models/` содержит модели, ограничения контекста и расчёт стоимости.\n\n",
+              "score": 14.288461105224563
+            },
+            {
+              "ref": "S4",
+              "chunkId": "9298f3bdb83101acfd171df826ef28e7bc397ed35417fa422673223178d84c98",
+              "source": "README.md",
+              "title": "README.md",
+              "section": "Codex Chat Web",
+              "text": "# Codex Chat Web\n\nЛокальный веб-интерфейс на Go для диалога с Codex-моделью через OpenAI\nResponses API. API-ключ остаётся на сервере и никогда не передаётся в браузер.\nЛогика обращения к LLM и обработки ответа инкапсулирована в отдельной сущности\n`agent.Agent`; web-слой не зависит от деталей OpenAI API.\n\n",
+              "score": 6.775525333174649
+            }
+          ],
+          "quotes": [
+            {
+              "ref": "S1",
+              "start": 5,
+              "end": 5,
+              "text": "`internal/agent/` управляет диалогом, стратегиями контекста, памятью, инструментами и проверкой ответов. Интерфейс `agent.LLM` отделяет агента от транспорта модели. `internal/openai/` реализует этот интерфейс через OpenAI Responses API. Ключ `OPENAI_API_KEY` остаётся на сервере, в браузер не передаётся. Генерация в этом проекте использует облачную модель OpenAI; это не сервис локальной Qwen из соседнего репозитория.",
+              "chunkId": "3b53597d54ecbdba1621d6991ee30ec8ed510043ba081162e0b991883dcd74e1",
+              "source": "docs/architecture.md",
+              "section": "Архитектура codex_chat_cli > Назначение и структура каталогов"
+            },
+            {
+              "ref": "S4",
+              "start": 3,
+              "end": 4,
+              "text": "Локальный веб-интерфейс на Go для диалога с Codex-моделью через OpenAI\nResponses API. API-ключ остаётся на сервере и никогда не передаётся в браузер.",
+              "chunkId": "9298f3bdb83101acfd171df826ef28e7bc397ed35417fa422673223178d84c98",
+              "source": "README.md",
+              "section": "Codex Chat Web"
+            },
+            {
+              "ref": "S4",
+              "start": 4,
+              "end": 4,
+              "text": "Responses API. API-ключ остаётся на сервере и никогда не передаётся в браузер.",
+              "chunkId": "9298f3bdb83101acfd171df826ef28e7bc397ed35417fa422673223178d84c98",
+              "source": "README.md",
+              "section": "Codex Chat Web"
+            }
+          ],
+          "checks": [
+            {
+              "index": 0,
+              "verdict": "supported",
+              "reason": "Цитаты прямо говорят, что используется OpenAI Responses API и «облачная модель OpenAI», а не локальный сервис."
+            },
+            {
+              "index": 1,
+              "verdict": "supported",
+              "reason": "В обоих фрагментах явно указано: API-ключ остаётся на сервере и не передаётся в браузер."
+            }
+          ],
+          "reason": "",
+          "attempts": 1
+        },
+        "query": "Генерация в codex_chat_cli локальная или облачная, и получает ли браузер API-ключ?",
+        "steps": [
+          {
+            "attempts": 1,
+            "name": "grounded_answer",
+            "model": "gpt-5.3-codex",
+            "usage": {
+              "InputTokens": 1602,
+              "CachedInputTokens": 0,
+              "CacheWriteTokens": 0,
+              "OutputTokens": 121,
+              "ReasoningTokens": 0,
+              "TotalTokens": 1723
+            },
+            "durationMs": 2442
+          },
+          {
+            "attempts": 1,
+            "name": "grounding_check",
+            "model": "gpt-5.3-codex",
+            "usage": {
+              "InputTokens": 1256,
+              "CachedInputTokens": 0,
+              "CacheWriteTokens": 0,
+              "OutputTokens": 92,
+              "ReasoningTokens": 0,
+              "TotalTokens": 1348
+            },
+            "durationMs": 1934
+          }
+        ],
+        "mode": "rag",
+        "strategy": "project BM25",
+        "corpusHash": "84193bc16b3009bf4301bac0a1bba07f409ed5d7eb9a03a480c473f64c85bd1e",
+        "durationMs": 27,
+        "sources": [
+          {
+            "ref": "S1",
+            "chunkId": "3b53597d54ecbdba1621d6991ee30ec8ed510043ba081162e0b991883dcd74e1",
+            "source": "docs/architecture.md",
+            "title": "architecture.md",
+            "section": "Архитектура codex_chat_cli > Назначение и структура каталогов",
+            "text": "## Назначение и структура каталогов\n\ncodex_chat_cli (модуль Go `codex-chat-cli`) — веб-приложение Codex Chat Web. Точка входа — `cmd/codex-chat/main.go`. HTTP-сервер, маршруты и встроенный интерфейс расположены в `internal/web/`; HTML, CSS и JavaScript — в `internal/web/static/`. Отдельной сборки frontend и npm не требуется.\n\n`internal/agent/` управляет диалогом, стратегиями контекста, памятью, инструментами и проверкой ответов. Интерфейс `agent.LLM` отделяет агента от транспорта модели. `internal/openai/` реализует этот интерфейс через OpenAI Responses API. Ключ `OPENAI_API_KEY` остаётся на сервере, в браузер не передаётся. Генерация в этом проекте использует облачную модель OpenAI; это не сервис локальной Qwen из соседнего репозитория.\n\n`internal/config/` читает настройки окружения. `internal/history/` хранит переписку. `internal/memory/` хранит рабочую и долговременную память. `internal/profile/` отвечает за профили пользователей. `internal/models/` содержит модели, ограничения контекста и расчёт стоимости.\n\n",
+            "score": 14.288461105224563
+          },
+          {
+            "ref": "S2",
+            "chunkId": "1eb4395e013486ad15496421929ed6b9075e837f5594e3512125b36efcaefd8b",
+            "source": "README.md",
+            "title": "README.md",
+            "section": "Codex Chat Web > Проверка > MCP-подключения",
+            "text": "ешения сбрасываются.\nПроверка ограничена 30 секундами и закрывает MCP-сессию после получения списка;\nпоказанный результат — снимок последней проверки, а не постоянное соединение.\n\nНастройки общие для всех браузеров и профилей **одного локального экземпляра**.\nФайл `MCP_PATH` хранит ключи открытым текстом с правами `0600` и атомарно заменяется\nпри сохранении. По умолчанию он находится в исключённом из Git каталоге `data`.\nКлючи не возвращаются в API, не сохраняются в localStorage и не передаются LLM.\nПустое поле ключа при редактировании сохраняет прежний ключ; отдельная галочка\nудаляет его. При смене URL старый ключ сбрасывается — введите подходящий заново.\nHTTP-перенаправления не выполняются. В Docker настройки хранятся в томе `/data`.\n\nМаршруты: `GET /api/mcp`, `POST /api/mcp/save`, `POST /api/mcp/delete`,\n`POST /api/mcp/check`, `POST /api/mcp/permissions`. Все требуют `X-Codex-Chat: 1` и проходят проверку Origin.\nИзменение, удаление и проверка используют версию подключения для защиты от устаревших форм.\n\nАвтоматические тесты проверяют MCP-соединение с локальным SDK-сервером (JSON и SSE),\nсовместимость с `initialize`, пагинацию, Bearer-авторизацию, ошибки, сохранение\nпосле перезапуска и отсутствие ключа в ответах API:\n\n```sh\ngo test ./internal/mcpclient ./internal/web\n```\n\nДля проверки настоящего Neurly используйте свой ключ в веб-форме: успешный результат\nдолжен содержать инструменты включённой интеграции. Локальные тесты не обращаются\nк Neurly и не требуют его ключа.\n\n",
+            "score": 8.356750667049049
+          },
+          {
+            "ref": "S3",
+            "chunkId": "1b188584933180f2f234476d969fb339c82ea844b3307d4c7b5edfad85789634",
+            "source": "docs/architecture.md",
+            "title": "architecture.md",
+            "section": "Архитектура codex_chat_cli > MCP и планировщик",
+            "text": "## MCP и планировщик\n\n`internal/mcpclient/` подключается к MCP-серверам через Streamable HTTP, получает инструменты и проверяет разрешения. Настройки подключений хранятся в файле `MCP_PATH`. В `internal/scheduler/` реализованы задания планировщика; локальный MCP endpoint планировщика — `/mcp/scheduler`. `internal/brokerdemo/` содержит учебные сервисы заявок, валидации и брокера; это симуляция, а не реальная биржа.\n\n",
+            "score": 7.444777893817344
+          },
+          {
+            "ref": "S4",
+            "chunkId": "9298f3bdb83101acfd171df826ef28e7bc397ed35417fa422673223178d84c98",
+            "source": "README.md",
+            "title": "README.md",
+            "section": "Codex Chat Web",
+            "text": "# Codex Chat Web\n\nЛокальный веб-интерфейс на Go для диалога с Codex-моделью через OpenAI\nResponses API. API-ключ остаётся на сервере и никогда не передаётся в браузер.\nЛогика обращения к LLM и обработки ответа инкапсулирована в отдельной сущности\n`agent.Agent`; web-слой не зависит от деталей OpenAI API.\n\n",
+            "score": 6.775525333174649
+          },
+          {
+            "ref": "S5",
+            "chunkId": "git_branch@2026-10-18T10:30:20.486353586Z",
+            "source": "mcp://codex-project-mcp/git_branch",
+            "title": "Актуальный контекст проекта через MCP",
+            "section": "git_branch",
+            "text": "{\n  \"branch\": \"codex/ai-challenge-task-31\",\n  \"commit\": \"c1f624105385794df13bc972ec049623c4145196\",\n  \"detached\": false,\n  \"observedAt\": \"2026-10-18T10:30:20.48607567Z\"\n}",
+            "score": 0
+          }
+        ],
+        "citations": [
+          "S1",
+          "S4"
+        ]
+      },
+      "toolRuns": [
+        {
+          "serverName": "codex-project-mcp",
+          "name": "git_branch",
+          "arguments": "{}",
+          "output": "{\n  \"branch\": \"codex/ai-challenge-task-31\",\n  \"commit\": \"c1f624105385794df13bc972ec049623c4145196\",\n  \"detached\": false,\n  \"observedAt\": \"2026-10-18T10:30:20.48607567Z\"\n}",
+          "error": false,
+          "durationMs": 7
+        }
+      ],
+      "checks": {
+        "projectMode": true,
+        "mcpSuccess": true,
+        "noInvalidCitations": true,
+        "expectedFacts": true,
+        "sourcesPresent": true,
+        "quotesPresent": true,
+        "expectedSource": true,
+        "supportedClaims": true
+      },
+      "passed": true
+    },
+    {
+      "question": {
+        "id": "H05",
+        "query": "Где реализованы индексация документов и обычный RAG, в каком формате хранится старый индекс?",
+        "expectations": [
+          "internal/docindex, internal/rag, SQLite; отличить старый индекс от /help"
+        ],
+        "requiredFacts": [
+          [
+            "internal/docindex"
+          ],
+          [
+            "internal/rag"
+          ],
+          [
+            "SQLite"
+          ]
+        ],
+        "sources": [
+          "docs/architecture.md"
+        ]
+      },
+      "seconds": 5.67,
+      "model": "gpt-5.3-codex",
+      "answer": "Индексация документов реализована в internal/docindex, а CLI для индексации находится в cmd/doc-index. [S1] [S4]\n\nОбычный RAG реализован в internal/rag, где выполняются поиск, query rewrite и фильтрация. [S1]\n\nСтарый индекс хранится в формате SQLite-индекса. [S1] [S2] [S3]\n\nИсточники и цитаты:\n\n[S1] docs/architecture.md · Архитектура codex_chat_cli > Документы и RAG · chunk_id: `28e3f2b69c056e5f8b80bc0132a4949d0695154bfa9d53e901cd1e4625d6e7a5` · строки 3–3\n\n> `internal/docindex/` разбивает документы на чанки, получает эмбеддинги и сохраняет SQLite-индекс. CLI индексации — `cmd/doc-index/`. Старый учебный корпус хранится в `documents/corpus/`; путь его индекса задаёт `DOCUMENT_INDEX_PATH`. `internal/rag/` выполняет поиск, query rewrite и фильтрацию для обычного RAG-чата.\n\n[S4] ARCHITECTURE.md · Архитектура Codex Chat Web > Компоненты · chunk_id: `31baec455d51c6ea8752778e2e12eee7ffa332cf0913307425ba9117e91aaa3e` · строки 3–6\n\n> `internal/docindex` — отдельный пайплайн индексации Markdown, текста и Go:\n> fixed/structured chunking, OpenAI Embeddings, кэш, SQLite, точный векторный поиск\n> и оценка на контрольных вопросах. `cmd/doc-index` строит индекс и отчёт без\n> запуска чата. Web открывает готовый индекс только для чтения; `documents.js`\n\n[S2] RAG.md · Первый RAG-запрос — task 22 · chunk_id: `f9d537a5a7668088d3195431110c89ae5b5340144dc4bd42cc9937239c16282f` · строки 3–4\n\n> Агент поддерживает два режима: обычный ответ и ответ с поиском в локальном\n> SQLite-индексе из задания 21. В чате включите «Искать в документах (RAG)».\n\n[S3] RAG23.md · Задание 23: реранкинг, фильтрация и query rewrite · chunk_id: `910c347e8d881eace5bdaba6855d15afddd414dbac36c81041929d6040e33b7f` · строки 3–3\n\n> Продолжение локальной индексации и первого RAG-запроса. Используется существующий SQLite-индекс `artifacts/docindex/index.sqlite`, стратегия `structured`. Переиндексация не нужна.",
+      "metrics": {
+        "durationMs": 5611,
+        "inputTokens": 3420,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 322,
+        "reasoningTokens": 0,
+        "totalTokens": 3742,
+        "costUsd": 0.010493,
+        "proposalTokens": 0,
+        "contextStrategy": "sliding_window",
+        "windowMessages": 0,
+        "factsCount": 0,
+        "memoryUpdates": 0,
+        "memoryInputTokens": 0,
+        "memoryOutputTokens": 0,
+        "memoryTotalTokens": 0,
+        "tokenCountAvailable": false,
+        "currentRequestTokens": 0,
+        "historyTokens": 0,
+        "projectedInputTokens": 0,
+        "contextWindow": 400000,
+        "maxInputTokens": 272000,
+        "maxOutputTokens": 128000,
+        "contextUsagePercent": 0,
+        "cumulativeInputTokens": 3420,
+        "cumulativeOutputTokens": 322,
+        "cumulativeTotalTokens": 3742,
+        "cumulativeCostUsd": 0.010493,
+        "compressionEnabled": false,
+        "compressionApplied": false,
+        "summaryMessages": 0,
+        "retainedMessages": 2,
+        "compressionRuns": 0,
+        "summaryInputTokens": 0,
+        "summaryOutputTokens": 0,
+        "summaryTotalTokens": 0,
+        "uncompressedInputTokens": 0,
+        "compressedInputTokens": 0,
+        "savedInputTokens": 0,
+        "tokenSavingsPercent": 0
+      },
+      "retrieval": {
+        "project": {
+          "documents": 14,
+          "chunks": 135,
+          "indexHash": "84193bc16b3009bf4301bac0a1bba07f409ed5d7eb9a03a480c473f64c85bd1e",
+          "runs": [
+            {
+              "serverName": "codex-project-mcp",
+              "name": "git_branch",
+              "arguments": "{}",
+              "output": "{\n  \"branch\": \"codex/ai-challenge-task-31\",\n  \"commit\": \"c1f624105385794df13bc972ec049623c4145196\",\n  \"detached\": false,\n  \"observedAt\": \"2026-10-18T10:30:24.951525714Z\"\n}",
+              "error": false,
+              "durationMs": 7
+            }
+          ]
+        },
+        "grounding": {
+          "status": "answered",
+          "claims": [
+            {
+              "text": "Индексация документов реализована в internal/docindex, а CLI для индексации находится в cmd/doc-index.",
+              "evidence": [
+                {
+                  "ref": "S1",
+                  "start": 3,
+                  "end": 3
+                },
+                {
+                  "ref": "S4",
+                  "start": 3,
+                  "end": 6
+                }
+              ]
+            },
+            {
+              "text": "Обычный RAG реализован в internal/rag, где выполняются поиск, query rewrite и фильтрация.",
+              "evidence": [
+                {
+                  "ref": "S1",
+                  "start": 3,
+                  "end": 3
+                }
+              ]
+            },
+            {
+              "text": "Старый индекс хранится в формате SQLite-индекса.",
+              "evidence": [
+                {
+                  "ref": "S1",
+                  "start": 3,
+                  "end": 3
+                },
+                {
+                  "ref": "S2",
+                  "start": 3,
+                  "end": 4
+                },
+                {
+                  "ref": "S3",
+                  "start": 3,
+                  "end": 3
+                }
+              ]
+            }
+          ],
+          "sources": [
+            {
+              "ref": "S1",
+              "chunkId": "28e3f2b69c056e5f8b80bc0132a4949d0695154bfa9d53e901cd1e4625d6e7a5",
+              "source": "docs/architecture.md",
+              "title": "architecture.md",
+              "section": "Архитектура codex_chat_cli > Документы и RAG",
+              "text": "## Документы и RAG\n\n`internal/docindex/` разбивает документы на чанки, получает эмбеддинги и сохраняет SQLite-индекс. CLI индексации — `cmd/doc-index/`. Старый учебный корпус хранится в `documents/corpus/`; путь его индекса задаёт `DOCUMENT_INDEX_PATH`. `internal/rag/` выполняет поиск, query rewrite и фильтрацию для обычного RAG-чата.\n\n`internal/agent/grounding.go` проверяет ссылки и диапазоны строк, восстанавливает точные цитаты и отдельно проверяет поддержку утверждений моделью. Если подтверждений недостаточно, ответ содержит «не знаю» и просьбу уточнить вопрос. Семантическая проверка моделью снижает риск ошибок, но не является математической гарантией истинности.\n\n",
+              "score": 20.942755092411034
+            },
+            {
+              "ref": "S4",
+              "chunkId": "31baec455d51c6ea8752778e2e12eee7ffa332cf0913307425ba9117e91aaa3e",
+              "source": "ARCHITECTURE.md",
+              "title": "ARCHITECTURE.md",
+              "section": "Архитектура Codex Chat Web > Компоненты",
+              "text": "## Компоненты\n\n`internal/docindex` — отдельный пайплайн индексации Markdown, текста и Go:\nfixed/structured chunking, OpenAI Embeddings, кэш, SQLite, точный векторный поиск\nи оценка на контрольных вопросах. `cmd/doc-index` строит индекс и отчёт без\nзапуска чата. Web открывает готовый индекс только для чтения; `documents.js`\nпоказывает метаданные, чанки, выдачу двух стратегий и результаты сравнения.\nПодробности: [Индексация документов](documents/README.md).\n\n```text\ncmd/codex-chat/main.go\n        │\n        ├── internal/config     переменные окружения и адрес HTTP-сервера\n        ├── internal/web        маршруты, browser-сессии и встроенные assets\n        │       └── static      HTML, CSS и JavaScript\n        ├── internal/agent      агент, контекст и логика запроса/ответа\n        ├── internal/history    атомарное JSON-хранилище диалогов\n        ├── internal/memory     отдельные слои задачи/профиля и предложения с подтверждением\n        ├── internal/openai     транспорт и точный подсчёт токенов Responses API\n        └── internal/models     модели, контекстные лимиты и стоимость токенов\n\nDockerfile                     тесты, сборка и минимальный runtime-образ\ncompose.yaml                   запуск на http://127.0.0.1:8080\n```\n\n",
+              "score": 9.617625872227467
+            },
+            {
+              "ref": "S2",
+              "chunkId": "f9d537a5a7668088d3195431110c89ae5b5340144dc4bd42cc9937239c16282f",
+              "source": "RAG.md",
+              "title": "RAG.md",
+              "section": "Первый RAG-запрос — task 22",
+              "text": "# Первый RAG-запрос — task 22\n\nАгент поддерживает два режима: обычный ответ и ответ с поиском в локальном\nSQLite-индексе из задания 21. В чате включите «Искать в документах (RAG)».\nПод ответом сохраняются режим, найденные фрагменты, файл, заголовок, раздел,\nchunk_id, cosine similarity, ссылки `[S1]` и расход токенов эмбеддинга.\nИсточники доступны и после перезагрузки страницы.\n\n",
+              "score": 12.128362880554356
+            },
+            {
+              "ref": "S3",
+              "chunkId": "910c347e8d881eace5bdaba6855d15afddd414dbac36c81041929d6040e33b7f",
+              "source": "RAG23.md",
+              "title": "RAG23.md",
+              "section": "Задание 23: реранкинг, фильтрация и query rewrite",
+              "text": "# Задание 23: реранкинг, фильтрация и query rewrite\n\nПродолжение локальной индексации и первого RAG-запроса. Используется существующий SQLite-индекс `artifacts/docindex/index.sqlite`, стратегия `structured`. Переиндексация не нужна.\n\n",
+              "score": 9.747278222126779
+            }
+          ],
+          "quotes": [
+            {
+              "ref": "S1",
+              "start": 3,
+              "end": 3,
+              "text": "`internal/docindex/` разбивает документы на чанки, получает эмбеддинги и сохраняет SQLite-индекс. CLI индексации — `cmd/doc-index/`. Старый учебный корпус хранится в `documents/corpus/`; путь его индекса задаёт `DOCUMENT_INDEX_PATH`. `internal/rag/` выполняет поиск, query rewrite и фильтрацию для обычного RAG-чата.",
+              "chunkId": "28e3f2b69c056e5f8b80bc0132a4949d0695154bfa9d53e901cd1e4625d6e7a5",
+              "source": "docs/architecture.md",
+              "section": "Архитектура codex_chat_cli > Документы и RAG"
+            },
+            {
+              "ref": "S4",
+              "start": 3,
+              "end": 6,
+              "text": "`internal/docindex` — отдельный пайплайн индексации Markdown, текста и Go:\nfixed/structured chunking, OpenAI Embeddings, кэш, SQLite, точный векторный поиск\nи оценка на контрольных вопросах. `cmd/doc-index` строит индекс и отчёт без\nзапуска чата. Web открывает готовый индекс только для чтения; `documents.js`",
+              "chunkId": "31baec455d51c6ea8752778e2e12eee7ffa332cf0913307425ba9117e91aaa3e",
+              "source": "ARCHITECTURE.md",
+              "section": "Архитектура Codex Chat Web > Компоненты"
+            },
+            {
+              "ref": "S2",
+              "start": 3,
+              "end": 4,
+              "text": "Агент поддерживает два режима: обычный ответ и ответ с поиском в локальном\nSQLite-индексе из задания 21. В чате включите «Искать в документах (RAG)».",
+              "chunkId": "f9d537a5a7668088d3195431110c89ae5b5340144dc4bd42cc9937239c16282f",
+              "source": "RAG.md",
+              "section": "Первый RAG-запрос — task 22"
+            },
+            {
+              "ref": "S3",
+              "start": 3,
+              "end": 3,
+              "text": "Продолжение локальной индексации и первого RAG-запроса. Используется существующий SQLite-индекс `artifacts/docindex/index.sqlite`, стратегия `structured`. Переиндексация не нужна.",
+              "chunkId": "910c347e8d881eace5bdaba6855d15afddd414dbac36c81041929d6040e33b7f",
+              "source": "RAG23.md",
+              "section": "Задание 23: реранкинг, фильтрация и query rewrite"
+            }
+          ],
+          "checks": [
+            {
+              "index": 0,
+              "verdict": "supported",
+              "reason": "Цитаты S1 и S4 прямо указывают: индексация в `internal/docindex`, CLI — `cmd/doc-index`."
+            },
+            {
+              "index": 1,
+              "verdict": "supported",
+              "reason": "В S1 явно сказано, что `internal/rag/` выполняет поиск, query rewrite и фильтрацию для обычного RAG."
+            },
+            {
+              "index": 2,
+              "verdict": "supported",
+              "reason": "S1 говорит о сохранении SQLite-индекса, S2 и S3 подтверждают локальный/существующий SQLite-индекс; формат старого индекса как SQLite подтверждён."
+            }
+          ],
+          "reason": "",
+          "attempts": 1
+        },
+        "query": "Где реализованы индексация документов и обычный RAG, в каком формате хранится старый индекс?",
+        "steps": [
+          {
+            "attempts": 1,
+            "name": "grounded_answer",
+            "model": "gpt-5.3-codex",
+            "usage": {
+              "InputTokens": 1379,
+              "CachedInputTokens": 0,
+              "CacheWriteTokens": 0,
+              "OutputTokens": 173,
+              "ReasoningTokens": 0,
+              "TotalTokens": 1552
+            },
+            "durationMs": 3255
+          },
+          {
+            "attempts": 1,
+            "name": "grounding_check",
+            "model": "gpt-5.3-codex",
+            "usage": {
+              "InputTokens": 2041,
+              "CachedInputTokens": 0,
+              "CacheWriteTokens": 0,
+              "OutputTokens": 149,
+              "ReasoningTokens": 0,
+              "TotalTokens": 2190
+            },
+            "durationMs": 2327
+          }
+        ],
+        "mode": "rag",
+        "strategy": "project BM25",
+        "corpusHash": "84193bc16b3009bf4301bac0a1bba07f409ed5d7eb9a03a480c473f64c85bd1e",
+        "durationMs": 27,
+        "sources": [
+          {
+            "ref": "S1",
+            "chunkId": "28e3f2b69c056e5f8b80bc0132a4949d0695154bfa9d53e901cd1e4625d6e7a5",
+            "source": "docs/architecture.md",
+            "title": "architecture.md",
+            "section": "Архитектура codex_chat_cli > Документы и RAG",
+            "text": "## Документы и RAG\n\n`internal/docindex/` разбивает документы на чанки, получает эмбеддинги и сохраняет SQLite-индекс. CLI индексации — `cmd/doc-index/`. Старый учебный корпус хранится в `documents/corpus/`; путь его индекса задаёт `DOCUMENT_INDEX_PATH`. `internal/rag/` выполняет поиск, query rewrite и фильтрацию для обычного RAG-чата.\n\n`internal/agent/grounding.go` проверяет ссылки и диапазоны строк, восстанавливает точные цитаты и отдельно проверяет поддержку утверждений моделью. Если подтверждений недостаточно, ответ содержит «не знаю» и просьбу уточнить вопрос. Семантическая проверка моделью снижает риск ошибок, но не является математической гарантией истинности.\n\n",
+            "score": 20.942755092411034
+          },
+          {
+            "ref": "S2",
+            "chunkId": "f9d537a5a7668088d3195431110c89ae5b5340144dc4bd42cc9937239c16282f",
+            "source": "RAG.md",
+            "title": "RAG.md",
+            "section": "Первый RAG-запрос — task 22",
+            "text": "# Первый RAG-запрос — task 22\n\nАгент поддерживает два режима: обычный ответ и ответ с поиском в локальном\nSQLite-индексе из задания 21. В чате включите «Искать в документах (RAG)».\nПод ответом сохраняются режим, найденные фрагменты, файл, заголовок, раздел,\nchunk_id, cosine similarity, ссылки `[S1]` и расход токенов эмбеддинга.\nИсточники доступны и после перезагрузки страницы.\n\n",
+            "score": 12.128362880554356
+          },
+          {
+            "ref": "S3",
+            "chunkId": "910c347e8d881eace5bdaba6855d15afddd414dbac36c81041929d6040e33b7f",
+            "source": "RAG23.md",
+            "title": "RAG23.md",
+            "section": "Задание 23: реранкинг, фильтрация и query rewrite",
+            "text": "# Задание 23: реранкинг, фильтрация и query rewrite\n\nПродолжение локальной индексации и первого RAG-запроса. Используется существующий SQLite-индекс `artifacts/docindex/index.sqlite`, стратегия `structured`. Переиндексация не нужна.\n\n",
+            "score": 9.747278222126779
+          },
+          {
+            "ref": "S4",
+            "chunkId": "31baec455d51c6ea8752778e2e12eee7ffa332cf0913307425ba9117e91aaa3e",
+            "source": "ARCHITECTURE.md",
+            "title": "ARCHITECTURE.md",
+            "section": "Архитектура Codex Chat Web > Компоненты",
+            "text": "## Компоненты\n\n`internal/docindex` — отдельный пайплайн индексации Markdown, текста и Go:\nfixed/structured chunking, OpenAI Embeddings, кэш, SQLite, точный векторный поиск\nи оценка на контрольных вопросах. `cmd/doc-index` строит индекс и отчёт без\nзапуска чата. Web открывает готовый индекс только для чтения; `documents.js`\nпоказывает метаданные, чанки, выдачу двух стратегий и результаты сравнения.\nПодробности: [Индексация документов](documents/README.md).\n\n```text\ncmd/codex-chat/main.go\n        │\n        ├── internal/config     переменные окружения и адрес HTTP-сервера\n        ├── internal/web        маршруты, browser-сессии и встроенные assets\n        │       └── static      HTML, CSS и JavaScript\n        ├── internal/agent      агент, контекст и логика запроса/ответа\n        ├── internal/history    атомарное JSON-хранилище диалогов\n        ├── internal/memory     отдельные слои задачи/профиля и предложения с подтверждением\n        ├── internal/openai     транспорт и точный подсчёт токенов Responses API\n        └── internal/models     модели, контекстные лимиты и стоимость токенов\n\nDockerfile                     тесты, сборка и минимальный runtime-образ\ncompose.yaml                   запуск на http://127.0.0.1:8080\n```\n\n",
+            "score": 9.617625872227467
+          },
+          {
+            "ref": "S5",
+            "chunkId": "git_branch@2026-10-18T10:30:24.952013005Z",
+            "source": "mcp://codex-project-mcp/git_branch",
+            "title": "Актуальный контекст проекта через MCP",
+            "section": "git_branch",
+            "text": "{\n  \"branch\": \"codex/ai-challenge-task-31\",\n  \"commit\": \"c1f624105385794df13bc972ec049623c4145196\",\n  \"detached\": false,\n  \"observedAt\": \"2026-10-18T10:30:24.951525714Z\"\n}",
+            "score": 0
+          }
+        ],
+        "citations": [
+          "S1",
+          "S4",
+          "S2",
+          "S3"
+        ]
+      },
+      "toolRuns": [
+        {
+          "serverName": "codex-project-mcp",
+          "name": "git_branch",
+          "arguments": "{}",
+          "output": "{\n  \"branch\": \"codex/ai-challenge-task-31\",\n  \"commit\": \"c1f624105385794df13bc972ec049623c4145196\",\n  \"detached\": false,\n  \"observedAt\": \"2026-10-18T10:30:24.951525714Z\"\n}",
+          "error": false,
+          "durationMs": 7
+        }
+      ],
+      "checks": {
+        "projectMode": true,
+        "mcpSuccess": true,
+        "noInvalidCitations": true,
+        "expectedFacts": true,
+        "sourcesPresent": true,
+        "quotesPresent": true,
+        "expectedSource": true,
+        "supportedClaims": true
+      },
+      "passed": true
+    },
+    {
+      "question": {
+        "id": "H06",
+        "query": "Какие три слоя памяти использует приложение и что происходит при новой задаче?",
+        "expectations": [
+          "История, рабочая память, долговременный профиль; рабочий контекст новой задачи отдельный, профиль сохраняется"
+        ],
+        "requiredFacts": [
+          [
+            "истори"
+          ],
+          [
+            "рабоч"
+          ],
+          [
+            "профил"
+          ],
+          [
+            "нов"
+          ]
+        ],
+        "sources": [
+          "docs/memory.md",
+          "README.md"
+        ]
+      },
+      "seconds": 5.604,
+      "model": "gpt-5.3-codex",
+      "answer": "Приложение использует три слоя памяти: историю диалога (переписку), рабочую память задачи и долговременный профиль. [S1] [S2]\n\nПри новой задаче создаётся отдельный рабочий контекст, а рабочий слой очищается. [S1] [S2] [S3]\n\nПри новой задаче долговременный профиль сохраняется, и его данные переносятся дальше. [S1] [S2] [S3]\n\nИсточники и цитаты:\n\n[S1] docs/memory.md · Память и контекст диалога > Три слоя · chunk_id: `80e602204fda5c405061aa8dad5168b7983b16930f1ce18a4628405ccda667d3` · строки 3–3\n\n> Приложение разделяет историю диалога, рабочую память задачи и долговременный профиль. История хранит сообщения. Рабочий слой содержит сведения о текущей задаче; долгосрочные предпочтения относятся к профилю. Сохранение предложенной памяти требует подтверждения пользователя в интерфейсе. Новая задача получает отдельный рабочий контекст; профиль сохраняется. Новый чат очищает переписку текущей задачи.\n\n[S2] MEMORY.md · Модель памяти агента > Три слоя · chunk_id: `05e28dd2948d86ec47b974ab903e5adbb338a42de152297e5d40e4cb9b197843` · строки 3–7\n\n> | Слой | Данные | Источник записи | Срок жизни |\n> |---|---|---|---|\n> | Краткосрочная | Сообщения пользователя и ассистента | Успешный ход диалога | До «Нового чата» или «Новой задачи» |\n> | Рабочая | Цель, ограничения, план, состояние и решения текущей задачи | Только подтверждённые пользователем предложения и ручные правки | Сохраняется между чатами одной задачи, очищается при новой задаче |\n> | Долговременная | Профиль, устойчивые предпочтения, подтверждённые повторно используемые решения и знания | Только подтверждение пользователя и ручные правки | Сохраняется между чатами, задачами и перезапусками до удаления записи |\n\n[S2] MEMORY.md · Модель памяти агента > Три слоя · chunk_id: `05e28dd2948d86ec47b974ab903e5adbb338a42de152297e5d40e4cb9b197843` · строки 6–6\n\n> | Рабочая | Цель, ограничения, план, состояние и решения текущей задачи | Только подтверждённые пользователем предложения и ручные правки | Сохраняется между чатами одной задачи, очищается при новой задаче |\n\n[S3] MEMORY.md · Модель памяти агента > Проверка для сдачи задания · chunk_id: `4c99d414cf85eb631ceedfee2661443cb7d8dcb74579785a0eb22d2725bd113e` · строки 16–17\n\n> 6. На вкладке «Задачи» начните новую задачу. Рабочий слой, предложения и переписка должны\n>    очиститься; язык в профиле — сохраниться. Задайте тот же вопрос: старые\n\n[S2] MEMORY.md · Модель памяти агента > Три слоя · chunk_id: `05e28dd2948d86ec47b974ab903e5adbb338a42de152297e5d40e4cb9b197843` · строки 7–7\n\n> | Долговременная | Профиль, устойчивые предпочтения, подтверждённые повторно используемые решения и знания | Только подтверждение пользователя и ручные правки | Сохраняется между чатами, задачами и перезапусками до удаления записи |\n\n[S3] MEMORY.md · Модель памяти агента > Проверка для сдачи задания · chunk_id: `4c99d414cf85eb631ceedfee2661443cb7d8dcb74579785a0eb22d2725bd113e` · строки 17–18\n\n>    очиститься; язык в профиле — сохраниться. Задайте тот же вопрос: старые\n>    ограничения Go не должны переноситься в новую задачу.",
+      "metrics": {
+        "durationMs": 5538,
+        "inputTokens": 4499,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 367,
+        "reasoningTokens": 0,
+        "totalTokens": 4866,
+        "costUsd": 0.01301125,
+        "proposalTokens": 0,
+        "contextStrategy": "sliding_window",
+        "windowMessages": 0,
+        "factsCount": 0,
+        "memoryUpdates": 0,
+        "memoryInputTokens": 0,
+        "memoryOutputTokens": 0,
+        "memoryTotalTokens": 0,
+        "tokenCountAvailable": false,
+        "currentRequestTokens": 0,
+        "historyTokens": 0,
+        "projectedInputTokens": 0,
+        "contextWindow": 400000,
+        "maxInputTokens": 272000,
+        "maxOutputTokens": 128000,
+        "contextUsagePercent": 0,
+        "cumulativeInputTokens": 4499,
+        "cumulativeOutputTokens": 367,
+        "cumulativeTotalTokens": 4866,
+        "cumulativeCostUsd": 0.01301125,
+        "compressionEnabled": false,
+        "compressionApplied": false,
+        "summaryMessages": 0,
+        "retainedMessages": 2,
+        "compressionRuns": 0,
+        "summaryInputTokens": 0,
+        "summaryOutputTokens": 0,
+        "summaryTotalTokens": 0,
+        "uncompressedInputTokens": 0,
+        "compressedInputTokens": 0,
+        "savedInputTokens": 0,
+        "tokenSavingsPercent": 0
+      },
+      "retrieval": {
+        "project": {
+          "documents": 14,
+          "chunks": 135,
+          "indexHash": "84193bc16b3009bf4301bac0a1bba07f409ed5d7eb9a03a480c473f64c85bd1e",
+          "runs": [
+            {
+              "serverName": "codex-project-mcp",
+              "name": "git_branch",
+              "arguments": "{}",
+              "output": "{\n  \"branch\": \"codex/ai-challenge-task-31\",\n  \"commit\": \"c1f624105385794df13bc972ec049623c4145196\",\n  \"detached\": false,\n  \"observedAt\": \"2026-10-18T10:30:30.62742555Z\"\n}",
+              "error": false,
+              "durationMs": 7
+            }
+          ]
+        },
+        "grounding": {
+          "status": "answered",
+          "claims": [
+            {
+              "text": "Приложение использует три слоя памяти: историю диалога (переписку), рабочую память задачи и долговременный профиль.",
+              "evidence": [
+                {
+                  "ref": "S1",
+                  "start": 3,
+                  "end": 3
+                },
+                {
+                  "ref": "S2",
+                  "start": 3,
+                  "end": 7
+                }
+              ]
+            },
+            {
+              "text": "При новой задаче создаётся отдельный рабочий контекст, а рабочий слой очищается.",
+              "evidence": [
+                {
+                  "ref": "S1",
+                  "start": 3,
+                  "end": 3
+                },
+                {
+                  "ref": "S2",
+                  "start": 6,
+                  "end": 6
+                },
+                {
+                  "ref": "S3",
+                  "start": 16,
+                  "end": 17
+                }
+              ]
+            },
+            {
+              "text": "При новой задаче долговременный профиль сохраняется, и его данные переносятся дальше.",
+              "evidence": [
+                {
+                  "ref": "S1",
+                  "start": 3,
+                  "end": 3
+                },
+                {
+                  "ref": "S2",
+                  "start": 7,
+                  "end": 7
+                },
+                {
+                  "ref": "S3",
+                  "start": 17,
+                  "end": 18
+                }
+              ]
+            }
+          ],
+          "sources": [
+            {
+              "ref": "S1",
+              "chunkId": "80e602204fda5c405061aa8dad5168b7983b16930f1ce18a4628405ccda667d3",
+              "source": "docs/memory.md",
+              "title": "memory.md",
+              "section": "Память и контекст диалога > Три слоя",
+              "text": "## Три слоя\n\nПриложение разделяет историю диалога, рабочую память задачи и долговременный профиль. История хранит сообщения. Рабочий слой содержит сведения о текущей задаче; долгосрочные предпочтения относятся к профилю. Сохранение предложенной памяти требует подтверждения пользователя в интерфейсе. Новая задача получает отдельный рабочий контекст; профиль сохраняется. Новый чат очищает переписку текущей задачи.\n\n",
+              "score": 16.075160923690675
+            },
+            {
+              "ref": "S2",
+              "chunkId": "05e28dd2948d86ec47b974ab903e5adbb338a42de152297e5d40e4cb9b197843",
+              "source": "MEMORY.md",
+              "title": "MEMORY.md",
+              "section": "Модель памяти агента > Три слоя",
+              "text": "## Три слоя\n\n| Слой | Данные | Источник записи | Срок жизни |\n|---|---|---|---|\n| Краткосрочная | Сообщения пользователя и ассистента | Успешный ход диалога | До «Нового чата» или «Новой задачи» |\n| Рабочая | Цель, ограничения, план, состояние и решения текущей задачи | Только подтверждённые пользователем предложения и ручные правки | Сохраняется между чатами одной задачи, очищается при новой задаче |\n| Долговременная | Профиль, устойчивые предпочтения, подтверждённые повторно используемые решения и знания | Только подтверждение пользователя и ручные правки | Сохраняется между чатами, задачами и перезапусками до удаления записи |\n\nНапример, «в этой задаче нельзя сторонние библиотеки» относится к рабочей памяти,\nа «предпочитаю объяснения на русском» — к долговременной. «Этот ответ дай в трёх\nпунктах» остаётся в переписке: инструкция извлечения запрещает превращать\nодноразовые требования к ответу в постоянные предпочтения. Ошибочную\nклассификацию можно исправить до подтверждения.\n\nУ каждой записи есть ключ, значение, источник (фрагменты пользовательского\nсообщения и ответа), время обновления. Предложения дополнительно содержат\nпричину выбора слоя, ID задачи, статус и время решения. Если подтверждённый\nключ уже существует в выбранном слое, его значение заменяется. Удаление записи\nне удаляет упоминания того же факта из текущего диалога; для чистой проверки\nудаления следует начать новый чат.\n\n",
+              "score": 15.943207995315014
+            },
+            {
+              "ref": "S3",
+              "chunkId": "4c99d414cf85eb631ceedfee2661443cb7d8dcb74579785a0eb22d2725bd113e",
+              "source": "MEMORY.md",
+              "title": "MEMORY.md",
+              "section": "Модель памяти агента > Проверка для сдачи задания",
+              "text": "## Проверка для сдачи задания\n\n1. Выберите Sliding Window, N=1. Напишите:\n   «Предпочитаю ответы на русском. Текущая задача — API на Go без сторонних\n   библиотек. Только этот ответ дай в трёх пунктах».\n2. Откройте «Память». Проверьте, что рабочая и долговременная память пока пусты,\n   а предложения находятся отдельно. Если модель не выделила нужный факт,\n   уточните его в следующем сообщении: набор предложений вероятностный.\n3. Не подтверждая предложения, нажмите «Новый чат» и спросите:\n   «Какую задачу я решаю и какие у меня предпочтения?» Сохранённых фактов ещё нет.\n4. Подтвердите цель и ограничение как рабочую память, язык — как долговременную.\n   Если предложено постоянное правило «три пункта», отклоните его. При неверной\n   классификации выберите правильный слой перед подтверждением.\n5. Снова начните новый чат и задайте тот же вопрос. Ожидается ответ с русским\n   языком и ограничениями API из подтверждённых слоёв.\n6. На вкладке «Задачи» начните новую задачу. Рабочий слой, предложения и переписка должны\n   очиститься; язык в профиле — сохраниться. Задайте тот же вопрос: старые\n   ограничения Go не должны переноситься в новую задачу.\n7. Перезапустите приложение и обновите страницу в том же браузере: профиль и\n   активная задача восстановятся. Проверьте правку и удаление профиля, затем\n   новый чат: следующий запрос использует актуальную память.\n\nАвтоматические проверки воспроизводимы без настоящего API:\n\n```sh\ngo test -race ./...\n```\n\n",
+              "score": 13.331558715537636
+            }
+          ],
+          "quotes": [
+            {
+              "ref": "S1",
+              "start": 3,
+              "end": 3,
+              "text": "Приложение разделяет историю диалога, рабочую память задачи и долговременный профиль. История хранит сообщения. Рабочий слой содержит сведения о текущей задаче; долгосрочные предпочтения относятся к профилю. Сохранение предложенной памяти требует подтверждения пользователя в интерфейсе. Новая задача получает отдельный рабочий контекст; профиль сохраняется. Новый чат очищает переписку текущей задачи.",
+              "chunkId": "80e602204fda5c405061aa8dad5168b7983b16930f1ce18a4628405ccda667d3",
+              "source": "docs/memory.md",
+              "section": "Память и контекст диалога > Три слоя"
+            },
+            {
+              "ref": "S2",
+              "start": 3,
+              "end": 7,
+              "text": "| Слой | Данные | Источник записи | Срок жизни |\n|---|---|---|---|\n| Краткосрочная | Сообщения пользователя и ассистента | Успешный ход диалога | До «Нового чата» или «Новой задачи» |\n| Рабочая | Цель, ограничения, план, состояние и решения текущей задачи | Только подтверждённые пользователем предложения и ручные правки | Сохраняется между чатами одной задачи, очищается при новой задаче |\n| Долговременная | Профиль, устойчивые предпочтения, подтверждённые повторно используемые решения и знания | Только подтверждение пользователя и ручные правки | Сохраняется между чатами, задачами и перезапусками до удаления записи |",
+              "chunkId": "05e28dd2948d86ec47b974ab903e5adbb338a42de152297e5d40e4cb9b197843",
+              "source": "MEMORY.md",
+              "section": "Модель памяти агента > Три слоя"
+            },
+            {
+              "ref": "S2",
+              "start": 6,
+              "end": 6,
+              "text": "| Рабочая | Цель, ограничения, план, состояние и решения текущей задачи | Только подтверждённые пользователем предложения и ручные правки | Сохраняется между чатами одной задачи, очищается при новой задаче |",
+              "chunkId": "05e28dd2948d86ec47b974ab903e5adbb338a42de152297e5d40e4cb9b197843",
+              "source": "MEMORY.md",
+              "section": "Модель памяти агента > Три слоя"
+            },
+            {
+              "ref": "S3",
+              "start": 16,
+              "end": 17,
+              "text": "6. На вкладке «Задачи» начните новую задачу. Рабочий слой, предложения и переписка должны\n   очиститься; язык в профиле — сохраниться. Задайте тот же вопрос: старые",
+              "chunkId": "4c99d414cf85eb631ceedfee2661443cb7d8dcb74579785a0eb22d2725bd113e",
+              "source": "MEMORY.md",
+              "section": "Модель памяти агента > Проверка для сдачи задания"
+            },
+            {
+              "ref": "S2",
+              "start": 7,
+              "end": 7,
+              "text": "| Долговременная | Профиль, устойчивые предпочтения, подтверждённые повторно используемые решения и знания | Только подтверждение пользователя и ручные правки | Сохраняется между чатами, задачами и перезапусками до удаления записи |",
+              "chunkId": "05e28dd2948d86ec47b974ab903e5adbb338a42de152297e5d40e4cb9b197843",
+              "source": "MEMORY.md",
+              "section": "Модель памяти агента > Три слоя"
+            },
+            {
+              "ref": "S3",
+              "start": 17,
+              "end": 18,
+              "text": "   очиститься; язык в профиле — сохраниться. Задайте тот же вопрос: старые\n   ограничения Go не должны переноситься в новую задачу.",
+              "chunkId": "4c99d414cf85eb631ceedfee2661443cb7d8dcb74579785a0eb22d2725bd113e",
+              "source": "MEMORY.md",
+              "section": "Модель памяти агента > Проверка для сдачи задания"
+            }
+          ],
+          "checks": [
+            {
+              "index": 0,
+              "verdict": "supported",
+              "reason": "Цитаты S1 и S2 прямо перечисляют три слоя: история/краткосрочная переписка, рабочая память задачи и долговременный профиль."
+            },
+            {
+              "index": 1,
+              "verdict": "supported",
+              "reason": "S1 говорит о «отдельном рабочем контексте» для новой задачи, S2 и S3 — что рабочий слой при новой задаче очищается."
+            },
+            {
+              "index": 2,
+              "verdict": "supported",
+              "reason": "S1 указывает, что профиль сохраняется, S2 — долговременная память сохраняется между задачами, S3 — старые рабочие ограничения не переносятся, а профиль остаётся."
+            }
+          ],
+          "reason": "",
+          "attempts": 1
+        },
+        "query": "Какие три слоя памяти использует приложение и что происходит при новой задаче?",
+        "steps": [
+          {
+            "attempts": 1,
+            "name": "grounded_answer",
+            "model": "gpt-5.3-codex",
+            "usage": {
+              "InputTokens": 2019,
+              "CachedInputTokens": 0,
+              "CacheWriteTokens": 0,
+              "OutputTokens": 207,
+              "ReasoningTokens": 0,
+              "TotalTokens": 2226
+            },
+            "durationMs": 3178
+          },
+          {
+            "attempts": 1,
+            "name": "grounding_check",
+            "model": "gpt-5.3-codex",
+            "usage": {
+              "InputTokens": 2480,
+              "CachedInputTokens": 0,
+              "CacheWriteTokens": 0,
+              "OutputTokens": 160,
+              "ReasoningTokens": 0,
+              "TotalTokens": 2640
+            },
+            "durationMs": 2331
+          }
+        ],
+        "mode": "rag",
+        "strategy": "project BM25",
+        "corpusHash": "84193bc16b3009bf4301bac0a1bba07f409ed5d7eb9a03a480c473f64c85bd1e",
+        "durationMs": 27,
+        "sources": [
+          {
+            "ref": "S1",
+            "chunkId": "80e602204fda5c405061aa8dad5168b7983b16930f1ce18a4628405ccda667d3",
+            "source": "docs/memory.md",
+            "title": "memory.md",
+            "section": "Память и контекст диалога > Три слоя",
+            "text": "## Три слоя\n\nПриложение разделяет историю диалога, рабочую память задачи и долговременный профиль. История хранит сообщения. Рабочий слой содержит сведения о текущей задаче; долгосрочные предпочтения относятся к профилю. Сохранение предложенной памяти требует подтверждения пользователя в интерфейсе. Новая задача получает отдельный рабочий контекст; профиль сохраняется. Новый чат очищает переписку текущей задачи.\n\n",
+            "score": 16.075160923690675
+          },
+          {
+            "ref": "S2",
+            "chunkId": "05e28dd2948d86ec47b974ab903e5adbb338a42de152297e5d40e4cb9b197843",
+            "source": "MEMORY.md",
+            "title": "MEMORY.md",
+            "section": "Модель памяти агента > Три слоя",
+            "text": "## Три слоя\n\n| Слой | Данные | Источник записи | Срок жизни |\n|---|---|---|---|\n| Краткосрочная | Сообщения пользователя и ассистента | Успешный ход диалога | До «Нового чата» или «Новой задачи» |\n| Рабочая | Цель, ограничения, план, состояние и решения текущей задачи | Только подтверждённые пользователем предложения и ручные правки | Сохраняется между чатами одной задачи, очищается при новой задаче |\n| Долговременная | Профиль, устойчивые предпочтения, подтверждённые повторно используемые решения и знания | Только подтверждение пользователя и ручные правки | Сохраняется между чатами, задачами и перезапусками до удаления записи |\n\nНапример, «в этой задаче нельзя сторонние библиотеки» относится к рабочей памяти,\nа «предпочитаю объяснения на русском» — к долговременной. «Этот ответ дай в трёх\nпунктах» остаётся в переписке: инструкция извлечения запрещает превращать\nодноразовые требования к ответу в постоянные предпочтения. Ошибочную\nклассификацию можно исправить до подтверждения.\n\nУ каждой записи есть ключ, значение, источник (фрагменты пользовательского\nсообщения и ответа), время обновления. Предложения дополнительно содержат\nпричину выбора слоя, ID задачи, статус и время решения. Если подтверждённый\nключ уже существует в выбранном слое, его значение заменяется. Удаление записи\nне удаляет упоминания того же факта из текущего диалога; для чистой проверки\nудаления следует начать новый чат.\n\n",
+            "score": 15.943207995315014
+          },
+          {
+            "ref": "S3",
+            "chunkId": "4c99d414cf85eb631ceedfee2661443cb7d8dcb74579785a0eb22d2725bd113e",
+            "source": "MEMORY.md",
+            "title": "MEMORY.md",
+            "section": "Модель памяти агента > Проверка для сдачи задания",
+            "text": "## Проверка для сдачи задания\n\n1. Выберите Sliding Window, N=1. Напишите:\n   «Предпочитаю ответы на русском. Текущая задача — API на Go без сторонних\n   библиотек. Только этот ответ дай в трёх пунктах».\n2. Откройте «Память». Проверьте, что рабочая и долговременная память пока пусты,\n   а предложения находятся отдельно. Если модель не выделила нужный факт,\n   уточните его в следующем сообщении: набор предложений вероятностный.\n3. Не подтверждая предложения, нажмите «Новый чат» и спросите:\n   «Какую задачу я решаю и какие у меня предпочтения?» Сохранённых фактов ещё нет.\n4. Подтвердите цель и ограничение как рабочую память, язык — как долговременную.\n   Если предложено постоянное правило «три пункта», отклоните его. При неверной\n   классификации выберите правильный слой перед подтверждением.\n5. Снова начните новый чат и задайте тот же вопрос. Ожидается ответ с русским\n   языком и ограничениями API из подтверждённых слоёв.\n6. На вкладке «Задачи» начните новую задачу. Рабочий слой, предложения и переписка должны\n   очиститься; язык в профиле — сохраниться. Задайте тот же вопрос: старые\n   ограничения Go не должны переноситься в новую задачу.\n7. Перезапустите приложение и обновите страницу в том же браузере: профиль и\n   активная задача восстановятся. Проверьте правку и удаление профиля, затем\n   новый чат: следующий запрос использует актуальную память.\n\nАвтоматические проверки воспроизводимы без настоящего API:\n\n```sh\ngo test -race ./...\n```\n\n",
+            "score": 13.331558715537636
+          },
+          {
+            "ref": "S4",
+            "chunkId": "233e1be7b96f7ccb7afa8b7199df86aa9852a024ed658361c9275ce9873b87dd",
+            "source": "README.md",
+            "title": "README.md",
+            "section": "Codex Chat Web > Возможности",
+            "text": "](RAG23.md));\n\n- локальная индексация документов: OpenAI Embeddings, SQLite, две стратегии\n  chunking, сравнение поиска и вкладка «Документы» ([инструкция](documents/README.md));\n\n- адаптивный интерфейс для компьютера и телефона;\n- отдельный агент для каждого браузерного диалога;\n- многострочный ввод: `Enter` отправляет, `Shift+Enter` добавляет строку;\n- отдельный контекст для каждого браузера через защищённую cookie;\n- история сообщений в локальном JSON-файле;\n- автоматическое восстановление контекста и переписки после перезапуска приложения;\n- безопасное отображение Markdown: заголовки, списки, таблицы, цитаты, ссылки и блоки кода;\n- выбор модели перед отправкой сообщения;\n- перенос всей сохранённой истории в контекст новой модели при переключении;\n- время ответа, расход токенов и ориентировочная стоимость под каждым ответом;\n- точный предварительный подсчёт токенов текущего запроса и активной истории;\n- заполнение контекстного окна и накопленные токены/стоимость всего диалога в левой панели;\n- неблокирующее предупреждение при превышении входного лимита модели;\n- режим «Без стратегии» с полной историей и три стратегии контекста: Sliding Window, Sticky Facts и Branching;\n- отдельная память важных фактов и независимые ветки от общего checkpoint;\n- профили пользователя с настройками языка, стиля, подробности, формата и ограничений;\n- отдельные задачи и память для каждого профиля, снимок настроек под каждым ответом;\n- три отдельных слоя памяти: переписка, данные задачи и долговременный профиль;\n- просмотр памяти по вкладкам: диалог, рабочая, долговременная, предложения и исто",
+            "score": 11.573981821314012
+          },
+          {
+            "ref": "S5",
+            "chunkId": "git_branch@2026-10-18T10:30:30.627788216Z",
+            "source": "mcp://codex-project-mcp/git_branch",
+            "title": "Актуальный контекст проекта через MCP",
+            "section": "git_branch",
+            "text": "{\n  \"branch\": \"codex/ai-challenge-task-31\",\n  \"commit\": \"c1f624105385794df13bc972ec049623c4145196\",\n  \"detached\": false,\n  \"observedAt\": \"2026-10-18T10:30:30.62742555Z\"\n}",
+            "score": 0
+          }
+        ],
+        "citations": [
+          "S1",
+          "S2",
+          "S3"
+        ]
+      },
+      "toolRuns": [
+        {
+          "serverName": "codex-project-mcp",
+          "name": "git_branch",
+          "arguments": "{}",
+          "output": "{\n  \"branch\": \"codex/ai-challenge-task-31\",\n  \"commit\": \"c1f624105385794df13bc972ec049623c4145196\",\n  \"detached\": false,\n  \"observedAt\": \"2026-10-18T10:30:30.62742555Z\"\n}",
+          "error": false,
+          "durationMs": 7
+        }
+      ],
+      "checks": {
+        "projectMode": true,
+        "mcpSuccess": true,
+        "noInvalidCitations": true,
+        "expectedFacts": true,
+        "sourcesPresent": true,
+        "quotesPresent": true,
+        "expectedSource": true,
+        "supportedClaims": true
+      },
+      "passed": true
+    },
+    {
+      "question": {
+        "id": "H07",
+        "query": "Какие стратегии контекста доступны и сколько последних сообщений берётся по умолчанию в sliding_window?",
+        "expectations": [
+          "none, sliding_window, sticky_facts, branching; N=10"
+        ],
+        "requiredFacts": [
+          [
+            "none"
+          ],
+          [
+            "sliding_window"
+          ],
+          [
+            "sticky_facts"
+          ],
+          [
+            "branching"
+          ],
+          [
+            "10"
+          ]
+        ],
+        "sources": [
+          "docs/memory.md",
+          "README.md"
+        ]
+      },
+      "seconds": 5.678,
+      "model": "gpt-5.3-codex",
+      "answer": "Доступны стратегии контекста: none, sliding_window, sticky_facts и branching. [S1] [S2]\n\nВ стратегии sliding_window по умолчанию берутся последние 10 сообщений (CONTEXT_KEEP_LAST=10). [S1] [S2]\n\nИсточники и цитаты:\n\n[S1] README.md · Codex Chat Web > Настройки · chunk_id: `181a929d807671b3cbf8c16cb3237e63c49c539a1bc950514f4e29abde8432d0` · строки 4–4\n\n> | `CONTEXT_STRATEGY` | `sliding_window` | режим по умолчанию: `none`, `sliding_window`, `sticky_facts` или `branching` |\n\n[S2] docs/memory.md · Память и контекст диалога > Стратегии контекста · chunk_id: `7f65a573dba6172cc109f29d3240a453471ef5033747d1e75e0f70ed608db5b6` · строки 1–3\n\n> ## Стратегии контекста\n> \n> Режим `none` передаёт всю сохранённую историю. `sliding_window` передаёт последние N сообщений; по умолчанию `CONTEXT_KEEP_LAST=10`. `sticky_facts` дополнительно обновляет отдельные факты, используя вызовы модели. `branching` создаёт независимые ветки от checkpoint. Стратегия выбирается перед первым успешным сообщением; затем для её изменения нужен новый диалог.\n\n[S1] README.md · Codex Chat Web > Настройки · chunk_id: `181a929d807671b3cbf8c16cb3237e63c49c539a1bc950514f4e29abde8432d0` · строки 5–5\n\n> | `CONTEXT_KEEP_LAST` | `10` | число последних сообщений для Sliding Window и Sticky Facts |\n\n[S2] docs/memory.md · Память и контекст диалога > Стратегии контекста · chunk_id: `7f65a573dba6172cc109f29d3240a453471ef5033747d1e75e0f70ed608db5b6` · строки 3–3\n\n> Режим `none` передаёт всю сохранённую историю. `sliding_window` передаёт последние N сообщений; по умолчанию `CONTEXT_KEEP_LAST=10`. `sticky_facts` дополнительно обновляет отдельные факты, используя вызовы модели. `branching` создаёт независимые ветки от checkpoint. Стратегия выбирается перед первым успешным сообщением; затем для её изменения нужен новый диалог.",
+      "metrics": {
+        "durationMs": 5613,
+        "inputTokens": 2890,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 219,
+        "reasoningTokens": 0,
+        "totalTokens": 3109,
+        "costUsd": 0.0081235,
+        "proposalTokens": 0,
+        "contextStrategy": "sliding_window",
+        "windowMessages": 0,
+        "factsCount": 0,
+        "memoryUpdates": 0,
+        "memoryInputTokens": 0,
+        "memoryOutputTokens": 0,
+        "memoryTotalTokens": 0,
+        "tokenCountAvailable": false,
+        "currentRequestTokens": 0,
+        "historyTokens": 0,
+        "projectedInputTokens": 0,
+        "contextWindow": 400000,
+        "maxInputTokens": 272000,
+        "maxOutputTokens": 128000,
+        "contextUsagePercent": 0,
+        "cumulativeInputTokens": 2890,
+        "cumulativeOutputTokens": 219,
+        "cumulativeTotalTokens": 3109,
+        "cumulativeCostUsd": 0.0081235,
+        "compressionEnabled": false,
+        "compressionApplied": false,
+        "summaryMessages": 0,
+        "retainedMessages": 2,
+        "compressionRuns": 0,
+        "summaryInputTokens": 0,
+        "summaryOutputTokens": 0,
+        "summaryTotalTokens": 0,
+        "uncompressedInputTokens": 0,
+        "compressedInputTokens": 0,
+        "savedInputTokens": 0,
+        "tokenSavingsPercent": 0
+      },
+      "retrieval": {
+        "project": {
+          "documents": 14,
+          "chunks": 135,
+          "indexHash": "84193bc16b3009bf4301bac0a1bba07f409ed5d7eb9a03a480c473f64c85bd1e",
+          "runs": [
+            {
+              "serverName": "codex-project-mcp",
+              "name": "git_branch",
+              "arguments": "{}",
+              "output": "{\n  \"branch\": \"codex/ai-challenge-task-31\",\n  \"commit\": \"c1f624105385794df13bc972ec049623c4145196\",\n  \"detached\": false,\n  \"observedAt\": \"2026-10-18T10:30:36.238682177Z\"\n}",
+              "error": false,
+              "durationMs": 7
+            }
+          ]
+        },
+        "grounding": {
+          "status": "answered",
+          "claims": [
+            {
+              "text": "Доступны стратегии контекста: none, sliding_window, sticky_facts и branching.",
+              "evidence": [
+                {
+                  "ref": "S1",
+                  "start": 4,
+                  "end": 4
+                },
+                {
+                  "ref": "S2",
+                  "start": 1,
+                  "end": 3
+                }
+              ]
+            },
+            {
+              "text": "В стратегии sliding_window по умолчанию берутся последние 10 сообщений (CONTEXT_KEEP_LAST=10).",
+              "evidence": [
+                {
+                  "ref": "S1",
+                  "start": 5,
+                  "end": 5
+                },
+                {
+                  "ref": "S2",
+                  "start": 3,
+                  "end": 3
+                }
+              ]
+            }
+          ],
+          "sources": [
+            {
+              "ref": "S1",
+              "chunkId": "181a929d807671b3cbf8c16cb3237e63c49c539a1bc950514f4e29abde8432d0",
+              "source": "README.md",
+              "title": "README.md",
+              "section": "Codex Chat Web > Настройки",
+              "text": "KER_DEMO_BROKER_MCP` | пусто | endpoint demo-брокера |\n| `BROKER_DEMO_SECRET` | `local-demo-secret-change-me` | общий секрет подписи данных между тремя demo-серверами |\n| `MEMORY_PATH` | `memory` рядом с файлом истории | каталог рабочей и долговременной памяти, текущей задачи и предложений |\n| `CONTEXT_STRATEGY` | `sliding_window` | режим по умолчанию: `none`, `sliding_window`, `sticky_facts` или `branching` |\n| `CONTEXT_KEEP_LAST` | `10` | число последних сообщений для Sliding Window и Sticky Facts |\n\nПеред первым сообщением эти настройки можно изменить прямо на стартовом экране:\nвыбрать режим «Без стратегии» или одну из трёх стратегий. Поле «Последние N\nсообщений» показывается только для Sliding Window и Sticky Facts. После начала\nдиалога настройки фиксируются, сохраняются вместе с\nисторией и восстанавливаются после перезапуска. Кнопка «Новый диалог» снова\nоткрывает их для редактирования.\n\n",
+              "score": 15.48618570379136
+            },
+            {
+              "ref": "S2",
+              "chunkId": "7f65a573dba6172cc109f29d3240a453471ef5033747d1e75e0f70ed608db5b6",
+              "source": "docs/memory.md",
+              "title": "memory.md",
+              "section": "Память и контекст диалога > Стратегии контекста",
+              "text": "## Стратегии контекста\n\nРежим `none` передаёт всю сохранённую историю. `sliding_window` передаёт последние N сообщений; по умолчанию `CONTEXT_KEEP_LAST=10`. `sticky_facts` дополнительно обновляет отдельные факты, используя вызовы модели. `branching` создаёт независимые ветки от checkpoint. Стратегия выбирается перед первым успешным сообщением; затем для её изменения нужен новый диалог.\n\n",
+              "score": 15.132186300547062
+            }
+          ],
+          "quotes": [
+            {
+              "ref": "S1",
+              "start": 4,
+              "end": 4,
+              "text": "| `CONTEXT_STRATEGY` | `sliding_window` | режим по умолчанию: `none`, `sliding_window`, `sticky_facts` или `branching` |",
+              "chunkId": "181a929d807671b3cbf8c16cb3237e63c49c539a1bc950514f4e29abde8432d0",
+              "source": "README.md",
+              "section": "Codex Chat Web > Настройки"
+            },
+            {
+              "ref": "S2",
+              "start": 1,
+              "end": 3,
+              "text": "## Стратегии контекста\n\nРежим `none` передаёт всю сохранённую историю. `sliding_window` передаёт последние N сообщений; по умолчанию `CONTEXT_KEEP_LAST=10`. `sticky_facts` дополнительно обновляет отдельные факты, используя вызовы модели. `branching` создаёт независимые ветки от checkpoint. Стратегия выбирается перед первым успешным сообщением; затем для её изменения нужен новый диалог.",
+              "chunkId": "7f65a573dba6172cc109f29d3240a453471ef5033747d1e75e0f70ed608db5b6",
+              "source": "docs/memory.md",
+              "section": "Память и контекст диалога > Стратегии контекста"
+            },
+            {
+              "ref": "S1",
+              "start": 5,
+              "end": 5,
+              "text": "| `CONTEXT_KEEP_LAST` | `10` | число последних сообщений для Sliding Window и Sticky Facts |",
+              "chunkId": "181a929d807671b3cbf8c16cb3237e63c49c539a1bc950514f4e29abde8432d0",
+              "source": "README.md",
+              "section": "Codex Chat Web > Настройки"
+            },
+            {
+              "ref": "S2",
+              "start": 3,
+              "end": 3,
+              "text": "Режим `none` передаёт всю сохранённую историю. `sliding_window` передаёт последние N сообщений; по умолчанию `CONTEXT_KEEP_LAST=10`. `sticky_facts` дополнительно обновляет отдельные факты, используя вызовы модели. `branching` создаёт независимые ветки от checkpoint. Стратегия выбирается перед первым успешным сообщением; затем для её изменения нужен новый диалог.",
+              "chunkId": "7f65a573dba6172cc109f29d3240a453471ef5033747d1e75e0f70ed608db5b6",
+              "source": "docs/memory.md",
+              "section": "Память и контекст диалога > Стратегии контекста"
+            }
+          ],
+          "checks": [
+            {
+              "index": 0,
+              "verdict": "supported",
+              "reason": "Цитаты S1 и S2 прямо перечисляют доступные стратегии: none, sliding_window, sticky_facts, branching."
+            },
+            {
+              "index": 1,
+              "verdict": "supported",
+              "reason": "S1 указывает CONTEXT_KEEP_LAST=10, а S2 подтверждает, что в sliding_window по умолчанию берутся последние N сообщений при N=10."
+            }
+          ],
+          "reason": "",
+          "attempts": 1
+        },
+        "query": "Какие стратегии контекста доступны и сколько последних сообщений берётся по умолчанию в sliding_window?",
+        "steps": [
+          {
+            "attempts": 1,
+            "name": "grounded_answer",
+            "model": "gpt-5.3-codex",
+            "usage": {
+              "InputTokens": 1454,
+              "CachedInputTokens": 0,
+              "CacheWriteTokens": 0,
+              "OutputTokens": 121,
+              "ReasoningTokens": 0,
+              "TotalTokens": 1575
+            },
+            "durationMs": 3229
+          },
+          {
+            "attempts": 1,
+            "name": "grounding_check",
+            "model": "gpt-5.3-codex",
+            "usage": {
+              "InputTokens": 1436,
+              "CachedInputTokens": 0,
+              "CacheWriteTokens": 0,
+              "OutputTokens": 98,
+              "ReasoningTokens": 0,
+              "TotalTokens": 1534
+            },
+            "durationMs": 2356
+          }
+        ],
+        "mode": "rag",
+        "strategy": "project BM25",
+        "corpusHash": "84193bc16b3009bf4301bac0a1bba07f409ed5d7eb9a03a480c473f64c85bd1e",
+        "durationMs": 26,
+        "sources": [
+          {
+            "ref": "S1",
+            "chunkId": "181a929d807671b3cbf8c16cb3237e63c49c539a1bc950514f4e29abde8432d0",
+            "source": "README.md",
+            "title": "README.md",
+            "section": "Codex Chat Web > Настройки",
+            "text": "KER_DEMO_BROKER_MCP` | пусто | endpoint demo-брокера |\n| `BROKER_DEMO_SECRET` | `local-demo-secret-change-me` | общий секрет подписи данных между тремя demo-серверами |\n| `MEMORY_PATH` | `memory` рядом с файлом истории | каталог рабочей и долговременной памяти, текущей задачи и предложений |\n| `CONTEXT_STRATEGY` | `sliding_window` | режим по умолчанию: `none`, `sliding_window`, `sticky_facts` или `branching` |\n| `CONTEXT_KEEP_LAST` | `10` | число последних сообщений для Sliding Window и Sticky Facts |\n\nПеред первым сообщением эти настройки можно изменить прямо на стартовом экране:\nвыбрать режим «Без стратегии» или одну из трёх стратегий. Поле «Последние N\nсообщений» показывается только для Sliding Window и Sticky Facts. После начала\nдиалога настройки фиксируются, сохраняются вместе с\nисторией и восстанавливаются после перезапуска. Кнопка «Новый диалог» снова\nоткрывает их для редактирования.\n\n",
+            "score": 15.48618570379136
+          },
+          {
+            "ref": "S2",
+            "chunkId": "7f65a573dba6172cc109f29d3240a453471ef5033747d1e75e0f70ed608db5b6",
+            "source": "docs/memory.md",
+            "title": "memory.md",
+            "section": "Память и контекст диалога > Стратегии контекста",
+            "text": "## Стратегии контекста\n\nРежим `none` передаёт всю сохранённую историю. `sliding_window` передаёт последние N сообщений; по умолчанию `CONTEXT_KEEP_LAST=10`. `sticky_facts` дополнительно обновляет отдельные факты, используя вызовы модели. `branching` создаёт независимые ветки от checkpoint. Стратегия выбирается перед первым успешным сообщением; затем для её изменения нужен новый диалог.\n\n",
+            "score": 15.132186300547062
+          },
+          {
+            "ref": "S3",
+            "chunkId": "dc80944cee569c272c7ad2754d80de0e3657703a7b69e4cce0dc05151eb44270",
+            "source": "README.md",
+            "title": "README.md",
+            "section": "Codex Chat Web > Стратегии управления контекстом > Без стратегии",
+            "text": "### Без стратегии\n\nВ модель передаются вся сохранённая история диалога и новый запрос явным\nмассивом сообщений, без `previous_response_id`, сокращения, facts или веток.\nПодтверждённые слои памяти добавляются отдельно.\nРежим сохраняется после перезапуска; при смене модели полная история также\nпередаётся новой модели. Параметр N не применяется. По умолчанию по-прежнему\nвыбран Sliding Window.\n\n",
+            "score": 9.987845367898203
+          },
+          {
+            "ref": "S4",
+            "chunkId": "b6b17044917c2a5f275be9e9029f660bf22c7106e07df280f9bd80ad80000b3e",
+            "source": "ARCHITECTURE.md",
+            "title": "ARCHITECTURE.md",
+            "section": "Архитектура Codex Chat Web > Компоненты > `internal/web`",
+            "text": "### `internal/web`\n\nОтдаёт страницу и маршруты `/api/chat`, `/api/history`, `/api/reset`,\n`/api/branches/create`, `/api/branches/switch`, `/api/status`, `/healthz`.\nПри первом сообщении создаёт случайный идентификатор и HttpOnly/SameSite cookie.\nКаждому идентификатору соответствует отдельный `agent.Agent`, поэтому контекст\nразных браузеров не смешивается. Неактивные экземпляры агента удаляются из\nоперативной памяти через 12 часов; их JSON-история остаётся на диске и будет\nзагружена при следующем обращении. Одновременно в памяти хранится не более 256\nсессий.\n\nFrontend загружает отображаемый транскрипт с сервера через `/api/history`.\nВыбранная модель отправляется с каждым сообщением. Под каждым новым ответом\nfrontend показывает метрики конкретного хода: модель, длительность, токены и\nстоимость. Метрики всей беседы — активный контекст, история, накопленные токены\nи стоимость — отображаются отдельно в левой панели.\nДо первого сообщения frontend передаёт выбранную стратегию контекста и N\nпоследних сообщений. Агент фиксирует параметры для диалога; при загрузке\nистории web-слой возвращает их вместе с facts, ветками и транскриптом.\n\n",
+            "score": 6.432742917470015
+          },
+          {
+            "ref": "S5",
+            "chunkId": "git_branch@2026-10-18T10:30:36.238900677Z",
+            "source": "mcp://codex-project-mcp/git_branch",
+            "title": "Актуальный контекст проекта через MCP",
+            "section": "git_branch",
+            "text": "{\n  \"branch\": \"codex/ai-challenge-task-31\",\n  \"commit\": \"c1f624105385794df13bc972ec049623c4145196\",\n  \"detached\": false,\n  \"observedAt\": \"2026-10-18T10:30:36.238682177Z\"\n}",
+            "score": 0
+          }
+        ],
+        "citations": [
+          "S1",
+          "S2"
+        ]
+      },
+      "toolRuns": [
+        {
+          "serverName": "codex-project-mcp",
+          "name": "git_branch",
+          "arguments": "{}",
+          "output": "{\n  \"branch\": \"codex/ai-challenge-task-31\",\n  \"commit\": \"c1f624105385794df13bc972ec049623c4145196\",\n  \"detached\": false,\n  \"observedAt\": \"2026-10-18T10:30:36.238682177Z\"\n}",
+          "error": false,
+          "durationMs": 7
+        }
+      ],
+      "checks": {
+        "projectMode": true,
+        "mcpSuccess": true,
+        "noInvalidCitations": true,
+        "expectedFacts": true,
+        "sourcesPresent": true,
+        "quotesPresent": true,
+        "expectedSource": true,
+        "supportedClaims": true
+      },
+      "passed": true
+    },
+    {
+      "question": {
+        "id": "H08",
+        "query": "На какой git-ветке проект прямо сейчас и какой HEAD-коммит?",
+        "expectations": [
+          "Только актуальные branch/commit из MCP git_branch, совпадающие с checkout"
+        ],
+        "requiredFacts": [],
+        "sources": [
+          "mcp://codex-project-mcp/git_branch"
+        ],
+        "liveGit": true
+      },
+      "seconds": 4.141,
+      "model": "gpt-5.3-codex",
+      "answer": "Сейчас проект находится на ветке codex/ai-challenge-task-31. [S5]\n\nТекущий HEAD-коммит: c1f624105385794df13bc972ec049623c4145196. [S5]\n\nИсточники и цитаты:\n\n[S5] mcp://codex-project-mcp/git_branch · git_branch · chunk_id: `git_branch@2026-10-18T10:30:41.924820972Z` · строки 2–2\n\n>   \"branch\": \"codex/ai-challenge-task-31\",\n\n[S5] mcp://codex-project-mcp/git_branch · git_branch · chunk_id: `git_branch@2026-10-18T10:30:41.924820972Z` · строки 3–3\n\n>   \"commit\": \"c1f624105385794df13bc972ec049623c4145196\",",
+      "metrics": {
+        "durationMs": 4078,
+        "inputTokens": 2598,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 209,
+        "reasoningTokens": 0,
+        "totalTokens": 2807,
+        "costUsd": 0.0074725,
+        "proposalTokens": 0,
+        "contextStrategy": "sliding_window",
+        "windowMessages": 0,
+        "factsCount": 0,
+        "memoryUpdates": 0,
+        "memoryInputTokens": 0,
+        "memoryOutputTokens": 0,
+        "memoryTotalTokens": 0,
+        "tokenCountAvailable": false,
+        "currentRequestTokens": 0,
+        "historyTokens": 0,
+        "projectedInputTokens": 0,
+        "contextWindow": 400000,
+        "maxInputTokens": 272000,
+        "maxOutputTokens": 128000,
+        "contextUsagePercent": 0,
+        "cumulativeInputTokens": 2598,
+        "cumulativeOutputTokens": 209,
+        "cumulativeTotalTokens": 2807,
+        "cumulativeCostUsd": 0.0074725,
+        "compressionEnabled": false,
+        "compressionApplied": false,
+        "summaryMessages": 0,
+        "retainedMessages": 2,
+        "compressionRuns": 0,
+        "summaryInputTokens": 0,
+        "summaryOutputTokens": 0,
+        "summaryTotalTokens": 0,
+        "uncompressedInputTokens": 0,
+        "compressedInputTokens": 0,
+        "savedInputTokens": 0,
+        "tokenSavingsPercent": 0
+      },
+      "retrieval": {
+        "project": {
+          "documents": 14,
+          "chunks": 135,
+          "indexHash": "84193bc16b3009bf4301bac0a1bba07f409ed5d7eb9a03a480c473f64c85bd1e",
+          "runs": [
+            {
+              "serverName": "codex-project-mcp",
+              "name": "git_branch",
+              "arguments": "{}",
+              "output": "{\n  \"branch\": \"codex/ai-challenge-task-31\",\n  \"commit\": \"c1f624105385794df13bc972ec049623c4145196\",\n  \"detached\": false,\n  \"observedAt\": \"2026-10-18T10:30:41.924524013Z\"\n}",
+              "error": false,
+              "durationMs": 7
+            }
+          ]
+        },
+        "grounding": {
+          "status": "answered",
+          "claims": [
+            {
+              "text": "Сейчас проект находится на ветке codex/ai-challenge-task-31.",
+              "evidence": [
+                {
+                  "ref": "S5",
+                  "start": 2,
+                  "end": 2
+                }
+              ]
+            },
+            {
+              "text": "Текущий HEAD-коммит: c1f624105385794df13bc972ec049623c4145196.",
+              "evidence": [
+                {
+                  "ref": "S5",
+                  "start": 3,
+                  "end": 3
+                }
+              ]
+            }
+          ],
+          "sources": [
+            {
+              "ref": "S5",
+              "chunkId": "git_branch@2026-10-18T10:30:41.924820972Z",
+              "source": "mcp://codex-project-mcp/git_branch",
+              "title": "Актуальный контекст проекта через MCP",
+              "section": "git_branch",
+              "text": "{\n  \"branch\": \"codex/ai-challenge-task-31\",\n  \"commit\": \"c1f624105385794df13bc972ec049623c4145196\",\n  \"detached\": false,\n  \"observedAt\": \"2026-10-18T10:30:41.924524013Z\"\n}",
+              "score": 0
+            }
+          ],
+          "quotes": [
+            {
+              "ref": "S5",
+              "start": 2,
+              "end": 2,
+              "text": "  \"branch\": \"codex/ai-challenge-task-31\",",
+              "chunkId": "git_branch@2026-10-18T10:30:41.924820972Z",
+              "source": "mcp://codex-project-mcp/git_branch",
+              "section": "git_branch"
+            },
+            {
+              "ref": "S5",
+              "start": 3,
+              "end": 3,
+              "text": "  \"commit\": \"c1f624105385794df13bc972ec049623c4145196\",",
+              "chunkId": "git_branch@2026-10-18T10:30:41.924820972Z",
+              "source": "mcp://codex-project-mcp/git_branch",
+              "section": "git_branch"
+            }
+          ],
+          "checks": [
+            {
+              "index": 0,
+              "verdict": "supported",
+              "reason": "Цитата S5 явно указывает branch: \"codex/ai-challenge-task-31\", что совпадает с утверждением о текущей ветке."
+            },
+            {
+              "index": 1,
+              "verdict": "supported",
+              "reason": "Цитата S5 явно указывает commit: \"c1f624105385794df13bc972ec049623c4145196\", что совпадает с утверждением о текущем HEAD-коммите."
+            }
+          ],
+          "reason": "",
+          "attempts": 1
+        },
+        "query": "На какой git-ветке проект прямо сейчас и какой HEAD-коммит?",
+        "steps": [
+          {
+            "attempts": 1,
+            "name": "grounded_answer",
+            "model": "gpt-5.3-codex",
+            "usage": {
+              "InputTokens": 2000,
+              "CachedInputTokens": 0,
+              "CacheWriteTokens": 0,
+              "OutputTokens": 96,
+              "ReasoningTokens": 0,
+              "TotalTokens": 2096
+            },
+            "durationMs": 2301
+          },
+          {
+            "attempts": 1,
+            "name": "grounding_check",
+            "model": "gpt-5.3-codex",
+            "usage": {
+              "InputTokens": 598,
+              "CachedInputTokens": 0,
+              "CacheWriteTokens": 0,
+              "OutputTokens": 113,
+              "ReasoningTokens": 0,
+              "TotalTokens": 711
+            },
+            "durationMs": 1748
+          }
+        ],
+        "mode": "rag",
+        "strategy": "project BM25",
+        "corpusHash": "84193bc16b3009bf4301bac0a1bba07f409ed5d7eb9a03a480c473f64c85bd1e",
+        "durationMs": 27,
+        "sources": [
+          {
+            "ref": "S1",
+            "chunkId": "94aef379740f6c61c6f9a71830ca4741de8c8b4a0018e4caa27a11662cb79de0",
+            "source": "README.md",
+            "title": "README.md",
+            "section": "Codex Chat Web > Запуск в Docker",
+            "text": "## Запуск в Docker\n\nДля `/help` Compose запускает read-only `project-mcp`, получающий текущие Git-метаданные из checkout. В нативном режиме предварительно запустите `go run ./cmd/project-mcp` в отдельном терминале. В чате отправьте `/help Как устроен проект?` или `/help На какой ветке мы сейчас?`. Документация: [архитектура](docs/architecture.md), [API](docs/api.md), [запуск и проверки](docs/development.md).\n\nСамый удобный вариант — создать локальный `.env` из примера и заполнить ключ:\n\n```sh\ncp .env.example .env\ndocker compose up --build\n```\n\nПосле запуска откройте [http://127.0.0.1:8080](http://127.0.0.1:8080).\nCompose публикует порт только на loopback-интерфейсе компьютера. Файл `.env`\nисключён из Git и из контекста Docker-сборки. История хранится в именованном\nтоме `chat-history`, поэтому не исчезает при пересоздании контейнера.\n\nСборка без Compose:\n\n```sh\ndocker build -t codex-chat-web:local .\ndocker volume create codex-chat-history\ndocker run --rm \\\n  -p 127.0.0.1:8080:8080 \\\n  -e OPENAI_API_KEY \\\n  -e WEB_ADDR=0.0.0.0:8080 \\\n  -e HISTORY_PATH=/data/history.json \\\n  -v codex-chat-history:/data \\\n  codex-chat-web:local\n```\n\n",
+            "score": 12.9402638388127
+          },
+          {
+            "ref": "S2",
+            "chunkId": "43ab0731544d602f8c65531ae73243d72bf8d668bf2681d32b7721461a2513c2",
+            "source": "docs/architecture.md",
+            "title": "architecture.md",
+            "section": "Архитектура codex_chat_cli > Ассистент разработчика /help",
+            "text": "## Ассистент разработчика /help\n\n`internal/projecthelp/` создаёт отдельный локальный BM25-индекс README, `docs/**/*.md` и выбранных корневых инструкций. Команда `/help вопрос` всегда использует этот индекс, независимо от переключателя обычного RAG. Старый учебный корпус не участвует в /help. `internal/agent/project_help.go` обрабатывает команду и сохраняет ответы в истории текущего диалога.\n\n`cmd/project-mcp/` запускает отдельный MCP-сервер; его реализация находится в `internal/projectmcp/`. Инструмент `git_branch` получает текущую ветку, HEAD-коммит и признак detached HEAD, а `project_files` возвращает ограниченный список отслеживаемых публичных путей. Данные получают реальными вызовами MCP для каждого вопроса, а не зашивают при сборке. Произвольных команд, записи файлов и diff в этих инструментах нет.\n\nДля /help доступны только документация и результаты чтения MCP. Команда не запускает инструменты брокера/планировщика, не извлекает историю других задач и не меняет их память. Сами сообщения /help сохраняются в истории. Каждый новый /help собирает свежие доказательства; сохранённый старый ответ не считается текущим состоянием Git.\n",
+            "score": 12.850682909938522
+          },
+          {
+            "ref": "S3",
+            "chunkId": "1f24cf638d04e43415ff2b2ae1463350d84f27347c68461677a8277136b9bea5",
+            "source": "docs/development.md",
+            "title": "development.md",
+            "section": "Запуск и разработка > Проверки",
+            "text": "## Проверки\n\n`go test -race ./...` запускает тесты; `go vet ./...` проверяет Go-код. Тесты не требуют настоящего ключа и не делают платных запросов. Для ручной проверки откройте чат и отправьте `/help Как устроен проект?`, затем `/help На какой ветке мы сейчас?`. Под ответом доступны источники, цитаты и операции MCP.\n\nКонтрольные вопросы и ожидания хранятся в `docs/help-questions.json`; JSON с эталонами не входит в RAG-индекс. `python3 scripts/evaluate-help.py` проверяет запущенное приложение на этих вопросах и сохраняет реальные ответы. Прогон использует облачную модель и оплачивается согласно настройкам OpenAI. Автоматические проверки источников и ключевых фактов дополняют чтение ответов человеком.\n",
+            "score": 11.409533558897106
+          },
+          {
+            "ref": "S4",
+            "chunkId": "17358ad71148f45b919aa47ae752ef8d208e05c0175244ec1d6795312b90124c",
+            "source": "MEMORY.md",
+            "title": "MEMORY.md",
+            "section": "Модель памяти агента > HTTP API",
+            "text": "## HTTP API\n\n| Маршрут | Назначение |\n|---|---|\n| `GET /api/memory` | Текущая задача, два слоя, предложения, размеры краткосрочной памяти |\n| `POST /api/memory/from-message` | Прямое сохранение: `messageId`, `taskId`, `layer`, `key`, `value`; источник берётся из сообщения текущего диалога на сервере |\n| `POST /api/memory/review` | `id`, `taskId`, `action`: `accept` / `reject`; при принятии также `layer`, `key`, `value` |\n| `POST /api/memory/edit` | Изменение подтверждённой записи: `id`, `taskId`, `layer`, `key`, `value` |\n| `POST /api/memory/delete` | Удаление подтверждённой записи: `id`, `taskId`, `layer` |\n| `POST /api/tasks/new` | Новая задача: `taskId` текущей задачи и `name` новой |\n\nДопустимые слои: `working`, `long_term`. POST требует JSON, заголовок\n`X-Codex-Chat: 1` и допустимый Origin. Профиль выбирается только через cookie,\nа не через ID из тела запроса. Устаревшая задача или повторное решение по уже\nрассмотренному предложению возвращают HTTP 409. Лимиты: 100 записей на слой,\n500 предложений на задачу, ключ до 100 символов, значение до 2000 символов.\n\nИстория и успешный ответ `/api/chat` возвращают стабильные ID сообщений.\nПри прямом сохранении агент проверяет, что ID принадлежит текущему диалогу\nи активной ветке. Чужой или уже удалённый источник отвергается. Сам текст\nисточника клиент передать или подменить не может. Старые истории получают\nстабильные ID при чтении, без отдельной миграции.\n\n",
+            "score": 5.29087674995241
+          },
+          {
+            "ref": "S5",
+            "chunkId": "git_branch@2026-10-18T10:30:41.924820972Z",
+            "source": "mcp://codex-project-mcp/git_branch",
+            "title": "Актуальный контекст проекта через MCP",
+            "section": "git_branch",
+            "text": "{\n  \"branch\": \"codex/ai-challenge-task-31\",\n  \"commit\": \"c1f624105385794df13bc972ec049623c4145196\",\n  \"detached\": false,\n  \"observedAt\": \"2026-10-18T10:30:41.924524013Z\"\n}",
+            "score": 0
+          }
+        ],
+        "citations": [
+          "S5"
+        ]
+      },
+      "toolRuns": [
+        {
+          "serverName": "codex-project-mcp",
+          "name": "git_branch",
+          "arguments": "{}",
+          "output": "{\n  \"branch\": \"codex/ai-challenge-task-31\",\n  \"commit\": \"c1f624105385794df13bc972ec049623c4145196\",\n  \"detached\": false,\n  \"observedAt\": \"2026-10-18T10:30:41.924524013Z\"\n}",
+          "error": false,
+          "durationMs": 7
+        }
+      ],
+      "checks": {
+        "projectMode": true,
+        "mcpSuccess": true,
+        "noInvalidCitations": true,
+        "expectedFacts": true,
+        "sourcesPresent": true,
+        "quotesPresent": true,
+        "expectedSource": true,
+        "supportedClaims": true,
+        "liveBranchAndCommit": true
+      },
+      "passed": true
+    },
+    {
+      "question": {
+        "id": "H09",
+        "query": "Какие инструменты Project MCP доступны и могут ли они менять файлы или выполнять произвольные команды?",
+        "expectations": [
+          "git_branch и project_files, только чтение, нет произвольных команд и записи"
+        ],
+        "requiredFacts": [
+          [
+            "git_branch"
+          ],
+          [
+            "project_files"
+          ],
+          [
+            "чтен",
+            "read-only"
+          ]
+        ],
+        "sources": [
+          "docs/architecture.md"
+        ]
+      },
+      "seconds": 5.409,
+      "model": "gpt-5.3-codex",
+      "answer": "В Project MCP доступны инструменты git_branch и project_files. [S1]\n\nИнструмент git_branch получает текущую ветку, HEAD-коммит и признак detached HEAD. [S1]\n\nИнструмент project_files возвращает ограниченный список отслеживаемых публичных путей. [S1]\n\nЭти инструменты не поддерживают произвольные команды, запись файлов и diff. [S1]\n\nИсточники и цитаты:\n\n[S1] docs/architecture.md · Архитектура codex_chat_cli > Ассистент разработчика /help · chunk_id: `43ab0731544d602f8c65531ae73243d72bf8d668bf2681d32b7721461a2513c2` · строки 5–5\n\n> `cmd/project-mcp/` запускает отдельный MCP-сервер; его реализация находится в `internal/projectmcp/`. Инструмент `git_branch` получает текущую ветку, HEAD-коммит и признак detached HEAD, а `project_files` возвращает ограниченный список отслеживаемых публичных путей. Данные получают реальными вызовами MCP для каждого вопроса, а не зашивают при сборке. Произвольных команд, записи файлов и diff в этих инструментах нет.",
+      "metrics": {
+        "durationMs": 5342,
+        "inputTokens": 4352,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 315,
+        "reasoningTokens": 0,
+        "totalTokens": 4667,
+        "costUsd": 0.012026,
+        "proposalTokens": 0,
+        "contextStrategy": "sliding_window",
+        "windowMessages": 0,
+        "factsCount": 0,
+        "memoryUpdates": 0,
+        "memoryInputTokens": 0,
+        "memoryOutputTokens": 0,
+        "memoryTotalTokens": 0,
+        "tokenCountAvailable": false,
+        "currentRequestTokens": 0,
+        "historyTokens": 0,
+        "projectedInputTokens": 0,
+        "contextWindow": 400000,
+        "maxInputTokens": 272000,
+        "maxOutputTokens": 128000,
+        "contextUsagePercent": 0,
+        "cumulativeInputTokens": 4352,
+        "cumulativeOutputTokens": 315,
+        "cumulativeTotalTokens": 4667,
+        "cumulativeCostUsd": 0.012026,
+        "compressionEnabled": false,
+        "compressionApplied": false,
+        "summaryMessages": 0,
+        "retainedMessages": 2,
+        "compressionRuns": 0,
+        "summaryInputTokens": 0,
+        "summaryOutputTokens": 0,
+        "summaryTotalTokens": 0,
+        "uncompressedInputTokens": 0,
+        "compressedInputTokens": 0,
+        "savedInputTokens": 0,
+        "tokenSavingsPercent": 0
+      },
+      "retrieval": {
+        "project": {
+          "documents": 14,
+          "chunks": 135,
+          "indexHash": "84193bc16b3009bf4301bac0a1bba07f409ed5d7eb9a03a480c473f64c85bd1e",
+          "runs": [
+            {
+              "serverName": "codex-project-mcp",
+              "name": "git_branch",
+              "arguments": "{}",
+              "output": "{\n  \"branch\": \"codex/ai-challenge-task-31\",\n  \"commit\": \"c1f624105385794df13bc972ec049623c4145196\",\n  \"detached\": false,\n  \"observedAt\": \"2026-10-18T10:30:46.069752459Z\"\n}",
+              "error": false,
+              "durationMs": 8
+            },
+            {
+              "serverName": "codex-project-mcp",
+              "name": "project_files",
+              "arguments": "{}",
+              "output": "{\n  \"files\": [\n    \"ARCHITECTURE.md\",\n    \"Dockerfile\",\n    \"INVARIANTS.md\",\n    \"MEMORY.md\",\n    \"PERSONALIZATION.md\",\n    \"RAG.md\",\n    \"RAG23.md\",\n    \"RAG24.md\",\n    \"RAG25.md\",\n    \"README.md\",\n    \"TASK_LIFECYCLE_TEST_REPORT.md\",\n    \"TASK_STATE.md\",\n    \"cmd/broker-demo/main.go\",\n    \"cmd/codex-chat/main.go\",\n    \"cmd/doc-index/main.go\",\n    \"cmd/doc-index/main_test.go\",\n    \"cmd/invariant-eval/main.go\",\n    \"cmd/profile-eval/main.go\",\n    \"cmd/rag-bench/main.go\",\n    \"cmd/rag-dialogue/main.go\",\n    \"cmd/rag-eval/main.go\",\n    \"cmd/rag-grounding/main.go\",\n    \"cmd/task-state-eval/main.go\",\n    \"compose.yaml\",\n    \"go.mod\",\n    \"internal/agent/agent.go\",\n    \"internal/agent/agent_test.go\",\n    \"internal/agent/compression.go\",\n    \"internal/agent/dialogue.go\",\n    \"internal/agent/dialogue_test.go\",\n    \"internal/agent/grounding.go\",\n    \"internal/agent/grounding_test.go\",\n    \"internal/agent/invariants.go\",\n    \"internal/agent/invariants_test.go\",\n    \"internal/agent/lifecycle.go\",\n    \"internal/agent/lifecycle_test.go\",\n    \"internal/agent/memory.go\",\n    \"internal/agent/memory_test.go\",\n    \"internal/agent/profile.go\",\n    \"internal/agent/profile_test.go\",\n    \"internal/agent/rag.go\",\n    \"internal/agent/rag_test.go\",\n    \"internal/agent/retrieval_options.go\",\n    \"internal/agent/strategy.go\",\n    \"internal/agent/tasks_test.go\",\n    \"internal/agent/tokens.go\",\n    \"internal/agent/tools.go\",\n    \"internal/agent/tools_test.go\",\n    \"internal/agent/workflow.go\",\n    \"internal/agent/workflow_test.go\",\n    \"internal/brokerdemo/broker.go\",\n    \"internal/brokerdemo/flow_test.go\",\n    \"internal/brokerdemo/mcp.go\",\n    \"internal/brokerdemo/orders.go\",\n    \"internal/brokerdemo/sqlite.go\",\n    \"internal/brokerdemo/types.go\",\n    \"internal/brokerdemo/validation.go\",\n    \"internal/config/config.go\",\n    \"internal/config/config_test.go\",\n    \"internal/docindex/chunk.go\",\n    \"internal/docindex/docindex_test.go\",\n    \"internal/docindex/embedding.go\",\n    \"internal/docindex/evaluate.go\",\n    \"internal/docindex/store.go\",\n    \"internal/history/json.go\",\n    \"internal/history/json_test.go\",\n    \"internal/mcpclient/broker_flow_test.go\",\n    \"internal/mcpclient/client.go\",\n    \"internal/mcpclient/client_test.go\",\n    \"internal/mcpclient/provider.go\",\n    \"internal/mcpclient/provider_test.go\",\n    \"internal/mcpclient/read_tool.go\",\n    \"internal/mcpclient/store.go\",\n    \"internal/mcpclient/store_test.go\",\n    \"internal/memory/invariants.go\",\n    \"internal/memory/invariants_test.go\",\n    \"internal/memory/store.go\",\n    \"internal/memory/store_test.go\",\n    \"internal/memory/workflow.go\",\n    \"internal/memory/workflow_test.go\",\n    \"internal/models/catalog.go\",\n    \"internal/models/catalog_test.go\",\n    \"internal/openai/client.go\",\n    \"internal/openai/client_test.go\",\n    \"internal/openai/memory_test.go\",\n    \"internal/openai/profile_test.go\",\n    \"internal/profile/prompt.go\",\n    \"internal/profile/store.go\",\n    \"internal/profile/store_test.go\",\n    \"internal/rag/dialogue_experiment.go\",\n    \"internal/rag/dialogue_experiment_test.go\",\n    \"internal/rag/evaluate.go\",\n    \"internal/rag/experiment.go\",\n    \"internal/rag/grounding_experiment.go\",\n    \"internal/rag/grounding_experiment_test.go\",\n    \"internal/rag/processors.go\",\n    \"internal/rag/processors_test.go\",\n    \"internal/rag/rag_test.go\",\n    \"internal/rag/retriever.go\",\n    \"internal/scheduler/executor.go\",\n    \"internal/scheduler/mcp.go\",\n    \"internal/scheduler/scheduler_test.go\",\n    \"internal/scheduler/service.go\",\n    \"internal/scheduler/source.go\",\n    \"internal/scheduler/store.go\",\n    \"internal/scheduler/tasks.go\",\n    \"internal/scheduler/tasks_test.go\",\n    \"internal/web/documents.go\",\n    \"internal/web/documents_test.go\",\n    \"internal/web/invariants.go\",\n    \"internal/web/invariants_test.go\",\n    \"internal/web/mcp.go\",\n    \"internal/web/mcp_test.go\",\n    \"internal/web/memory.go\",\n    \"internal/web/memory_test.go\",\n    \"internal/web/monitors.go\",\n    \"internal/web/monitors_test.go\",\n    \"internal/web/profile.go\",\n    \"internal/web/profile_test.go\",\n    \"internal/web/rag.go\",\n    \"internal/web/rag_test.go\",\n    \"internal/web/server.go\",\n    \"internal/web/server_test.go\",\n    \"internal/web/static/app.css\",\n    \"internal/web/static/app.js\",\n    \"internal/web/static/documents.js\",\n    \"internal/web/static/index.html\",\n    \"internal/web/static/invariants.js\",\n    \"internal/web/static/markdown.js\",\n    \"internal/web/static/mcp.js\",\n    \"internal/web/static/memory.js\",\n    \"internal/web/static/monitors.js\",\n    \"internal/web/static/profiles.js\",\n    \"internal/web/static/rag.js\",\n    \"internal/web/static/rag23.js\",\n    \"internal/web/static/rag24.js\",\n    \"internal/web/static/rag25.js\",\n    \"internal/web/static/task-state.js\",\n    \"internal/web/workflow.go\",\n    \"internal/web/workflow_test.go\"\n  ],\n  \"observedAt\": \"2026-10-18T10:30:46.075260918Z\",\n  \"truncated\": false\n}",
+              "error": false,
+              "durationMs": 5
+            }
+          ]
+        },
+        "grounding": {
+          "status": "answered",
+          "claims": [
+            {
+              "text": "В Project MCP доступны инструменты git_branch и project_files.",
+              "evidence": [
+                {
+                  "ref": "S1",
+                  "start": 5,
+                  "end": 5
+                }
+              ]
+            },
+            {
+              "text": "Инструмент git_branch получает текущую ветку, HEAD-коммит и признак detached HEAD.",
+              "evidence": [
+                {
+                  "ref": "S1",
+                  "start": 5,
+                  "end": 5
+                }
+              ]
+            },
+            {
+              "text": "Инструмент project_files возвращает ограниченный список отслеживаемых публичных путей.",
+              "evidence": [
+                {
+                  "ref": "S1",
+                  "start": 5,
+                  "end": 5
+                }
+              ]
+            },
+            {
+              "text": "Эти инструменты не поддерживают произвольные команды, запись файлов и diff.",
+              "evidence": [
+                {
+                  "ref": "S1",
+                  "start": 5,
+                  "end": 5
+                }
+              ]
+            }
+          ],
+          "sources": [
+            {
+              "ref": "S1",
+              "chunkId": "43ab0731544d602f8c65531ae73243d72bf8d668bf2681d32b7721461a2513c2",
+              "source": "docs/architecture.md",
+              "title": "architecture.md",
+              "section": "Архитектура codex_chat_cli > Ассистент разработчика /help",
+              "text": "## Ассистент разработчика /help\n\n`internal/projecthelp/` создаёт отдельный локальный BM25-индекс README, `docs/**/*.md` и выбранных корневых инструкций. Команда `/help вопрос` всегда использует этот индекс, независимо от переключателя обычного RAG. Старый учебный корпус не участвует в /help. `internal/agent/project_help.go` обрабатывает команду и сохраняет ответы в истории текущего диалога.\n\n`cmd/project-mcp/` запускает отдельный MCP-сервер; его реализация находится в `internal/projectmcp/`. Инструмент `git_branch` получает текущую ветку, HEAD-коммит и признак detached HEAD, а `project_files` возвращает ограниченный список отслеживаемых публичных путей. Данные получают реальными вызовами MCP для каждого вопроса, а не зашивают при сборке. Произвольных команд, записи файлов и diff в этих инструментах нет.\n\nДля /help доступны только документация и результаты чтения MCP. Команда не запускает инструменты брокера/планировщика, не извлекает историю других задач и не меняет их память. Сами сообщения /help сохраняются в истории. Каждый новый /help собирает свежие доказательства; сохранённый старый ответ не считается текущим состоянием Git.\n",
+              "score": 10.792272903990305
+            }
+          ],
+          "quotes": [
+            {
+              "ref": "S1",
+              "start": 5,
+              "end": 5,
+              "text": "`cmd/project-mcp/` запускает отдельный MCP-сервер; его реализация находится в `internal/projectmcp/`. Инструмент `git_branch` получает текущую ветку, HEAD-коммит и признак detached HEAD, а `project_files` возвращает ограниченный список отслеживаемых публичных путей. Данные получают реальными вызовами MCP для каждого вопроса, а не зашивают при сборке. Произвольных команд, записи файлов и diff в этих инструментах нет.",
+              "chunkId": "43ab0731544d602f8c65531ae73243d72bf8d668bf2681d32b7721461a2513c2",
+              "source": "docs/architecture.md",
+              "section": "Архитектура codex_chat_cli > Ассистент разработчика /help"
+            }
+          ],
+          "checks": [
+            {
+              "index": 0,
+              "verdict": "supported",
+              "reason": "Цитата прямо перечисляет инструменты `git_branch` и `project_files` в Project MCP."
+            },
+            {
+              "index": 1,
+              "verdict": "supported",
+              "reason": "В цитате дословно сказано, что `git_branch` получает текущую ветку, HEAD-коммит и признак detached HEAD."
+            },
+            {
+              "index": 2,
+              "verdict": "supported",
+              "reason": "Цитата прямо утверждает, что `project_files` возвращает ограниченный список отслеживаемых публичных путей."
+            },
+            {
+              "index": 3,
+              "verdict": "supported",
+              "reason": "В цитате явно указано отсутствие произвольных команд, записи файлов и diff."
+            }
+          ],
+          "reason": "",
+          "attempts": 1
+        },
+        "query": "Какие инструменты Project MCP доступны и могут ли они менять файлы или выполнять произвольные команды?",
+        "steps": [
+          {
+            "attempts": 1,
+            "name": "grounded_answer",
+            "model": "gpt-5.3-codex",
+            "usage": {
+              "InputTokens": 3401,
+              "CachedInputTokens": 0,
+              "CacheWriteTokens": 0,
+              "OutputTokens": 161,
+              "ReasoningTokens": 0,
+              "TotalTokens": 3562
+            },
+            "durationMs": 3090
+          },
+          {
+            "attempts": 1,
+            "name": "grounding_check",
+            "model": "gpt-5.3-codex",
+            "usage": {
+              "InputTokens": 951,
+              "CachedInputTokens": 0,
+              "CacheWriteTokens": 0,
+              "OutputTokens": 154,
+              "ReasoningTokens": 0,
+              "TotalTokens": 1105
+            },
+            "durationMs": 2217
+          }
+        ],
+        "mode": "rag",
+        "strategy": "project BM25",
+        "corpusHash": "84193bc16b3009bf4301bac0a1bba07f409ed5d7eb9a03a480c473f64c85bd1e",
+        "durationMs": 33,
+        "sources": [
+          {
+            "ref": "S1",
+            "chunkId": "43ab0731544d602f8c65531ae73243d72bf8d668bf2681d32b7721461a2513c2",
+            "source": "docs/architecture.md",
+            "title": "architecture.md",
+            "section": "Архитектура codex_chat_cli > Ассистент разработчика /help",
+            "text": "## Ассистент разработчика /help\n\n`internal/projecthelp/` создаёт отдельный локальный BM25-индекс README, `docs/**/*.md` и выбранных корневых инструкций. Команда `/help вопрос` всегда использует этот индекс, независимо от переключателя обычного RAG. Старый учебный корпус не участвует в /help. `internal/agent/project_help.go` обрабатывает команду и сохраняет ответы в истории текущего диалога.\n\n`cmd/project-mcp/` запускает отдельный MCP-сервер; его реализация находится в `internal/projectmcp/`. Инструмент `git_branch` получает текущую ветку, HEAD-коммит и признак detached HEAD, а `project_files` возвращает ограниченный список отслеживаемых публичных путей. Данные получают реальными вызовами MCP для каждого вопроса, а не зашивают при сборке. Произвольных команд, записи файлов и diff в этих инструментах нет.\n\nДля /help доступны только документация и результаты чтения MCP. Команда не запускает инструменты брокера/планировщика, не извлекает историю других задач и не меняет их память. Сами сообщения /help сохраняются в истории. Каждый новый /help собирает свежие доказательства; сохранённый старый ответ не считается текущим состоянием Git.\n",
+            "score": 10.792272903990305
+          },
+          {
+            "ref": "S2",
+            "chunkId": "2231083bbab43fa50ed429a19663cbf285c051fbdbd3c5cd68ad61ff6a2b5844",
+            "source": "docs/memory.md",
+            "title": "memory.md",
+            "section": "Память и контекст диалога > Изоляция /help",
+            "text": "## Изоляция /help\n\nКоманда /help отвечает по актуальному набору документации и MCP-источников. Она не переносит в запрос к модели рабочую/долговременную память, предыдущую переписку и скрытый previous_response_id. Поэтому посторонняя учебная задача не должна менять описание структуры проекта. Сами сообщения /help сохраняются в истории и восстанавливаются при перезагрузке страницы. Команда не обновляет цель или ограничения пользовательской задачи.\n",
+            "score": 10.273138598033668
+          },
+          {
+            "ref": "S3",
+            "chunkId": "7a17748e7c71098453a7df20000a7caac410c43bfc5b86f6372aeeab35693d63",
+            "source": "README.md",
+            "title": "README.md",
+            "section": "Codex Chat Web > Персонализация > Универсальные фоновые задачи MCP",
+            "text": "### Универсальные фоновые задачи MCP\n\nВкладка **«Фоновые задачи»** запускает инструмент чтения любого сохранённого\nMCP-сервера по расписанию. Поля параметров строятся по `inputSchema`; вложенные,\nсоставные и свободные схемы доступны как JSON-объект. Сервер проверяет схему\nперед сохранением и каждым вызовом. В список попадают только инструменты с\n`readOnlyHint: true`. Инструменты изменения внешних данных пока не поддерживаются.\n\n1. Выберите MCP-сервер и инструмент, заполните параметры.\n2. Задайте расписание: один раз, каждые N минут или ежедневно в указанном часовом\n   поясе IANA (например, `Asia/Novosibirsk`). Разовая дата в форме — в поясе браузера.\n3. Выберите обработку: сохранить ответ, дополнительно сделать сводку после каждого\n   запуска или собирать сводку за период. Можно задать собственную инструкцию.\n4. Нажмите **«Пробный запуск»**, чтобы вызвать инструмент без создания задачи.\n5. Создайте задачу. Для интервала первый запуск сразу; для ежедневного расписания\n   выбирается ближайшее будущее время. Результаты видны в **«Результаты и журнал»**.\n\nДоступны пауза, возобновление, редактирование, удаление с историей и запуск сейчас.\nПоследний ставит активную задачу в очередь и сохраняет будущее расписание.\nРазовая задача после успеха или трёх ошибок становится завершённой; для повторения\nнужно отредактировать её расписание. Редактирование начинает новый период сводки,\nсохраняет историю и состояние паузы, обновляет привязку к версии MCP-подключения.\n\n",
+            "score": 7.964440581676792
+          },
+          {
+            "ref": "S4",
+            "chunkId": "dc3ee17a9fd592628ad325b5393357ab2bfaa668da8f55df8fdd55353cbf53e4",
+            "source": "INVARIANTS.md",
+            "title": "INVARIANTS.md",
+            "section": "Инварианты задачи > Проверка запроса и ответа",
+            "text": " правил и краткое публичное\nобъяснение. Пропущенные правила, неизвестные ID и несовместимый вердикт блокируют\nответ. Каждый вспомогательный вызов проверки ограничен 30 секундами.\n\nОбычный запрос не меняет инварианты. В рамках предметной области задачи они имеют\nприоритет над текущим запросом, профилем и прежними решениями в памяти. Это\nпользовательские данные, которые не могут отменять системные инструкции приложения.\n\nУпоминание запрещённого инструмента или сравнение технологий само по себе не\nсчитается нарушением. Частичный конфликт не блокирует независимую допустимую\nчасть запроса. При конфликте самих правил пользователь должен изменить набор.\n\n",
+            "score": 7.9243169988228335
+          },
+          {
+            "ref": "S5",
+            "chunkId": "git_branch@2026-10-18T10:30:46.070369959Z",
+            "source": "mcp://codex-project-mcp/git_branch",
+            "title": "Актуальный контекст проекта через MCP",
+            "section": "git_branch",
+            "text": "{\n  \"branch\": \"codex/ai-challenge-task-31\",\n  \"commit\": \"c1f624105385794df13bc972ec049623c4145196\",\n  \"detached\": false,\n  \"observedAt\": \"2026-10-18T10:30:46.069752459Z\"\n}",
+            "score": 0
+          },
+          {
+            "ref": "S6",
+            "chunkId": "project_files@2026-10-18T10:30:46.075866668Z",
+            "source": "mcp://codex-project-mcp/project_files",
+            "title": "Актуальный контекст проекта через MCP",
+            "section": "project_files",
+            "text": "{\n  \"files\": [\n    \"ARCHITECTURE.md\",\n    \"Dockerfile\",\n    \"INVARIANTS.md\",\n    \"MEMORY.md\",\n    \"PERSONALIZATION.md\",\n    \"RAG.md\",\n    \"RAG23.md\",\n    \"RAG24.md\",\n    \"RAG25.md\",\n    \"README.md\",\n    \"TASK_LIFECYCLE_TEST_REPORT.md\",\n    \"TASK_STATE.md\",\n    \"cmd/broker-demo/main.go\",\n    \"cmd/codex-chat/main.go\",\n    \"cmd/doc-index/main.go\",\n    \"cmd/doc-index/main_test.go\",\n    \"cmd/invariant-eval/main.go\",\n    \"cmd/profile-eval/main.go\",\n    \"cmd/rag-bench/main.go\",\n    \"cmd/rag-dialogue/main.go\",\n    \"cmd/rag-eval/main.go\",\n    \"cmd/rag-grounding/main.go\",\n    \"cmd/task-state-eval/main.go\",\n    \"compose.yaml\",\n    \"go.mod\",\n    \"internal/agent/agent.go\",\n    \"internal/agent/agent_test.go\",\n    \"internal/agent/compression.go\",\n    \"internal/agent/dialogue.go\",\n    \"internal/agent/dialogue_test.go\",\n    \"internal/agent/grounding.go\",\n    \"internal/agent/grounding_test.go\",\n    \"internal/agent/invariants.go\",\n    \"internal/agent/invariants_test.go\",\n    \"internal/agent/lifecycle.go\",\n    \"internal/agent/lifecycle_test.go\",\n    \"internal/agent/memory.go\",\n    \"internal/agent/memory_test.go\",\n    \"internal/agent/profile.go\",\n    \"internal/agent/profile_test.go\",\n    \"internal/agent/rag.go\",\n    \"internal/agent/rag_test.go\",\n    \"internal/agent/retrieval_options.go\",\n    \"internal/agent/strategy.go\",\n    \"internal/agent/tasks_test.go\",\n    \"internal/agent/tokens.go\",\n    \"internal/agent/tools.go\",\n    \"internal/agent/tools_test.go\",\n    \"internal/agent/workflow.go\",\n    \"internal/agent/workflow_test.go\",\n    \"internal/brokerdemo/broker.go\",\n    \"internal/brokerdemo/flow_test.go\",\n    \"internal/brokerdemo/mcp.go\",\n    \"internal/brokerdemo/orders.go\",\n    \"internal/brokerdemo/sqlite.go\",\n    \"internal/brokerdemo/types.go\",\n    \"internal/brokerdemo/validation.go\",\n    \"internal/config/config.go\",\n    \"internal/config/config_test.go\",\n    \"internal/docindex/chunk.go\",\n    \"internal/docindex/docindex_test.go\",\n    \"internal/docindex/embedding.go\",\n    \"internal/docindex/evaluate.go\",\n    \"internal/docindex/store.go\",\n    \"internal/history/json.go\",\n    \"internal/history/json_test.go\",\n    \"internal/mcpclient/broker_flow_test.go\",\n    \"internal/mcpclient/client.go\",\n    \"internal/mcpclient/client_test.go\",\n    \"internal/mcpclient/provider.go\",\n    \"internal/mcpclient/provider_test.go\",\n    \"internal/mcpclient/read_tool.go\",\n    \"internal/mcpclient/store.go\",\n    \"internal/mcpclient/store_test.go\",\n    \"internal/memory/invariants.go\",\n    \"internal/memory/invariants_test.go\",\n    \"internal/memory/store.go\",\n    \"internal/memory/store_test.go\",\n    \"internal/memory/workflow.go\",\n    \"internal/memory/workflow_test.go\",\n    \"internal/models/catalog.go\",\n    \"internal/models/catalog_test.go\",\n    \"internal/openai/client.go\",\n    \"internal/openai/client_test.go\",\n    \"internal/openai/memory_test.go\",\n    \"internal/openai/profile_test.go\",\n    \"internal/profile/prompt.go\",\n    \"internal/profile/store.go\",\n    \"internal/profile/store_test.go\",\n    \"internal/rag/dialogue_experiment.go\",\n    \"internal/rag/dialogue_experiment_test.go\",\n    \"internal/rag/evaluate.go\",\n    \"internal/rag/experiment.go\",\n    \"internal/rag/grounding_experiment.go\",\n    \"internal/rag/grounding_experiment_test.go\",\n    \"internal/rag/processors.go\",\n    \"internal/rag/processors_test.go\",\n    \"internal/rag/rag_test.go\",\n    \"internal/rag/retriever.go\",\n    \"internal/scheduler/executor.go\",\n    \"internal/scheduler/mcp.go\",\n    \"internal/scheduler/scheduler_test.go\",\n    \"internal/scheduler/service.go\",\n    \"internal/scheduler/source.go\",\n    \"internal/scheduler/store.go\",\n    \"internal/scheduler/tasks.go\",\n    \"internal/scheduler/tasks_test.go\",\n    \"internal/web/documents.go\",\n    \"internal/web/documents_test.go\",\n    \"internal/web/invariants.go\",\n    \"internal/web/invariants_test.go\",\n    \"internal/web/mcp.go\",\n    \"internal/web/mcp_test.go\",\n    \"internal/web/memory.go\",\n    \"internal/web/memory_test.go\",\n    \"internal/web/monitors.go\",\n    \"internal/web/monitors_test.go\",\n    \"internal/web/profile.go\",\n    \"internal/web/profile_test.go\",\n    \"internal/web/rag.go\",\n    \"internal/web/rag_test.go\",\n    \"internal/web/server.go\",\n    \"internal/web/server_test.go\",\n    \"internal/web/static/app.css\",\n    \"internal/web/static/app.js\",\n    \"internal/web/static/documents.js\",\n    \"internal/web/static/index.html\",\n    \"internal/web/static/invariants.js\",\n    \"internal/web/static/markdown.js\",\n    \"internal/web/static/mcp.js\",\n    \"internal/web/static/memory.js\",\n    \"internal/web/static/monitors.js\",\n    \"internal/web/static/profiles.js\",\n    \"internal/web/static/rag.js\",\n    \"internal/web/static/rag23.js\",\n    \"internal/web/static/rag24.js\",\n    \"internal/web/static/rag25.js\",\n    \"internal/web/static/task-state.js\",\n    \"internal/web/workflow.go\",\n    \"internal/web/workflow_test.go\"\n  ],\n  \"observedAt\": \"2026-10-18T10:30:46.075260918Z\",\n  \"truncated\": false\n}",
+            "score": 0
+          }
+        ],
+        "citations": [
+          "S1"
+        ]
+      },
+      "toolRuns": [
+        {
+          "serverName": "codex-project-mcp",
+          "name": "git_branch",
+          "arguments": "{}",
+          "output": "{\n  \"branch\": \"codex/ai-challenge-task-31\",\n  \"commit\": \"c1f624105385794df13bc972ec049623c4145196\",\n  \"detached\": false,\n  \"observedAt\": \"2026-10-18T10:30:46.069752459Z\"\n}",
+          "error": false,
+          "durationMs": 8
+        },
+        {
+          "serverName": "codex-project-mcp",
+          "name": "project_files",
+          "arguments": "{}",
+          "output": "{\n  \"files\": [\n    \"ARCHITECTURE.md\",\n    \"Dockerfile\",\n    \"INVARIANTS.md\",\n    \"MEMORY.md\",\n    \"PERSONALIZATION.md\",\n    \"RAG.md\",\n    \"RAG23.md\",\n    \"RAG24.md\",\n    \"RAG25.md\",\n    \"README.md\",\n    \"TASK_LIFECYCLE_TEST_REPORT.md\",\n    \"TASK_STATE.md\",\n    \"cmd/broker-demo/main.go\",\n    \"cmd/codex-chat/main.go\",\n    \"cmd/doc-index/main.go\",\n    \"cmd/doc-index/main_test.go\",\n    \"cmd/invariant-eval/main.go\",\n    \"cmd/profile-eval/main.go\",\n    \"cmd/rag-bench/main.go\",\n    \"cmd/rag-dialogue/main.go\",\n    \"cmd/rag-eval/main.go\",\n    \"cmd/rag-grounding/main.go\",\n    \"cmd/task-state-eval/main.go\",\n    \"compose.yaml\",\n    \"go.mod\",\n    \"internal/agent/agent.go\",\n    \"internal/agent/agent_test.go\",\n    \"internal/agent/compression.go\",\n    \"internal/agent/dialogue.go\",\n    \"internal/agent/dialogue_test.go\",\n    \"internal/agent/grounding.go\",\n    \"internal/agent/grounding_test.go\",\n    \"internal/agent/invariants.go\",\n    \"internal/agent/invariants_test.go\",\n    \"internal/agent/lifecycle.go\",\n    \"internal/agent/lifecycle_test.go\",\n    \"internal/agent/memory.go\",\n    \"internal/agent/memory_test.go\",\n    \"internal/agent/profile.go\",\n    \"internal/agent/profile_test.go\",\n    \"internal/agent/rag.go\",\n    \"internal/agent/rag_test.go\",\n    \"internal/agent/retrieval_options.go\",\n    \"internal/agent/strategy.go\",\n    \"internal/agent/tasks_test.go\",\n    \"internal/agent/tokens.go\",\n    \"internal/agent/tools.go\",\n    \"internal/agent/tools_test.go\",\n    \"internal/agent/workflow.go\",\n    \"internal/agent/workflow_test.go\",\n    \"internal/brokerdemo/broker.go\",\n    \"internal/brokerdemo/flow_test.go\",\n    \"internal/brokerdemo/mcp.go\",\n    \"internal/brokerdemo/orders.go\",\n    \"internal/brokerdemo/sqlite.go\",\n    \"internal/brokerdemo/types.go\",\n    \"internal/brokerdemo/validation.go\",\n    \"internal/config/config.go\",\n    \"internal/config/config_test.go\",\n    \"internal/docindex/chunk.go\",\n    \"internal/docindex/docindex_test.go\",\n    \"internal/docindex/embedding.go\",\n    \"internal/docindex/evaluate.go\",\n    \"internal/docindex/store.go\",\n    \"internal/history/json.go\",\n    \"internal/history/json_test.go\",\n    \"internal/mcpclient/broker_flow_test.go\",\n    \"internal/mcpclient/client.go\",\n    \"internal/mcpclient/client_test.go\",\n    \"internal/mcpclient/provider.go\",\n    \"internal/mcpclient/provider_test.go\",\n    \"internal/mcpclient/read_tool.go\",\n    \"internal/mcpclient/store.go\",\n    \"internal/mcpclient/store_test.go\",\n    \"internal/memory/invariants.go\",\n    \"internal/memory/invariants_test.go\",\n    \"internal/memory/store.go\",\n    \"internal/memory/store_test.go\",\n    \"internal/memory/workflow.go\",\n    \"internal/memory/workflow_test.go\",\n    \"internal/models/catalog.go\",\n    \"internal/models/catalog_test.go\",\n    \"internal/openai/client.go\",\n    \"internal/openai/client_test.go\",\n    \"internal/openai/memory_test.go\",\n    \"internal/openai/profile_test.go\",\n    \"internal/profile/prompt.go\",\n    \"internal/profile/store.go\",\n    \"internal/profile/store_test.go\",\n    \"internal/rag/dialogue_experiment.go\",\n    \"internal/rag/dialogue_experiment_test.go\",\n    \"internal/rag/evaluate.go\",\n    \"internal/rag/experiment.go\",\n    \"internal/rag/grounding_experiment.go\",\n    \"internal/rag/grounding_experiment_test.go\",\n    \"internal/rag/processors.go\",\n    \"internal/rag/processors_test.go\",\n    \"internal/rag/rag_test.go\",\n    \"internal/rag/retriever.go\",\n    \"internal/scheduler/executor.go\",\n    \"internal/scheduler/mcp.go\",\n    \"internal/scheduler/scheduler_test.go\",\n    \"internal/scheduler/service.go\",\n    \"internal/scheduler/source.go\",\n    \"internal/scheduler/store.go\",\n    \"internal/scheduler/tasks.go\",\n    \"internal/scheduler/tasks_test.go\",\n    \"internal/web/documents.go\",\n    \"internal/web/documents_test.go\",\n    \"internal/web/invariants.go\",\n    \"internal/web/invariants_test.go\",\n    \"internal/web/mcp.go\",\n    \"internal/web/mcp_test.go\",\n    \"internal/web/memory.go\",\n    \"internal/web/memory_test.go\",\n    \"internal/web/monitors.go\",\n    \"internal/web/monitors_test.go\",\n    \"internal/web/profile.go\",\n    \"internal/web/profile_test.go\",\n    \"internal/web/rag.go\",\n    \"internal/web/rag_test.go\",\n    \"internal/web/server.go\",\n    \"internal/web/server_test.go\",\n    \"internal/web/static/app.css\",\n    \"internal/web/static/app.js\",\n    \"internal/web/static/documents.js\",\n    \"internal/web/static/index.html\",\n    \"internal/web/static/invariants.js\",\n    \"internal/web/static/markdown.js\",\n    \"internal/web/static/mcp.js\",\n    \"internal/web/static/memory.js\",\n    \"internal/web/static/monitors.js\",\n    \"internal/web/static/profiles.js\",\n    \"internal/web/static/rag.js\",\n    \"internal/web/static/rag23.js\",\n    \"internal/web/static/rag24.js\",\n    \"internal/web/static/rag25.js\",\n    \"internal/web/static/task-state.js\",\n    \"internal/web/workflow.go\",\n    \"internal/web/workflow_test.go\"\n  ],\n  \"observedAt\": \"2026-10-18T10:30:46.075260918Z\",\n  \"truncated\": false\n}",
+          "error": false,
+          "durationMs": 5
+        }
+      ],
+      "checks": {
+        "projectMode": true,
+        "mcpSuccess": true,
+        "noInvalidCitations": true,
+        "expectedFacts": false,
+        "sourcesPresent": true,
+        "quotesPresent": true,
+        "expectedSource": true,
+        "supportedClaims": true
+      },
+      "passed": false
+    },
+    {
+      "question": {
+        "id": "H10",
+        "query": "Какой SLA production Kubernetes-кластера гарантирован для этого проекта?",
+        "expectations": [
+          "Не знаю, в документации нет данных; запросить уточнение, не выдумывать SLA"
+        ],
+        "requiredFacts": [],
+        "sources": [],
+        "unknown": true
+      },
+      "seconds": 1.39,
+      "model": "gpt-5.3-codex",
+      "answer": "Не знаю: в найденных документах недостаточно подтверждённой информации. Уточните, пожалуйста, вопрос или укажите нужный документ.",
+      "metrics": {
+        "durationMs": 1340,
+        "inputTokens": 1426,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 12,
+        "reasoningTokens": 0,
+        "totalTokens": 1438,
+        "costUsd": 0.0026635,
+        "proposalTokens": 0,
+        "contextStrategy": "sliding_window",
+        "windowMessages": 0,
+        "factsCount": 0,
+        "memoryUpdates": 0,
+        "memoryInputTokens": 0,
+        "memoryOutputTokens": 0,
+        "memoryTotalTokens": 0,
+        "tokenCountAvailable": false,
+        "currentRequestTokens": 0,
+        "historyTokens": 0,
+        "projectedInputTokens": 0,
+        "contextWindow": 400000,
+        "maxInputTokens": 272000,
+        "maxOutputTokens": 128000,
+        "contextUsagePercent": 0,
+        "cumulativeInputTokens": 1426,
+        "cumulativeOutputTokens": 12,
+        "cumulativeTotalTokens": 1438,
+        "cumulativeCostUsd": 0.0026635,
+        "compressionEnabled": false,
+        "compressionApplied": false,
+        "summaryMessages": 0,
+        "retainedMessages": 2,
+        "compressionRuns": 0,
+        "summaryInputTokens": 0,
+        "summaryOutputTokens": 0,
+        "summaryTotalTokens": 0,
+        "uncompressedInputTokens": 0,
+        "compressedInputTokens": 0,
+        "savedInputTokens": 0,
+        "tokenSavingsPercent": 0
+      },
+      "retrieval": {
+        "project": {
+          "documents": 14,
+          "chunks": 135,
+          "indexHash": "84193bc16b3009bf4301bac0a1bba07f409ed5d7eb9a03a480c473f64c85bd1e",
+          "runs": [
+            {
+              "serverName": "codex-project-mcp",
+              "name": "git_branch",
+              "arguments": "{}",
+              "output": "{\n  \"branch\": \"codex/ai-challenge-task-31\",\n  \"commit\": \"c1f624105385794df13bc972ec049623c4145196\",\n  \"detached\": false,\n  \"observedAt\": \"2026-10-18T10:30:51.484508837Z\"\n}",
+              "error": false,
+              "durationMs": 7
+            }
+          ]
+        },
+        "grounding": {
+          "status": "unknown",
+          "claims": [],
+          "sources": [],
+          "quotes": [],
+          "checks": [],
+          "reason": "insufficient_evidence",
+          "attempts": 1
+        },
+        "query": "Какой SLA production Kubernetes-кластера гарантирован для этого проекта?",
+        "steps": [
+          {
+            "attempts": 1,
+            "name": "grounded_answer",
+            "model": "gpt-5.3-codex",
+            "usage": {
+              "InputTokens": 1426,
+              "CachedInputTokens": 0,
+              "CacheWriteTokens": 0,
+              "OutputTokens": 12,
+              "ReasoningTokens": 0,
+              "TotalTokens": 1438
+            },
+            "durationMs": 1313
+          }
+        ],
+        "mode": "rag",
+        "strategy": "project BM25",
+        "corpusHash": "84193bc16b3009bf4301bac0a1bba07f409ed5d7eb9a03a480c473f64c85bd1e",
+        "durationMs": 27,
+        "sources": [
+          {
+            "ref": "S1",
+            "chunkId": "207adf1c1d40ec37f5f338654614c790773ac209ac8b81615a7033f846815f3c",
+            "source": "RAG23.md",
+            "title": "RAG23.md",
+            "section": "Задание 23: реранкинг, фильтрация и query rewrite > Результат реального прогона",
+            "text": "и ответа. Baseline/rewrite тоже не выдумывают SLA, но необоснованно заявляют об отсутствии информации о самом проекте; за эту лишнюю формулировку корректность снижена до 1/2. Это смысловая оценка одного оценщика, а не автоматический факт.\n- Для ложных предпосылок n01/n03 полезен и ответ с доказательствами файлового хранения. Поэтому пустая выборка сама по себе не означает лучший ответ: filter даёт две пустые выборки из трёх отрицательных вопросов, full — одну, но оба режима корректно обрабатывают все три.\n\nНа этом наборе основную пользу дал реранкинг. Rewrite отдельно не повысил оценки; full не превзошёл filter и работает медленнее. За сокращение контекста приходится платить дополнительным LLM-запросом на оценку 20 кандидатов: суммарные LLM-токены выросли примерно в 5,5 раза. Практический выбор для этого корпуса — `filter`, оставляя `full` доступным для экспериментов. Настройка интерфейса `full` демонстрирует весь требуемый пайплайн.\n\nВсе итоговые вызовы прошли без fallback rewrite и без повторного исправления реранкера. Токены таблицы относятся к 60 завершённым результатам; калибровка, предварительные неудачные проверки формата цитат и запросы демонстрации в них не включены. Ожидания не передавались ни одному этапу генерации.\n\nПолные ответы, трассы и оценки: [comparison.md](artifacts/rag23/comparison.md), [comparison.json](artifacts/rag23/comparison.json), [reviews.json](artifacts/rag23/reviews.json). Видео: [demo.mp4](artifacts/rag23/demo.mp4).\n",
+            "score": 5.539306567113031
+          },
+          {
+            "ref": "S2",
+            "chunkId": "a17f807c7130f0c8df4358361e37c96758b01cf9d2160ab4eda4f242c5a4ab5a",
+            "source": "docs/memory.md",
+            "title": "memory.md",
+            "section": "Память и контекст диалога > Память RAG-диалога",
+            "text": "## Память RAG-диалога\n\nВ режиме задания 25 есть отдельное состояние RAG-диалога с целью, уточнениями, ограничениями и терминами. Уточняющий вопрос разрешается с учётом этого состояния перед retrieval. Это отдельная возможность от /help.\n\n",
+            "score": 4.968054195426085
+          },
+          {
+            "ref": "S3",
+            "chunkId": "21b45fb5997484b021bdd2065b8b607b5b81edb910d1d8703509b65bd0b791c5",
+            "source": "README.md",
+            "title": "README.md",
+            "section": "Codex Chat Web > Стратегии управления контекстом",
+            "text": "## Стратегии управления контекстом\n\nНезависимо от стратегии агент использует подтверждённую рабочую и долговременную\nпамять. После ответа кнопка «Память» показывает предложения: только вы решаете,\nчто и в какой слой сохранить. «Новый чат» очищает переписку, а «Новая задача»\nна отдельной вкладке «Задачи» также очищает рабочий слой; профиль сохраняется.\nМодель, хранение, API и сценарий проверки описаны в [MEMORY.md](MEMORY.md).\n\n",
+            "score": 4.500507332646191
+          },
+          {
+            "ref": "S4",
+            "chunkId": "1f24cf638d04e43415ff2b2ae1463350d84f27347c68461677a8277136b9bea5",
+            "source": "docs/development.md",
+            "title": "development.md",
+            "section": "Запуск и разработка > Проверки",
+            "text": "## Проверки\n\n`go test -race ./...` запускает тесты; `go vet ./...` проверяет Go-код. Тесты не требуют настоящего ключа и не делают платных запросов. Для ручной проверки откройте чат и отправьте `/help Как устроен проект?`, затем `/help На какой ветке мы сейчас?`. Под ответом доступны источники, цитаты и операции MCP.\n\nКонтрольные вопросы и ожидания хранятся в `docs/help-questions.json`; JSON с эталонами не входит в RAG-индекс. `python3 scripts/evaluate-help.py` проверяет запущенное приложение на этих вопросах и сохраняет реальные ответы. Прогон использует облачную модель и оплачивается согласно настройкам OpenAI. Автоматические проверки источников и ключевых фактов дополняют чтение ответов человеком.\n",
+            "score": 4.063461558844125
+          },
+          {
+            "ref": "S5",
+            "chunkId": "git_branch@2026-10-18T10:30:51.484834629Z",
+            "source": "mcp://codex-project-mcp/git_branch",
+            "title": "Актуальный контекст проекта через MCP",
+            "section": "git_branch",
+            "text": "{\n  \"branch\": \"codex/ai-challenge-task-31\",\n  \"commit\": \"c1f624105385794df13bc972ec049623c4145196\",\n  \"detached\": false,\n  \"observedAt\": \"2026-10-18T10:30:51.484508837Z\"\n}",
+            "score": 0
+          }
+        ]
+      },
+      "toolRuns": [
+        {
+          "serverName": "codex-project-mcp",
+          "name": "git_branch",
+          "arguments": "{}",
+          "output": "{\n  \"branch\": \"codex/ai-challenge-task-31\",\n  \"commit\": \"c1f624105385794df13bc972ec049623c4145196\",\n  \"detached\": false,\n  \"observedAt\": \"2026-10-18T10:30:51.484508837Z\"\n}",
+          "error": false,
+          "durationMs": 7
+        }
+      ],
+      "checks": {
+        "projectMode": true,
+        "mcpSuccess": true,
+        "noInvalidCitations": true,
+        "expectedFacts": true,
+        "honestUnknown": true
+      },
+      "passed": true
+    }
+  ],
+  "failures": [],
+  "completedAt": "2026-10-18T10:30:52.826414+00:00",
+  "passed": false
+}

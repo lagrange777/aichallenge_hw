@@ -13,9 +13,12 @@ services:
       MEMORY_PATH: /data/memory
       PROFILE_PATH: /data/profiles
       MCP_PATH: /data/mcp.json
+      PROJECT_ROOT: /project
+      PROJECT_INDEX_PATH: /data/project-index.json
+      PROJECT_MCP_URL: http://project-mcp:8094/mcp
       SCHEDULER_PATH: /data/scheduler.db
       DOCUMENT_INDEX_PATH: /documents/artifacts/index.sqlite
-      MCP_HTTP_ENDPOINTS: http://mock-issue-mcp:8090/mcp,http://demo-order-mcp:8090/mcp,http://demo-validation-mcp:8090/mcp,http://demo-broker-mcp:8090/mcp
+      MCP_HTTP_ENDPOINTS: http://mock-issue-mcp:8090/mcp,http://demo-order-mcp:8090/mcp,http://demo-validation-mcp:8090/mcp,http://demo-broker-mcp:8090/mcp,http://project-mcp:8094/mcp
       BROKER_DEMO_ORDER_MCP: http://demo-order-mcp:8090/mcp
       BROKER_DEMO_VALIDATION_MCP: http://demo-validation-mcp:8090/mcp
       BROKER_DEMO_BROKER_MCP: http://demo-broker-mcp:8090/mcp
@@ -28,14 +31,43 @@ services:
     read_only: true
     volumes:
       - chat-history:/data
+      - ./README.md:/project/README.md:ro
+      - ./docs:/project/docs:ro
     cap_drop:
       - ALL
     security_opt:
       - no-new-privileges:true
     depends_on:
-      - demo-order-mcp
-      - demo-validation-mcp
-      - demo-broker-mcp
+      project-mcp:
+        condition: service_healthy
+      demo-order-mcp:
+        condition: service_started
+      demo-validation-mcp:
+        condition: service_started
+      demo-broker-mcp:
+        condition: service_started
+
+  project-mcp:
+    build:
+      context: .
+      target: project-mcp
+    image: codex-project-mcp:local
+    environment:
+      PROJECT_ROOT: /project
+      LISTEN_ADDR: 0.0.0.0:8094
+    # Only Git metadata is needed: no .env, user data or repository content.
+    volumes:
+      - ./.git:/project/.git:ro
+    read_only: true
+    networks: [default]
+    restart: unless-stopped
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8094/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
   demo-order-mcp:
     build:

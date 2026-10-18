@@ -20,6 +20,7 @@ import (
 	"codex-chat-cli/internal/memory"
 	"codex-chat-cli/internal/openai"
 	"codex-chat-cli/internal/profile"
+	"codex-chat-cli/internal/projecthelp"
 	"codex-chat-cli/internal/scheduler"
 	chatweb "codex-chat-cli/internal/web"
 )
@@ -81,6 +82,14 @@ func run(logger *log.Logger) error {
 			}
 		}
 	}
+	if err := mcpStore.EnsureConnection("Project documentation", cfg.ProjectMCPURL, []string{"git_branch", "project_files"}); err != nil {
+		return fmt.Errorf("регистрация Project MCP: %w", err)
+	}
+	projectIndex := &projecthelp.Index{Root: cfg.ProjectRoot, Path: cfg.ProjectIndexPath}
+	if _, err := projectIndex.Refresh(); err != nil {
+		return fmt.Errorf("индекс документации проекта: %w", err)
+	}
+	projectRetriever := &projecthelp.Retriever{Index: projectIndex, Store: mcpStore, Endpoint: cfg.ProjectMCPURL}
 	schedulerStore, err := scheduler.Open(cfg.SchedulerPath)
 	if err != nil {
 		return fmt.Errorf("инициализация планировщика: %w", err)
@@ -108,7 +117,7 @@ func run(logger *log.Logger) error {
 		Handler: chatweb.NewHandlerWithDocuments(apiClient, cfg.Model, historyStore, mcpStore, monitors, documents, agent.WithContextStrategy(agent.StrategyConfig{
 			Type:     agent.ContextStrategy(cfg.ContextStrategy),
 			KeepLast: cfg.ContextKeepLast,
-		}), agent.WithMemory(memoryStore), agent.WithProfiles(profileStore)),
+		}), agent.WithMemory(memoryStore), agent.WithProfiles(profileStore), agent.WithProjectRetriever(projectRetriever)),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      3*cfg.Timeout + 4*time.Minute,

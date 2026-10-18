@@ -22,6 +22,9 @@ const (
 
 // Config contains runtime configuration loaded from environment variables.
 type Config struct {
+	ProjectRoot       string
+	ProjectIndexPath  string
+	ProjectMCPURL     string
 	APIKey            string
 	Model             string
 	BaseURL           string
@@ -70,6 +73,9 @@ func Load() (Config, error) {
 	}
 
 	return Config{
+		ProjectRoot:       valueOrDefault("PROJECT_ROOT", "."),
+		ProjectIndexPath:  valueOrDefault("PROJECT_INDEX_PATH", filepath.Join(filepath.Dir(historyPath), "project-index.json")),
+		ProjectMCPURL:     valueOrDefault("PROJECT_MCP_URL", "http://127.0.0.1:8094/mcp"),
 		APIKey:            apiKey,
 		Model:             model,
 		BaseURL:           baseURL,

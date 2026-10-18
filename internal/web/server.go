@@ -358,6 +358,10 @@ func (s *server) handleChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if _, help := agent.ProjectHelpQuestion(request.Message); help {
+		// /help always uses its own corpus, independent of the chat RAG switches.
+		request.RAG, request.RAGOptions = false, nil
+	}
 	if request.RAGOptions != nil {
 		if request.RAGOptions.Dialogue && !request.RAG {
 			writeJSON(w, 400, apiResponse{Error: "Диалог с памятью требует включённого RAG"})

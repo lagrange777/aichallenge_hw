@@ -156,16 +156,17 @@ type History interface {
 
 // Agent owns one conversation and encapsulates its LLM request/response flow.
 type Agent struct {
-	dialogue      *DialogueState
-	retriever     Retriever
-	tools         ToolProvider
-	profileStore  *profile.Store
-	browserID     string
-	activeProfile *profile.Profile
-	memoryStore   *memory.Store
-	llm           LLM
-	tokenCounter  TokenCounter
-	defaultModel  string
+	projectRetriever Retriever
+	dialogue         *DialogueState
+	retriever        Retriever
+	tools            ToolProvider
+	profileStore     *profile.Store
+	browserID        string
+	activeProfile    *profile.Profile
+	memoryStore      *memory.Store
+	llm              LLM
+	tokenCounter     TokenCounter
+	defaultModel     string
 
 	mu                 sync.Mutex
 	previousResponseID string
@@ -369,6 +370,9 @@ func (a *Agent) Ask(ctx context.Context, request Request) (Response, error) {
 		return Response{}, err
 	}
 
+	if question, help := ProjectHelpQuestion(request.Message); help {
+		return a.askProjectHelpLocked(ctx, request, question, started)
+	}
 	if request.RAGOptions != nil && request.RAGOptions.Dialogue && !request.RAG {
 		return Response{}, fmt.Errorf("диалог с памятью требует включённого RAG")
 	}
