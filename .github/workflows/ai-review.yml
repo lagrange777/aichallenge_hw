@@ -76,6 +76,9 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: ai-review-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
-          path: artifacts/review32/
+          path: |
+            artifacts/review32/review.json
+            artifacts/review32/review.md
+            artifacts/review32/bootstrap.md
           if-no-files-found: warn
           retention-days: 14

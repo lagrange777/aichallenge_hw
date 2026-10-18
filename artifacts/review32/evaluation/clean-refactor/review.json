@@ -1,0 +1,131 @@
+{
+  "version": 1,
+  "createdAt": "2026-10-18T11:51:55.567358Z",
+  "repository": "lagrange777/aichallenge_hw",
+  "pr": 0,
+  "status": "completed",
+  "model": "gpt-5.3-codex",
+  "durationMs": 1900,
+  "usage": {
+    "InputTokens": 3844,
+    "CachedInputTokens": 0,
+    "CacheWriteTokens": 0,
+    "OutputTokens": 9,
+    "ReasoningTokens": 0,
+    "TotalTokens": 3853
+  },
+  "input": {
+    "base": "05b157b35e36e100466efa10b8daf96a92e2ca36",
+    "head": "e0cc40bdf83bf7f901880667331c5ea6bae7ad8e",
+    "mergeBase": "05b157b35e36e100466efa10b8daf96a92e2ca36",
+    "files": [
+      {
+        "path": "internal/models/catalog.go",
+        "status": "M",
+        "patch": "diff --git a/internal/models/catalog.go b/internal/models/catalog.go\nindex 748ca58..e800602 100644\n--- a/internal/models/catalog.go\n+++ b/internal/models/catalog.go\n@@ -81,9 +81,9 @@ func EstimateCost(id string, inputTokens, cachedInputTokens, cacheWriteTokens, o\n \treturn cost / 1_000_000, true\n }\n \n-func nonNegative(value int) int {\n-\tif value \u003c 0 {\n+func nonNegative(n int) int {\n+\tif n \u003c 0 {\n \t\treturn 0\n \t}\n-\treturn value\n+\treturn n\n }\n"
+      }
+    ],
+    "sources": [
+      {
+        "ref": "D1",
+        "kind": "diff",
+        "path": "internal/models/catalog.go",
+        "section": "PR patch (patch line numbers)",
+        "revision": "e0cc40bdf83bf7f901880667331c5ea6bae7ad8e",
+        "chunkId": "diff-1",
+        "start": 1,
+        "end": 18,
+        "text": "diff --git a/internal/models/catalog.go b/internal/models/catalog.go\nindex 748ca58..e800602 100644\n--- a/internal/models/catalog.go\n+++ b/internal/models/catalog.go\n@@ -81,9 +81,9 @@ func EstimateCost(id string, inputTokens, cachedInputTokens, cacheWriteTokens, o\n \treturn cost / 1_000_000, true\n }\n \n-func nonNegative(value int) int {\n-\tif value \u003c 0 {\n+func nonNegative(n int) int {\n+\tif n \u003c 0 {\n \t\treturn 0\n \t}\n-\treturn value\n+\treturn n\n }\n"
+      },
+      {
+        "ref": "R1",
+        "kind": "documentation",
+        "path": "docs/ai-review.md",
+        "section": "Контекст и ограничения",
+        "revision": "05b157b35e36e100466efa10b8daf96a92e2ca36",
+        "chunkId": "4535bd5cb299a707",
+        "start": 29,
+        "end": 68,
+        "text": "## Контекст и ограничения\n\nАнализатор и его тесты запускаются из **зафиксированного base SHA**, а не из\nPR. Полный fetch получает Git-объекты кандидата; checkout, сборка и запуск\nкода кандидата не выполняются. Git читается отдельными командами без shell,\nexternal diff/textconv, hooks, replacement objects и наследования ключей.\nActions закреплены по SHA. OpenAI-ключ доступен только шагу генерации.\n\nЭто workflow для доверенных участников с write-доступом: они могут менять\nworkflow в своих ветках. Он не является защищённой песочницей для произвольных\nвнешних авторов. `pull_request_target` с исполнением кода PR не используется.\n\nDiff строится от merge base до head, поэтому учитывает добавления, изменения,\nудаления и переименования. До 24 файлов, 80 000 байт diff суммарно, 128 КиБ\nна файл. Файл, который целиком не помещается, пропускается с причиной; текст\nне обрезается посреди hunk. Ссылки привязаны к commit SHA. Перед публикацией\nещё раз проверяются открытость PR, head, base и репозиторий автора. Проверка и\nзапись комментария не атомарны в GitHub; каждый отчёт явно указывает проверенный\nHEAD. Предыдущий отчёт не выдаётся за проверку нового коммита.\n\nКорпус RAG — README, `docs/`, другие публичные Markdown, Go, JS/CSS/HTML,\nYAML, Dockerfile и go.mod/go.sum **из base**. Из PR никогда не берутся новые\n«правила ревью». Скрытые файлы (кроме `.github`), `.env`, пользовательские\nданные, `artifacts/`, `tools/`, `vendor/`, старый `documents/` корпус,\nсимволические ссылки, бинарные и сгенерированные файлы исключаются.\nНе храните секреты и персональные данные в публичном коде/документации:\nallowlist путей не является универсальным детектором секретов.\n\nДо 1000 файлов / 12 МиБ корпуса. Chunking по объявлениям Go / заголовкам\nMarkdown, длинные секции — по 40 физических строк; строки сохраняются точно.\nПо каждому файлу отдельно ищутся документация и код существующим BM25 из\n`internal/projecthelp`, с ограничением до 16 retrieved chunks / 24 000 байт.\nВ отчёте сохраняются path, section, revision, chunk ID, score и точный текст.\n\nМодель получает нумерованные источники `D*` (строки patch, включая заголовки)\nи `R*` (физические строки документа/кода). Замечание должно попадать в реально\nдобавленную RIGHT или удалённую LEFT строку; диапазон не длиннее 10 строк.\nКаждая цитата ограничена 12 строками и восстанавливается из исходного текста.\nНеизвестные пути, source ID, диапазоны и неожиданные поля JSON отклоняются.\nКаждое замечание должно ссылаться на собственный diff; дополнительно — на",
+        "score": 10.985210977283778
+      },
+      {
+        "ref": "R2",
+        "kind": "documentation",
+        "path": "ARCHITECTURE.md",
+        "section": "Компоненты",
+        "revision": "05b157b35e36e100466efa10b8daf96a92e2ca36",
+        "chunkId": "2368b800ffe81791",
+        "start": 24,
+        "end": 48,
+        "text": "## Компоненты\n\n`internal/docindex` — отдельный пайплайн индексации Markdown, текста и Go:\nfixed/structured chunking, OpenAI Embeddings, кэш, SQLite, точный векторный поиск\nи оценка на контрольных вопросах. `cmd/doc-index` строит индекс и отчёт без\nзапуска чата. Web открывает готовый индекс только для чтения; `documents.js`\nпоказывает метаданные, чанки, выдачу двух стратегий и результаты сравнения.\nПодробности: [Индексация документов](documents/README.md).\n\n```text\ncmd/codex-chat/main.go\n        │\n        ├── internal/config     переменные окружения и адрес HTTP-сервера\n        ├── internal/web        маршруты, browser-сессии и встроенные assets\n        │       └── static      HTML, CSS и JavaScript\n        ├── internal/agent      агент, контекст и логика запроса/ответа\n        ├── internal/history    атомарное JSON-хранилище диалогов\n        ├── internal/memory     отдельные слои задачи/профиля и предложения с подтверждением\n        ├── internal/openai     транспорт и точный подсчёт токенов Responses API\n        └── internal/models     модели, контекстные лимиты и стоимость токенов\n\nDockerfile                     тесты, сборка и минимальный runtime-образ\ncompose.yaml                   запуск на http://127.0.0.1:8080\n```\n",
+        "score": 10.915667068260833
+      },
+      {
+        "ref": "R3",
+        "kind": "documentation",
+        "path": "docs/architecture.md",
+        "section": "Ассистент разработчика /help",
+        "revision": "05b157b35e36e100466efa10b8daf96a92e2ca36",
+        "chunkId": "543ecaba3c5cf7c5",
+        "start": 21,
+        "end": 27,
+        "text": "## Ассистент разработчика /help\n\n`internal/projecthelp/` создаёт отдельный локальный BM25-индекс README, `docs/**/*.md` и выбранных корневых инструкций. Команда `/help вопрос` всегда использует этот индекс, независимо от переключателя обычного RAG. Старый учебный корпус не участвует в /help. `internal/agent/project_help.go` обрабатывает команду и сохраняет ответы в истории текущего диалога.\n\n`cmd/project-mcp/` запускает отдельный MCP-сервер; его реализация находится в `internal/projectmcp/`. Инструмент `git_branch` получает текущую ветку, HEAD-коммит и признак detached HEAD, а `project_files` возвращает ограниченный список отслеживаемых публичных путей. Данные получают реальными вызовами MCP для каждого вопроса, а не зашивают при сборке. Произвольных команд, записи файлов и diff в этих инструментах нет.\n\nДля /help доступны только документация и результаты чтения MCP. Команда не запускает инструменты брокера/планировщика, не извлекает историю других задач и не меняет их память. Сами сообщения /help сохраняются в истории. Каждый новый /help собирает свежие доказательства; сохранённый старый ответ не считается текущим состоянием Git.",
+        "score": 9.347848815633697
+      },
+      {
+        "ref": "R4",
+        "kind": "code",
+        "path": "internal/models/catalog.go",
+        "section": "EstimateCost",
+        "revision": "05b157b35e36e100466efa10b8daf96a92e2ca36",
+        "chunkId": "4aaffb6c51b8f5e5",
+        "start": 58,
+        "end": 83,
+        "text": "func EstimateCost(id string, inputTokens, cachedInputTokens, cacheWriteTokens, outputTokens int) (float64, bool) {\n\tdefinition, ok := Find(id)\n\tif !ok {\n\t\treturn 0, false\n\t}\n\n\tinputTokens = nonNegative(inputTokens)\n\tcachedInputTokens = min(nonNegative(cachedInputTokens), inputTokens)\n\tcacheWriteTokens = min(nonNegative(cacheWriteTokens), inputTokens-cachedInputTokens)\n\tuncachedInputTokens := inputTokens - cachedInputTokens - cacheWriteTokens\n\toutputTokens = nonNegative(outputTokens)\n\n\tinputMultiplier := 1.0\n\toutputMultiplier := 1.0\n\tif definition.LongContextPricing \u0026\u0026 inputTokens \u003e longContextThreshold {\n\t\tinputMultiplier = 2\n\t\toutputMultiplier = 1.5\n\t}\n\n\tcost := (float64(uncachedInputTokens)*definition.InputPerMillion +\n\t\tfloat64(cachedInputTokens)*definition.CachedInputPerMillion +\n\t\tfloat64(cacheWriteTokens)*definition.InputPerMillion*definition.CacheWriteMultiplier) * inputMultiplier\n\tcost += float64(outputTokens) * definition.OutputPerMillion * outputMultiplier\n\treturn cost / 1_000_000, true\n}\n",
+        "score": 97.76037238713849
+      },
+      {
+        "ref": "R5",
+        "kind": "code",
+        "path": "internal/models/catalog.go",
+        "section": "nonNegative",
+        "revision": "05b157b35e36e100466efa10b8daf96a92e2ca36",
+        "chunkId": "fe8ff60355157b32",
+        "start": 84,
+        "end": 89,
+        "text": "func nonNegative(value int) int {\n\tif value \u003c 0 {\n\t\treturn 0\n\t}\n\treturn value\n}",
+        "score": 48.505702220633346
+      },
+      {
+        "ref": "R6",
+        "kind": "code",
+        "path": "internal/agent/compression.go",
+        "section": "prepareCompression",
+        "revision": "05b157b35e36e100466efa10b8daf96a92e2ca36",
+        "chunkId": "3f8397e75462a1be",
+        "start": 107,
+        "end": 121,
+        "text": "\t\tif cost, ok := models.EstimateCost(model, usage.InputTokens, usage.CachedInputTokens, usage.CacheWriteTokens, usage.OutputTokens); ok {\n\t\t\tif prepared.Summary.CostUSD == nil {\n\t\t\t\tprepared.Summary.CostUSD = \u0026cost\n\t\t\t} else {\n\t\t\t\ttotal := *prepared.Summary.CostUSD + cost\n\t\t\t\tprepared.Summary.CostUSD = \u0026total\n\t\t\t}\n\t\t} else {\n\t\t\tprepared.Summary.CostUSD = nil\n\t\t}\n\t\tprepared.Applied = true\n\t}\n\treturn prepared\n}\n",
+        "score": 36.901666379064636
+      },
+      {
+        "ref": "R7",
+        "kind": "code",
+        "path": "internal/agent/agent.go",
+        "section": "Ask",
+        "revision": "05b157b35e36e100466efa10b8daf96a92e2ca36",
+        "chunkId": "abb27dcb08ed5c6f",
+        "start": 520,
+        "end": 559,
+        "text": "\t\tretrieval.Grounding = unknownGrounding(\"below_threshold\", 0)\n\t\tcompletion.Output = UnknownRAGAnswer\n\t\tif dialogueMode {\n\t\t\tcompletion.Output += \"\\n\\nИсточники: подтверждающие источники не найдены.\"\n\t\t}\n\t} else if strictRAG {\n\t\tcompletion, invariantCheck, err = a.completeGrounded(ctx, completionRequest, retrieval, guard)\n\t} else if !retrieval.Empty {\n\t\tcompletion, invariantCheck, err = a.completeWithInvariants(ctx, completionRequest, guard)\n\t}\n\tif err != nil {\n\t\tresponse.Duration = time.Since(started)\n\t\treturn response, err\n\t}\n\n\tif completion.Model == \"\" {\n\t\tcompletion.Model = request.Model\n\t}\n\tif completion.Usage.TotalTokens == 0 {\n\t\tcompletion.Usage.TotalTokens = completion.Usage.InputTokens + completion.Usage.OutputTokens\n\t}\n\n\tresponse.Text = completion.Output\n\tresponse.Retrieval.RecordCitations(response.Text)\n\tresponse.Model = completion.Model\n\tresponse.Usage = sumUsage(completion.Usage, retrieval.AuxiliaryUsage())\n\tresponse.Duration = time.Since(started)\n\tif cost, ok := models.EstimateCost(request.Model, completion.Usage.InputTokens, completion.Usage.CachedInputTokens, completion.Usage.CacheWriteTokens, completion.Usage.OutputTokens); ok {\n\t\tresponse.CostUSD = \u0026cost\n\t}\n\tfor _, step := range retrieval.Steps {\n\t\tif cost, ok := models.EstimateCost(step.Model, step.Usage.InputTokens, step.Usage.CachedInputTokens, step.Usage.CacheWriteTokens, step.Usage.OutputTokens); ok {\n\t\t\tresponse.CostUSD = addKnownCosts(response.CostUSD, \u0026cost)\n\t\t} else {\n\t\t\tresponse.CostUSD = nil\n\t\t\tbreak\n\t\t}\n\t}\n\tvar proposals []memory.Proposal\n\tvar taskProposal *memory.TaskProposal",
+        "score": 31.170560438415347
+      }
+    ],
+    "corpusFiles": 164,
+    "corpusChunks": 1802,
+    "corpusSkipped": 0
+  },
+  "findings": [],
+  "modelCalls": 1
+}

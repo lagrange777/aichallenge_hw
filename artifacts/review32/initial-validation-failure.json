@@ -1,0 +1,14 @@
+{
+  "createdAt": "2026-10-18T11:49:27.277375Z",
+  "status": "failed",
+  "error": "finding does not overlap changed lines",
+  "durationMs": 3184,
+  "usage": {
+    "InputTokens": 2964,
+    "CachedInputTokens": 0,
+    "CacheWriteTokens": 0,
+    "OutputTokens": 237,
+    "ReasoningTokens": 0,
+    "TotalTokens": 3201
+  }
+}

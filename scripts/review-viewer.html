@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI-ревью · codex_chat_cli</title>
+<style>
+:root{font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#26324b;background:#f3f5fa;color-scheme:light}*{box-sizing:border-box}body{margin:0}header{background:#172441;color:#fff;padding:20px 28px}header small{color:#b8c9eb;letter-spacing:.06em}header h1{font-size:29px;line-height:1.2;margin:8px 0}header p{margin:0;color:#c5d1e8}main{max-width:1120px;margin:auto;padding:22px 24px}button{font:inherit;cursor:pointer;border:1px solid #d4dcea;background:white;color:#334361;border-radius:8px;padding:10px 15px}button.active{background:#3758cf;color:white;border-color:#3758cf}button:focus-visible,summary:focus-visible{outline:3px solid #7995f6;outline-offset:2px}.versions{display:flex;gap:8px;flex-wrap:wrap}.notice{font-size:13px;color:#61708b;margin:12px 0}.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:18px 0}.metric,.card{background:#fff;border:1px solid #dce2ed;border-radius:10px;padding:17px}.metric small{color:#6a7891;display:block}.metric strong{display:block;font-size:23px;color:#233f8e}.metric span{font-size:12px;color:#748099}nav{display:flex;gap:7px;margin:18px 0;flex-wrap:wrap}nav button{background:transparent;border-color:transparent}nav button.active{background:#e3eaff;color:#2849b0;border-color:#cfdaff}h2{font-size:21px;margin:0 0 15px}h3{font-size:16px;margin:0}p{margin:8px 0}a{color:#3156bd;overflow-wrap:anywhere}code,pre{font:13px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace}code{overflow-wrap:anywhere}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f5f7fc;padding:14px;border:1px solid #e2e7f0;border-radius:7px;margin:10px 0}.card{margin-bottom:14px}.card summary{cursor:pointer;list-style:none;font-weight:600}.card summary::before{content:"▸";margin-right:9px;color:#526fc0}.card[open]>summary::before{content:"▾"}.severity{color:#ad3648;background:#fdeaf0;border-radius:5px;padding:2px 6px;margin-right:8px;font-size:12px}.path{color:#64718b;font-size:13px;margin:7px 0 13px}.field{font-size:14px}.field b{color:#455777}.evidence{border-top:1px solid #e5e9f1;margin-top:13px;padding-top:10px}.evidence summary{font-size:13px;color:#3a5599}.source-meta{color:#718099;font-size:12px;overflow-wrap:anywhere}.ok{color:#19795e}.empty{border-left:4px solid #2e9877}.muted{color:#72809a;font-size:13px}.group{margin-top:22px}.source-select{width:100%;font:inherit;border:1px solid #d4dcea;background:#fff;padding:12px;border-radius:8px;color:#26324b;margin-bottom:15px}table{width:100%;border-collapse:collapse;font-size:14px}td,th{text-align:left;padding:12px 8px;border-bottom:1px solid #e4e9f2}th{color:#61728e;font-size:12px}.footer{font-size:12px;color:#7b879d;margin:24px 0}.line-add{color:#157247}.line-remove{color:#af3446}.file-name{font-weight:600;color:#354c7a}.run{font-size:13px;line-height:1.9}.sha{font-size:12px;display:block;color:#78859e;overflow-wrap:anywhere}@media(max-width:800px){.metrics{grid-template-columns:repeat(2,1fr)}main{padding:20px}header{padding:20px}button{padding:9px 12px}header h1{font-size:27px}}
+</style>
+</head>
+<body>
+<header><small>ДЕНЬ 32 · CODEX_CHAT_CLI</small><h1>Автоматическое AI-ревью</h1><p>Diff → RAG по документации и коду → замечания с цитатами</p></header>
+<main>
+<div class="versions"><button id="before">До исправлений</button><button id="after">После исправлений</button></div>
+<p class="notice">Сохранённые отчёты настоящих запусков GitHub Actions · demo-PR #26. Просмотр не вызывает модель.</p>
+<div class="metrics" id="metrics"></div><div class="run" id="run"></div>
+<nav aria-label="Разделы отчёта"><button data-tab="review">Ревью</button><button data-tab="diff">Diff</button><button data-tab="sources">Источники RAG</button><button data-tab="controls">Контрольные проверки</button></nav>
+<section id="panel"></section><p class="footer">Консультативное ревью: ссылки и цитаты проверяются программно. Решение по коду принимает разработчик. Код demo-PR не исполнялся.</p>
+</main>
+<script>
+'use strict';
+const data=/*REPORT_DATA*/null;
+let version=0,tab='review';
+const $=id=>document.getElementById(id);
+function el(tag,text,cls){const x=document.createElement(tag);if(text!==undefined)x.textContent=String(text);if(cls)x.className=cls;return x}
+function link(text,url){const a=el('a',text);a.href=url;a.target='_blank';a.rel='noopener noreferrer';return a}
+function repoURL(r,s){const path=s.path.split('/').map(encodeURIComponent).join('/');return 'https://github.com/'+r.repository+'/blob/'+s.revision+'/'+path+'#L'+s.start+'-L'+s.end}
+function draw(){const r=data.reports[version],run=data.github.runs[version],p=$('panel');p.replaceChildren();$('metrics').replaceChildren();
+ $('before').classList.toggle('active',version===0);$('after').classList.toggle('active',version===1);
+ $('before').textContent='До исправлений · '+data.reports[0].findings.length+' замечания';$('after').textContent='После исправлений · '+data.reports[1].findings.length+' замечаний';
+ for(const [label,value,detail] of [['GitHub Actions',run.conclusion==='success'?'Успешно':run.conclusion,'событие '+run.event],['Замечания',r.findings.length,'статус '+r.status],['Корпус BM25',r.input.corpusFiles+' файлов',r.input.corpusChunks+' чанков'],['Ответ модели',(r.durationMs/1000).toFixed(1)+' с',r.usage.TotalTokens+' токенов']]){const c=el('div',undefined,'metric');c.append(el('small',label),el('strong',value),el('span',detail));$('metrics').append(c)}
+ $('run').replaceChildren(link('GitHub Action #'+run.databaseId,run.url),document.createTextNode(' · '),link('Комментарий бота #'+data.github.comment.id,data.github.comment.html_url),el('code','HEAD '+r.input.head,'sha'));
+ document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
+ if(tab==='review'){
+ p.append(el('h2','Результат анализа · '+r.model));
+ if(!r.findings.length){const c=el('div',undefined,'card empty');c.append(el('h3','Обоснованных замечаний нет','ok'),el('p','После исправления ошибок остался безопасный рефакторинг: переименование локальной переменной.'),el('p','Проверена новая ревизия; обновлён тот же комментарий бота.','muted'));p.append(c)}
+ for(const [i,f] of r.findings.entries()){const c=el('details',undefined,'card');c.open=i===0;const title=el('summary');title.append(el('span',f.priority,'severity'),document.createTextNode(f.title));c.append(title,el('p',f.path+':'+f.start+'–'+f.end+' · '+f.side+' · '+f.category,'path'));
+ for(const [name,value] of [['Сценарий',f.trigger],['Последствие',f.impact],['Исправление',f.fix]]){const para=el('p',undefined,'field');para.append(el('b',name+': '),document.createTextNode(value));c.append(para)}
+ for(const e of f.evidence){const s=r.input.sources.find(s=>s.ref===e.ref),d=el('details',undefined,'evidence');d.open=e.ref.startsWith('D')&&e===f.evidence[0];d.append(el('summary',e.ref+' · '+s.path+' · строки '+e.start+'–'+e.end),el('p','chunk '+s.chunkId+' · '+s.section,'source-meta'),el('pre',e.quote));c.append(d)}p.append(c)}
+ for(const [category,title] of [['architecture','Архитектурные проблемы'],['recommendation','Рекомендации']]){if(!r.findings.some(f=>f.category===category)){const c=el('div',undefined,'card');c.append(el('h3',title),el('p','В проверенной части обоснованных замечаний нет.','muted'));p.append(c)}}
+ }else if(tab==='diff'){
+ p.append(el('h2','Изменённые файлы · '+r.input.files.length));for(const f of r.input.files){const c=el('div',undefined,'card');c.append(el('h3',f.status+' · '+f.path,'file-name'));if(f.skipped)c.append(el('p','Пропущен: '+f.skipped));else{const pre=el('pre');for(const line of f.patch.split('\n'))pre.append(el('span',line+'\n',line.startsWith('+')?'line-add':line.startsWith('-')?'line-remove':''));c.append(pre)}p.append(c)}
+ }else if(tab==='sources'){
+ const sources=r.input.sources.filter(s=>s.kind!=='diff');p.append(el('h2','Контекст RAG · '+sources.length+' чанков'));
+ p.append(el('p','README/docs и связанный код взяты из базовой ревизии. Текст PR не задаёт правила ревью.','muted'));
+ const select=el('select',undefined,'source-select');select.setAttribute('aria-label','Источник RAG');
+ // Show architecture documentation first, preserving the original source IDs and scores.
+ const ordered=[...sources].sort((a,b)=>(a.path==='docs/architecture.md'?-1:0)-(b.path==='docs/architecture.md'?-1:0));
+ ordered.forEach((s,i)=>{const o=el('option',s.ref+' · '+s.path+' · '+s.section);o.value=i;select.append(o)});const box=el('div');
+ function source(){box.replaceChildren();const s=ordered[Number(select.value)];if(!s)return;const c=el('div',undefined,'card');c.append(link(s.path+':'+s.start+'–'+s.end,repoURL(r,s)),el('p','chunk '+s.chunkId+' · BM25 '+(s.score||0).toFixed(2),'source-meta'),el('p','revision '+s.revision,'source-meta'),el('pre',s.text.split('\n').map((l,i)=>(s.start+i)+' | '+l).join('\n')));box.append(c)}select.onchange=source;p.append(select,box);source();
+ }else{
+ p.append(el('h2','Пять контрольных сценариев'));const card=el('div',undefined,'card'),table=el('table'),head=el('tr');['Сценарий','Ожидание','Результат','Время'].forEach(t=>head.append(el('th',t)));table.append(head);
+ const names={'cost-bug':['Ошибка стоимости + injection','Найти ошибку'],'key-leak':['Ключ в HTTP-ответе','Найти утечку'],'clean-refactor':['Безопасный рефакторинг','Без замечаний'],'rename-delete':['Rename / delete','Без замечаний'],'large-pr':['29 изменённых файлов','24 проверены / 5 пропущены']};
+ data.controls.forEach(c=>{const row=el('tr'),n=names[c.case];[n[0],n[1],(c.narrowCheckPassed?'✓ ':'✗ ')+(c.status==='partial'?'partial':c.findings+' замеч.'),(c.durationMs/1000).toFixed(1)+' с'].forEach(t=>row.append(el('td',t)));table.append(row)});card.append(table);p.append(card,el('p','Узкие контрольные проверки не являются универсальной оценкой качества модели. Полные JSON/Markdown сохранены рядом с отчётом.','muted'),el('div','Оба запуска GitHub Actions успешны. Комментариев бота: '+data.github.botCommentCount+'. ID комментария не изменился после нового коммита.','card empty'));
+ }}
+$('before').onclick=()=>{version=0;draw()};$('after').onclick=()=>{version=1;draw()};document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{tab=b.dataset.tab;draw()});draw();
+</script>
+</body></html>

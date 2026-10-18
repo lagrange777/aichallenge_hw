@@ -70,14 +70,15 @@ func Markdown(r *Report) string {
 			fmt.Fprintf(&b, "Сценарий: %s\n\nПоследствие: %s\n\nИсправление: %s\n", escaped(f.Trigger), escaped(f.Impact), escaped(f.Fix))
 			for _, e := range f.Evidence {
 				s := refs[e.Ref]
-				a, z := e.Start, e.End
+				u := sourceURL(r.Repository, s.Revision, s.Path, e.Start, e.End)
 				if s.Kind == "diff" {
-					a, z = 0, 0
+					// A deleted file does not exist at HEAD; link its immutable diff.
+					u = "https://github.com/" + r.Repository + "/compare/" + r.Input.MergeBase + "..." + r.Input.Head
 				}
-				fmt.Fprintf(&b, "\nИсточник [%s · %s · %s · %d–%d](%s), chunk `%s`:\n\n", e.Ref, escaped(s.Path), escaped(s.Section), e.Start, e.End, sourceURL(r.Repository, s.Revision, s.Path, a, z), s.ChunkID)
-				for _, l := range strings.Split(e.Quote, "\n") {
-					fmt.Fprintln(&b, "> "+escaped(l))
-				}
+				fmt.Fprintf(&b, "\nИсточник [%s · %s · %s · %d–%d](%s), chunk `%s`:\n", e.Ref, escaped(s.Path), escaped(s.Section), e.Start, e.End, u, s.ChunkID)
+				// Preserve +/- signs, indentation and Markdown literally. Escaping
+				// HTML and mentions prevents quotes becoming active page content.
+				fmt.Fprintf(&b, "\n<blockquote><pre>%s</pre></blockquote>\n", strings.ReplaceAll(html.EscapeString(e.Quote), "@", "&#64;"))
 			}
 		}
 		if count == 0 {

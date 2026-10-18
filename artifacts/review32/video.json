@@ -1,0 +1,33 @@
+{
+  "source": "Only the local web interface at http://127.0.0.1:8085/; authentic saved GitHub Actions reports",
+  "frames": 311,
+  "captureErrors": [],
+  "durationSeconds": 78.15,
+  "fps": 12,
+  "bytes": 1773597,
+  "editing": "Inactive pauses between capture steps longer than 1.25 s shortened to 0.25 s; no overlays or fabricated responses",
+  "audio": false,
+  "fullDecode": "passed",
+  "runs": [
+    {
+      "conclusion": "success",
+      "createdAt": "2026-10-18T11:52:21Z",
+      "databaseId": 39124980569,
+      "event": "pull_request",
+      "headSha": "f2ab2af1d6d212b2b8da45e0081f394229363840",
+      "status": "completed",
+      "updatedAt": "2026-10-18T11:53:29Z",
+      "url": "https://github.com/lagrange777/aichallenge_hw/actions/runs/39124980569"
+    },
+    {
+      "conclusion": "success",
+      "createdAt": "2026-10-18T11:58:37Z",
+      "databaseId": 39125379623,
+      "event": "pull_request",
+      "headSha": "15a75b6d3df0fc894ee36d0db2b05a61bdaecb4d",
+      "status": "completed",
+      "updatedAt": "2026-10-18T12:00:03Z",
+      "url": "https://github.com/lagrange777/aichallenge_hw/actions/runs/39125379623"
+    }
+  ]
+}
